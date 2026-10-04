@@ -15,6 +15,7 @@ function load(){
  try{
   const raw=JSON.parse(localStorage.getItem(KEY)||'{}');
   const next=Object.assign({},defaults,raw);
+  next.settings=Object.assign({},defaults.settings,raw.settings||{});
   // Migrate the original grouped Aura object into individual Aura inventory objects.
   if(!Array.isArray(next.auras)){
    const grouped=next.auras||{};
@@ -212,7 +213,7 @@ function roll(){
    });
    if(candidates.length){
      const victim=candidates[0];
-     const replace=confirm('Aura Storage is full. Remove '+victim.name+' (1/'+fmt(victim.rarity)+') and keep '+result.name+'?');
+     const replace=!settingEnabled('confirmAuraRemoval')||confirm('Aura Storage is full. Remove '+victim.name+' (1/'+fmt(victim.rarity)+') and keep '+result.name+'?');
      if(replace){
        state.auras=state.auras.filter(function(a){return a.id!==victim.id});
      }else{
@@ -491,7 +492,7 @@ function render(){
  const active=state.activeTab;
  let mainContent=active==='Inventory'?inventoryView():active==='NPCs'?npcView():active==='Global'?globalView():active==='Achievements'?achievementsView():active==='Settings'?settingsView():rollView();
  document.getElementById('app').innerHTML='<div class="shell"><header class="topbar"><div class="logo">EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls)+'</b></span><span>Luck <b>'+totalLuck().toFixed(2)+'x</b></span><span>Speed <b>'+totalSpeed().toFixed(2)+'x</b></span></div></header><div class="layout"><nav class="tabs"><button class="tab '+(active==='Roll'?'active':'')+'" onclick="tab(\'Roll\')">◉ Roll</button><button class="tab '+(active==='Inventory'?'active':'')+'" onclick="tab(\'Inventory\')">▣ Inventory</button><button class="tab '+(active==='NPCs'?'active':'')+'" onclick="tab(\'NPCs\')">♙ NPCs</button><button class="tab" onclick="tab(\'Global\')">◎ Global</button><button class="tab" onclick="tab(\'Settings\')">⚙ Settings</button><button class="tab" onclick="tab(\'Achievements\')">★ Achievements</button></nav><main>'+mainContent+'</main><aside class="side"><div class="section-title">World State</div><div class="info-list"><div class="info"><span>Biome</span><b>'+state.biome+'</b></div><div class="info"><span>Time</span><b>'+state.dayNight+'</b></div><div class="info"><span>Dimension</span><b>'+state.dimension+'</b></div><div class="info"><span>Total Rolls</span><b>'+fmt(state.rolls)+'</b></div></div><div class="section-title" style="margin-top:24px">Inventory Preview</div><div class="info-list">'+invPreview()+'</div></aside></div><footer class="footer">Equinox • '+active+' tab • Progress saved locally in this prototype.</footer><div id="notices" class="notice-stack"></div></div>';
- if(active==='Inventory')wireInventory(); if(state.settings&&state.settings.reducedMotion)document.documentElement.classList.add('reduced-motion'); if(active==='Roll'&&tutorialState().phase===1)document.getElementById('app').insertAdjacentHTML('beforeend',tutorialView()); if(tutorialState().phase===2&&active!=='Roll')document.querySelector('main').insertAdjacentHTML('afterbegin',tutorialView());
+ if(active==='Inventory')wireInventory(); document.documentElement.classList.toggle('reduced-motion',!!(state.settings&&state.settings.reducedMotion)); if(active==='Roll'&&tutorialState().phase===1)document.getElementById('app').insertAdjacentHTML('beforeend',tutorialView()); if(tutorialState().phase===2&&active!=='Roll')document.querySelector('main').insertAdjacentHTML('afterbegin',tutorialView());
 }
 setInterval(maybeSpawn,1000);
 render();
