@@ -244,4 +244,159 @@ window.equinoxAuthToggle = equinoxAuthToggle;
 window.equinoxLogout = equinoxLogout;
 window.equinoxCloudSave = equinoxCloudSave;
 
+/* Shared hourly Quest Board + Mari Shop bridge.
+ * The existing database schema stores quest definitions as JSONB and shop rows
+ * by item_id, so the browser adapts the local game objects to that shape.
+ */
+const EQ4_SHARED={questRows:[],shopRows:[],hourIso:null,ready:false};
+
+function eq4CurrentHourIso(){
+  const d=new Date();
+  d.setMinutes(0,0,0);
+  return d.toISOString();
+}
+
+async function eq4LoadSharedQuestBoard(){
+  if(typeof EQUINOX_SUPABASE==='undefined')return;
+  const hourIso=eq4CurrentHourIso();
+  let {data,error}=await EQUINOX_SUPABASE.from('global_quests')
+    .select('quest_id,hour_key,quest_index,quest_data')
+    .eq('hour_key',hourIso)
+    .order('quest_index',{ascending:true});
+  if(error)return;
+  if(!data?.length && typeof window.questBoard==='function'){
+    const local=window.questBoard();
+    const rows=local.slice(0,15).map((q,i)=>({
+      quest_id:hourIso+'-'+String(q.id),
+      hour_key:hourIso,
+      quest_index:i,
+      quest_data:q
+    }));
+    if(rows.length){
+      await EQUINOX_SUPABASE.from('global_quests').upsert(rows,{onConflict:'quest_id'});
+      const seeded=await EQUINOX_SUPABASE.from('global_quests')
+        .select('quest_id,hour_key,quest_index,quest_data')
+        .eq('hour_key',hourIso)
+        .order('quest_index',{ascending:true});
+      data=seeded.data||rows;
+    }
+  }
+  EQ4_SHARED.questRows=data||[];
+  EQ4_SHARED.hourIso=hourIso;
+  EQ4_SHARED.ready=EQ4_SHARED.questRows.length>0;
+  if(EQ4_SHARED.ready && typeof window.questBoard==='function' && !window.__eq4QuestWrapped){
+    const localQuestBoard=window.questBoard;
+    window.questBoard=function(){
+      if(!EQ4_SHARED.ready)return localQuestBoard();
+      return EQ4_SHARED.questRows.map(r=>{
+        const q=Object.assign({},r.quest_data||{});
+        q.id=q.id ?? r.quest_index;
+        q.__globalId=r.quest_id;
+        return q;
+      });
+    };
+    window.__eq4QuestWrapped=true;
+  }
+}
+
+async function eq4LoadSharedQuestProgress(){
+  if(!EQ4_SHARED.ready)return;
+  const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
+  const uid=sessionData?.session?.user?.id;
+  if(!uid)return;
+  const {data}=await EQUINOX_SUPABASE.from('quest_progress')
+    .select('quest_id,progress,completed,completed_at')
+    .eq('user_id',uid);
+  if(!data||typeof window.questState!=='function')return;
+  const qs=window.questState();
+  qs.progress=qs.progress||{};
+  qs.completed=Array.isArray(qs.completed)?qs.completed:[];
+  for(const row of data){
+    const q=EQ4_SHARED.questRows.find(x=>x.quest_id===row.quest_id);
+    if(!q)continue;
+    const localId=q.quest_data?.id ?? q.quest_index;
+    qs.progress[localId]=Number(row.progress||0);
+    if(row.completed&&!qs.completed.includes(localId))qs.completed.push(localId);
+  }
+  if(typeof window.save==='function')window.save();
+}
+
+async function eq4SyncSharedQuestProgress(){
+  if(!EQ4_SHARED.ready||typeof window.questState!=='function')return;
+  const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
+  const uid=sessionData?.session?.user?.id;
+  if(!uid)return;
+  const qs=window.questState();
+  for(const row of EQ4_SHARED.questRows){
+    const localId=row.quest_data?.id ?? row.quest_index;
+    const progress=Number(qs.progress?.[localId]||0);
+    const completed=!!qs.completed?.includes(localId);
+    await EQUINOX_SUPABASE.from('quest_progress').upsert({
+      user_id:uid,quest_id:row.quest_id,progress,completed,
+      completed_at:completed?new Date().toISOString():null
+    },{onConflict:'user_id,quest_id'});
+  }
+}
+
+async function eq4LoadSharedShop(){
+  if(typeof EQUINOX_SUPABASE==='undefined')return;
+  const hourIso=eq4CurrentHourIso();
+  let {data}=await EQUINOX_SUPABASE.from('shop_stock')
+    .select('item_id,item_name,rarity,stock,max_stock,hour_key,updated_at')
+    .eq('hour_key',hourIso);
+  if(!data?.length && typeof window.shopStock==='function'){
+    const local=window.shopStock();
+    const rows=local.items.map((x,i)=>({
+      item_id:String(x.type)+'::'+String(x.name),
+      item_name:x.name,
+      rarity:String(x.weight||''),
+      stock:Number(x.initialStock ?? x.stock ?? 0),
+      max_stock:Number(x.initialStock ?? x.stock ?? 0),
+      hour_key:hourIso
+    }));
+    if(rows.length){
+      await EQUINOX_SUPABASE.from('shop_stock').upsert(rows,{onConflict:'item_id'});
+      const seeded=await EQUINOX_SUPABASE.from('shop_stock')
+        .select('item_id,item_name,rarity,stock,max_stock,hour_key,updated_at')
+        .eq('hour_key',hourIso);
+      data=seeded.data||rows;
+    }
+  }
+  EQ4_SHARED.shopRows=data||[];
+  EQ4_SHARED.hourIso=hourIso;
+  if(EQ4_SHARED.shopRows.length && typeof window.shopStock==='function' && !window.__eq4ShopWrapped){
+    const localShopStock=window.shopStock;
+    window.shopStock=function(){
+      const local=localShopStock();
+      const map=new Map(EQ4_SHARED.shopRows.map(x=>[x.item_name,x]));
+      local.items=local.items.map(x=>{
+        const row=map.get(x.name);
+        return row?Object.assign({},x,{stock:Number(row.stock||0),initialStock:Number(row.max_stock||x.initialStock||0),bought:false}):x;
+      });
+      return local;
+    };
+    window.__eq4ShopWrapped=true;
+  }
+}
+
+async function eq4RefreshSharedSystems(){
+  await eq4LoadSharedQuestBoard();
+  await eq4LoadSharedQuestProgress();
+  await eq4LoadSharedShop();
+  if(state?.activeTab==='NPCs')render();
+}
+
+async function eq4InstallSharedWrappers(){
+  if(typeof EQUINOX_SUPABASE==='undefined')return;
+  if(typeof window.completeQuest==='function'&&!window.__eq4CompleteWrapped){
+    const localComplete=window.completeQuest;
+    window.completeQuest=async function(id){
+      localComplete(id);
+      await eq4SyncSharedQuestProgress();
+    };
+    window.__eq4CompleteWrapped=true;
+  }
+  await eq4RefreshSharedSystems();
+}
+
 document.addEventListener('DOMContentLoaded', equinoxAuthBoot);
