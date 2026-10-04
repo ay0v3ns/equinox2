@@ -23,3 +23,19 @@
 #equinox-auth-gate{font-family:inherit}
 .auth-card{color:#f4f7ff}
 .auth-card .primary{border:1px solid #667392;background:linear-gradient(#252e43,#151b29);color:#fff;padding:12px;border-radius:9px;cursor:pointer}
+
+
+/* Phase 5 */
+.settings-select,.setting-action,.setting-row input[type=range]{background:#101520;color:#f4f7ff;border:1px solid #30394c;border-radius:8px;padding:9px 11px}
+.settings-select{min-width:130px}
+.setting-range{width:180px;accent-color:#7f91b8}
+.setting-value{min-width:34px;text-align:right}
+.setting-action{cursor:pointer}.setting-action:hover{border-color:#7182a5;background:#1b2333}
+.history-page{display:grid;gap:14px}.history-page h1{margin:8px 0}
+.history-search{display:flex;gap:8px;margin:18px 0}.history-search input{flex:1;background:#0e131d;color:#fff;border:1px solid #30394c;border-radius:8px;padding:11px}
+.history-search button{border:1px solid #3b465e;background:#171e2c;color:#dce4f5;border-radius:8px;padding:10px 14px;cursor:pointer}
+.history-list{display:grid;gap:6px}.history-row{display:grid;grid-template-columns:70px minmax(150px,1.5fr) 110px 110px 110px 130px 70px 150px;gap:10px;align-items:center;padding:10px;background:#101520;border:1px solid #252d3e;border-radius:7px;font-size:12px}.history-row span{color:#b9c4d8}
+.rare-overlay{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;background:rgba(0,0,0,.78);backdrop-filter:blur(8px)}.rare-card{width:min(560px,calc(100vw - 30px));text-align:center;padding:42px 28px;background:linear-gradient(145deg,#171e2c,#0b0e15);border:1px solid #7183a8;border-radius:18px;box-shadow:0 25px 100px rgba(0,0,0,.7)}.rare-card h1{font-size:38px;margin:10px 0}.rare-card>div:not(.section-title){font-size:20px}.rare-card small{display:block;color:#9da8bf;margin:12px}.rare-card button{margin-top:15px;border:1px solid #7183a8;background:#1c2638;color:#fff;padding:10px 20px;border-radius:8px;cursor:pointer}.rare-card.cinematic{box-shadow:0 0 80px rgba(140,160,220,.25),0 25px 100px #000}.rare-overlay.cinematic .rare-card{transform:scale(1.03)}
+.high-contrast{--line:#68748a;--muted:#c8d1e2}.high-contrast .panel,.high-contrast .tab{border-width:2px}.colorblind-mode .setting-toggle.on{box-shadow:0 0 0 2px #fff inset}.compact-interface main{padding:14px}.compact-interface .panel{padding:13px}.compact-interface .tab{padding:9px;margin-bottom:4px}.performance-mode .spawn-area{background:#090c13}.performance-mode .spawn{box-shadow:none}.performance-mode *{animation:none!important}.performance-mode .hero{min-height:300px}
+@media(max-width:1050px){.history-row{grid-template-columns:60px 1fr 90px 90px;}.history-row span:nth-of-type(n+3){display:none}}
+@media(max-width:800px){.settings-select,.setting-range{width:100%;min-width:0}.setting-row{align-items:flex-start;flex-direction:column}.history-search{flex-direction:column}}
