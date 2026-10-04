@@ -422,7 +422,7 @@ function setBiome(name,reason){
  save();render();
 }
 function naturalBiomeCheck(seconds){
- if(state.biome!=='Normal'||state.dimension==='Limbo')return;
+ if(state.biome!=='Normal')return;
  const names=Object.keys(BIOME_RULES);
  for(let s=0;s<Math.max(1,seconds);s++){
    for(let i=0;i<names.length;i++){
@@ -443,13 +443,11 @@ function updateWorldClock(){
    state.worldDayNightStartedAt+=flips*1200000;
    if(state.dimension!=='Limbo'){state.dayNight=state.worldDayNight;toast('Time changed to '+state.dayNight);}
  }
- if(state.dimension!=='Limbo'){
-   state.dayNight=state.worldDayNight;
-   if(state.biome!=='Normal'&&now-state.biomeStartedAt>=360000)setBiome('Normal','expired');
-   if(state.biome==='Normal'&&now-(state.lastWorldCheck||now)>=1000){
-     const seconds=Math.min(60,Math.floor((now-(state.lastWorldCheck||now))/1000));
-     state.lastWorldCheck=now;naturalBiomeCheck(seconds);
-   }else if(!state.lastWorldCheck)state.lastWorldCheck=now;
+ state.dayNight=state.dimension==='Limbo'?state.dayNight:state.worldDayNight;
+ if(state.biome!=='Normal'&&now-state.biomeStartedAt>=360000)setBiome('Normal','expired');
+ if(state.biome==='Normal'&&now-(state.lastWorldCheck||now)>=1000){
+   const seconds=Math.min(60,Math.floor((now-(state.lastWorldCheck||now))/1000));
+   state.lastWorldCheck=now;naturalBiomeCheck(seconds);
  }else if(!state.lastWorldCheck)state.lastWorldCheck=now;
 }
 function maybeSpawn(){
