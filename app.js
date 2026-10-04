@@ -140,14 +140,24 @@ function tutorialCheck(){const t=tutorialState();if(t.phase===2&&t.part2.glove&&
 function markTutorialQuest(){const t=tutorialState();if(t.phase===2&&!t.part2.quest){t.part2.quest=true;tutorialCheck()}}
 function markTutorialCraft(name){const t=tutorialState();if(t.phase!==2)return;if(name==='Luck Glove')t.part2.glove=true;if(name==='Haste Potion I')t.part2.haste=true;tutorialCheck()}
 function usePotion(name){
- if(name==='Tutorial Potion I'){achievementPotionUsed(name);if(!hasItem(name,1))return;takeItem(name,1);state.activePotions.push({name,luck:1000,rolls:1,started:Date.now()});toast('Tutorial Potion I active: +100,000% Luck for 1 roll.');save();render();return}
- if(name==='Tutorial Potion II'){achievementPotionUsed(name);if(!hasItem(name,1))return;takeItem(name,1);state.activePotions.push({name,luck:6000,rolls:1,started:Date.now()});toast('Tutorial Potion II active: +600,000% Luck for 1 roll.');save();render();return}
+ const enhanced=name.indexOf('Enhanced ')===0;
+ const baseName=enhanced?name.slice(9):name;
+ const multiplier=enhanced&&BREWING_STAND[baseName]?BREWING_STAND[baseName].multiplier:1;
+ if(baseName==='Tutorial Potion I'||baseName==='Tutorial Potion II'){achievementPotionUsed(baseName);if(!hasItem(name,1))return;takeItem(name,1);state.activePotions.push({name:name,luck:(baseName==='Tutorial Potion I'?1000:6000),rolls:1,started:Date.now()});toast(baseName+' active for 1 roll.');save();render();return}
  if(!hasItem(name,1))return;
  const effects={"Lucky Potion":{luck:.05,ms:10000},"Speed Potion":{speed:.03,ms:10000},"Fortune Potion I":{luck:.50,ms:300000},"Fortune Potion II":{luck:.75,ms:300000},"Fortune Potion III":{luck:1,ms:300000},"Haste Potion I":{speed:.20,ms:300000},"Haste Potion II":{speed:.25,ms:300000},"Haste Potion III":{speed:.30,ms:300000},"Jewelry Potion":{luck:.80,ms:180000},"Zombie Potion":{luck:1.50,ms:360000},"Rage Potion":{speed:.35,ms:600000},"Diver Potion":{speed:.40,ms:300000},"Frenzy Potion":{speed:10,ms:600000}};
- const e=effects[name];if(!e){toast('This Potion is not yet wired into active effects.');return}
- if(e.ms&&state.activePotions.some(function(p){return p.name===name&&p.ms===e.ms})){toast(name+' is already active.');return}
- takeItem(name,1);achievementPotionUsed(name);const ast=achievementState().stats;state.activePotions.push({name,luck:e.luck||0,speed:e.speed||0,expires:Date.now()+(e.ms||0)});if(name==='Haste Potion I')markTutorialCraft(name);achievementCheck();save();render();toast('Used '+name)}
-function tickPotions(){let changed=false;state.activePotions=(state.activePotions||[]).filter(function(p){if(p.rolls){if(p.rolls<=0)return false;return true}if(p.expires&&Date.now()>=p.expires){changed=true;toast(p.name+' expired.');return false}return true});if(changed)save()}
+ const e=effects[baseName];
+ if(!e){toast('This Potion is not yet wired into active effects.');return}
+ takeItem(name,1);achievementPotionUsed(baseName);
+ const active=state.activePotions.find(function(p){return p.name===name});
+ if(active&&!active.rolls&&active.expires){active.expires+=e.ms||0;toast('Extended '+name+'.');save();render();return}
+ const luck=(e.luck||0)*multiplier,speed=(e.speed||0)*multiplier,expires=Date.now()+(e.ms||0);
+ state.activePotions.push({name:name,luck:luck,speed:speed,expires:expires,curseName:potionCurseStrength(baseName)?baseName:null,curseMultiplier:multiplier});
+ if(baseName==='Haste Potion I')markTutorialCraft(baseName);
+ achievementCheck();save();render();toast('Used '+name);
+}
+function tickPotions(){let changed=false;state.activePotions=(state.activePotions||[]).filter(function(p){if(p.rolls){if(p.rolls<=0)return false;return true}if(p.expires&&Date.now()>=p.expires){if(p.curseName)activateCurse(p.curseName,p.curseMultiplier,1);changed=true;toast(p.name+' expired.');return false}return true});if(changed)save()}
+
 function equipGear(name){
  const inv=state.inventory[name]||0;if(inv<1)return;
  state.gearsEquipped=state.gearsEquipped||[];
