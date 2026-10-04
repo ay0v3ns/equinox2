@@ -8,7 +8,7 @@ const defaults={
  dimension:'Isles of Luck',dayNight:'Day',biomeStartedAt:Date.now(),dayNightStartedAt:Date.now(),nextRollAt:0,
  activeTab:'Roll',auraCapacity:20,
  recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
- automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,reducedMotion:false,autoSave:true},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
+ automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],biomeChangerCooldowns:{},compassUses:0,npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,reducedMotion:false,autoSave:true},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
 let state=load(); bankTick();
 
@@ -21,6 +21,8 @@ function load(){
   next.biomeStartedAt=Number(next.biomeStartedAt)||now;
   next.dayNightStartedAt=Number(next.dayNightStartedAt)||now;
   next.nextRollAt=Number(next.nextRollAt)||0;
+  next.biomeChangerCooldowns=Object.assign({},raw.biomeChangerCooldowns||{});
+  next.compassUses=Number(raw.compassUses)||0;
   next.worldDayNight=next.worldDayNight==='Night'?'Night':(next.worldDayNight||next.dayNight||'Day');
   next.worldDayNightStartedAt=Number(next.worldDayNightStartedAt)||next.dayNightStartedAt;
   next.lastWorldCheck=Number(next.lastWorldCheck)||now;
@@ -460,6 +462,25 @@ function maybeSpawn(){
  autoCollectGroundItems();
 }
 
+function changerCooldown(name){return state.biomeChangerCooldowns&&state.biomeChangerCooldowns[name]||0}
+function setChangerCooldown(name,ms){state.biomeChangerCooldowns=state.biomeChangerCooldowns||{};state.biomeChangerCooldowns[name]=Date.now()+ms;save()}
+function changerReady(name){return Date.now()>=changerCooldown(name)}
+function weightedBiome(pool){let total=pool.reduce(function(s,x){return s+x.weight},0),r=Math.random()*total;for(const x of pool){r-=x.weight;if(r<=0)return x.name}return pool[pool.length-1].name}
+const NATURAL_BIOME_WEIGHTS=Object.keys(BIOME_RULES).map(function(name){return {name:name,weight:1/BIOME_RULES[name]}});
+const RANDOMIZER_BIOMES=['Windy','Snowy','Rainy','Sandstorm','Hell','Starfall','Heaven','Corruption','Null','Dreamspace','Crimson Moon','Glitched','Cloudy','Downpour','Oceanic'].map(function(name){return {name:name,weight:name==='Dreamspace'?1/300:name==='Crimson Moon'?1/150:name==='Glitched'?1/60:1}});
+function useBiomeChanger(name){
+ if(state.dimension==='Limbo'){toast('Biome-changing items cannot be used in Limbo.');return false}
+ const cooldowns={'Strange Controller':2700000,'Biome Randomizer':5400000,'Singularity Catalyst':7200000};
+ const inv=state.inventory[name]||0;
+ if(!cooldowns[name]||inv<1)return false;
+ if(!changerReady(name)){const left=Math.ceil((changerCooldown(name)-Date.now())/1000);toast(name+' is on cooldown for '+Math.floor(left/60)+'m '+(left%60)+'s.');return false}
+ let target;
+ if(name==='Strange Controller'){target=weightedBiome(NATURAL_BIOME_WEIGHTS);if(Math.floor(Math.random()*5000)===0)target='Cyberspace'}
+ else if(name==='Biome Randomizer'){target=weightedBiome(RANDOMIZER_BIOMES);if(Math.floor(Math.random()*2500)===0)target='Cyberspace'}
+ else target='Singularity';
+ takeItem(name,1);setChangerCooldown(name,cooldowns[name]);setBiome(target,'changer');achievementCheck();save();render();return true;
+}
+function changerAction(name){return name==='Compass?'?useCompass():useBiomeChanger(name)}
 function useCompass(){
  const count=state.inventory['Compass?']||0;if(count<1){toast('You do not have a Compass?.');return;}
  state.compassUses=(state.compassUses||0)+1;
@@ -508,7 +529,7 @@ function inventoryView(){
  }).join('')||'<div class="empty">No collected Auras match this filter.</div>';
  const potionRows=Object.entries(state.inventory).filter(function(e){return /Potion/.test(e[0])}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Potions yet.</div>';
  const gearRows=Object.entries(state.inventory).filter(function(e){return e[0].endsWith('Glove')||e[0].endsWith('Device')||e[0].endsWith('Gauntlet')||e[0]==='Shining Star'||e[0]==='Hologrammer'||e[0]==='Ragnaröker'}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+' '+((state.gearsEquipped||[]).includes(e[0])?'• EQUIPPED':'')+'</span><button onclick="equipGear('+JSON.stringify(e[0])+')">'+((state.gearsEquipped||[]).includes(e[0])?'Unequip':'Equip')+'</button><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Gears yet.</div>';
- const miscRows=Object.entries(state.inventory).filter(function(e){return e[0]==='Coins'||(!/Potion/.test(e[0])&&!/^Gear /.test(e[0]))}).map(function(e){const action=e[0]==='Compass?'?'<button onclick="useCompass()">Use</button>':e[0]==='Item Collector'?'<span class="muted">ACTIVE</span>':'';return '<div class="inventory-row"><span>'+e[0]+'</span>'+action+'<b>x'+e[1]+'</b></div>';}).join('')||'<div class="empty">No Miscellaneous items yet.</div>';
+ const miscRows=Object.entries(state.inventory).filter(function(e){return e[0]==='Coins'||(!/Potion/.test(e[0])&&!/^Gear /.test(e[0]))}).map(function(e){const n=e[0];let action='';if(n==='Compass?')action='<button onclick="changerAction(\'Compass?\')">Use</button>';else if(['Strange Controller','Biome Randomizer','Singularity Catalyst'].includes(n))action='<button onclick="changerAction(\''+n+'\')">Use</button>';else if(n==='Item Collector')action='<span class="muted">ACTIVE</span>';return '<div class="inventory-row"><span>'+n+'</span>'+action+'<b>x'+e[1]+'</b></div>';}).join('')||'<div class="empty">No Miscellaneous items yet.</div>';
  return '<div class="panel inventory-panel"><div class="inventory-head"><div><div class="section-title">Aura Storage</div><h2>'+auraSlots()+' / '+state.auraCapacity+' Aura Slots</h2><p class="muted">Every Aura copy occupies its own slot. Favorites are protected from automatic removal.</p></div><div class="inventory-controls"><input id="invSearch" placeholder="Search Auras..." value="'+(window.equinoxInventorySearch||'')+'"><select id="invSort"><option value="rarity"'+(sort==='rarity'?' selected':'')+'>Highest Rarity at Top</option><option value="recent"'+(sort==='recent'?' selected':'')+'>Most Recently Rolled at Top</option><option value="alpha"'+(sort==='alpha'?' selected':'')+'>Alphabetical</option></select></div></div><div class="inventory-toolbar"><span>Automation: <b>'+({none:'None',skip:'Auto Skip',equip:'Auto Equip'}[state.automation])+'</b></span><button onclick="upgradeStorage()">Upgrade Storage (+3)</button></div><div class="aura-grid">'+auraCards+'</div></div><div class="inventory-columns"><div class="panel"><div class="section-title">Potions</div>'+potionRows+'</div><div class="panel"><div class="section-title">Gears</div>'+gearRows+'</div><div class="panel"><div class="section-title">Miscellaneous</div>'+miscRows+'</div></div>';
 }
 function wireInventory(){const s=document.getElementById('invSearch'),sort=document.getElementById('invSort');if(s)s.oninput=function(){window.equinoxInventorySearch=s.value;render()};if(sort)sort.onchange=function(){window.equinoxInventorySort=sort.value;render()};}
