@@ -731,3 +731,20 @@ function render(){
 }
 setInterval(maybeSpawn,100);
 render();
+const BREWING_STAND={
+ 'Lucky Potion':{dark:5,coins:100,success:.90,multiplier:1.50},
+ 'Speed Potion':{dark:5,coins:100,success:.90,multiplier:1.50},
+ 'Fortune Potion I':{dark:15,coins:500,success:.85,multiplier:1.50},
+ 'Fortune Potion II':{dark:25,coins:1000,success:.82,multiplier:1.50},
+ 'Fortune Potion III':{dark:40,coins:2500,success:.78,multiplier:1.60},
+ 'Haste Potion I':{dark:15,coins:500,success:.85,multiplier:1.50},
+ 'Haste Potion II':{dark:25,coins:1000,success:.82,multiplier:1.50},
+ 'Haste Potion III':{dark:40,coins:2500,success:.78,multiplier:1.60},
+ 'Jewelry Potion':{dark:20,coins:750,success:.82,multiplier:1.50},
+ 'Zombie Potion':{dark:30,coins:1500,success:.78,multiplier:1.50},
+ 'Rage Potion':{dark:30,coins:1500,success:.78,multiplier:1.50},
+ 'Diver Potion':{dark:30,coins:1500,success:.78,multiplier:1.50},
+ 'Godly Potion — Zeus':{dark:100,coins:10000,success:.60,multiplier:1.50},
+ 'Godly Potion — Poseidon':{dark:100,coins:10000,success:.60,multiplier:1.50},
+ 'Godly Potion — Hades':{dark:100,coins:10000,success:.60,multiplier:1.50}
+};
