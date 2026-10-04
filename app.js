@@ -140,7 +140,6 @@ function upgradeStorage(){
  save();render();toast('Aura Storage upgraded to '+state.auraCapacity+' slots.');
 }
 
-const ITEMS=['Coins','Lucky Potion','Speed Potion','Gear A','Gear B'];
 function spawnItems(){state.spawns=[];for(let i=0;i<3;i++)state.spawns.push({id:String(Date.now())+i,name:ITEMS[Math.floor(Math.random()*ITEMS.length)],x:8+Math.random()*82,y:8+Math.random()*78});state.lastSpawn=Date.now();save();render()}
 function collect(id){const item=state.spawns.find(function(x){return x.id===id});if(!item)return;state.spawns=state.spawns.filter(function(x){return x.id!==id});addItem(item.name,1);save();render();toast('Collected '+item.name)}
 function maybeSpawn(){if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
