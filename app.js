@@ -36,8 +36,8 @@ function roll(){
 }
 function spawnItems(){state.spawns=[];for(let i=0;i<3;i++)state.spawns.push({id:String(Date.now())+i,name:ITEMS[Math.floor(Math.random()*ITEMS.length)],x:8+Math.random()*82,y:8+Math.random()*78});state.lastSpawn=Date.now();save();render()}
 function collect(id){const item=state.spawns.find(function(x){return x.id===id});if(!item)return;state.spawns=state.spawns.filter(function(x){return x.id!==id});state.inventory[item.name]=(state.inventory[item.name]||0)+1;save();render();toast('Collected '+item.name)}
-function maybeSpawn(){if(!state.lastSpawn||Date.now()-state.lastSpawn>=60000)spawnItems()}
-function tab(name){state.activeTab=name;render()}
+function maybeSpawn(){if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
+function tab(name){if(name!=='Roll'&&name!=='Inventory'){toast(name+' tab is coming next.');return}state.activeTab=name;render()}
 function inventoryView(){
  const entries=Object.entries(state.auras);
  const query=(window.equinoxInventorySearch||'').toLowerCase();
