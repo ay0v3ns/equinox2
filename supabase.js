@@ -400,3 +400,5 @@ async function eq4InstallSharedWrappers(){
 }
 
 document.addEventListener('DOMContentLoaded', equinoxAuthBoot);
+
+setTimeout(eq4InstallSharedWrappers, 1500);
