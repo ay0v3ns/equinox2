@@ -7,7 +7,7 @@ const defaults={
  rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
  dimension:'Isles of Luck',dayNight:'Day',activeTab:'Roll',auraCapacity:20,
  recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
- automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home'
+ automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked'
 };
 let state=load();
 
@@ -33,7 +33,12 @@ function load(){
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function fmt(n){return new Intl.NumberFormat('en-US').format(n)}
-function totalLuck(){return ((1+state.basicLuck)+state.specialLuck)*state.finalMultiplier}
+function gearLuck(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+(({\"Luck Glove\":0.25,\"Desire Glove\":0.40,\"Solar Device\":0.50,\"Gemstone Gauntlet\":0.55,\"Frozen Gauntlet\":1.50,\"Eclipse Device\":0.50,\"Dark Matter Device\":0.60,\"Aqua Device\":0.50,\"Shining Star\":0.70,\"Jackpot Gauntlet\":0.77,\"Exo Gauntlet\":1.00}[n]||0)},0)}
+function gearSpeed(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+(({\"Lunar Device\":0.15,\"Eclipse Device\":0.15,\"Dark Matter Device\":0.15,\"Aqua Device\":0.10,\"Shining Star\":0.20,\"Jackpot Gauntlet\":0.07,\"Exo Gauntlet\":0.25}[n]||0)},0)}
+function potionLuck(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.luck||0)},0)}
+function potionSpeed(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0)}
+function totalLuck(){return ((1+state.basicLuck+gearLuck()+potionLuck())+state.specialLuck)*state.finalMultiplier}
+function totalSpeed(){return Math.max(0.01,state.speed*(1+gearSpeed()+potionSpeed()))}
 function toast(msg){const e=document.createElement('div');e.className='notice';e.textContent=msg;document.getElementById('notices').appendChild(e);setTimeout(function(){e.remove()},3200)}
 function auraDef(name){return AURAS.find(function(a){return a.name===name})}
 function auraSlots(){return state.auras.length}
@@ -41,10 +46,54 @@ function hasItem(name,n){return (state.inventory[name]||0)>=n}
 function takeItem(name,n){state.inventory[name]=Math.max(0,(state.inventory[name]||0)-n)}
 function addItem(name,n){state.inventory[name]=(state.inventory[name]||0)+n}
 
+
+function tutorialState(){if(!state.tutorial)state.tutorial={phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}};return state.tutorial}
+function tutorialSkip(){state.tutorial={phase:3,rolls:10,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false},skipped:true};state.tutorialSkipped=true;state.autoRoll=true;save();render();toast('Tutorial skipped. Auto Roll unlocked.')}
+function tutorialRollHook(){const t=tutorialState();if(t.phase!==1)return;if(!t.rolls)t.rolls=0;t.rolls++;if(t.rolls===10&&!t.firstPotionGiven){t.firstPotionGiven=true;addItem('Tutorial Potion I',1);t.phase=2;toast('Tutorial Part I complete! +1 Tutorial Potion I');}save()}
+function tutorialCheck(){const t=tutorialState();if(t.phase===2&&t.part2.glove&&t.part2.haste&&t.part2.quest){t.phase=3;addItem('Tutorial Potion I',2);addItem('Tutorial Potion II',1);state.autoRoll=true;save();toast('Tutorial Part II complete! Auto Roll unlocked.');}}
+function markTutorialQuest(){const t=tutorialState();if(t.phase===2&&!t.part2.quest){t.part2.quest=true;tutorialCheck()}}
+function markTutorialCraft(name){const t=tutorialState();if(t.phase!==2)return;if(name==='Luck Glove')t.part2.glove=true;if(name==='Haste Potion I')t.part2.haste=true;tutorialCheck()}
+function usePotion(name){
+ if(name==='Tutorial Potion I'){if(!hasItem(name,1))return;takeItem(name,1);state.activePotions.push({name,luck:1000,rolls:1,started:Date.now()});toast('Tutorial Potion I active: +100,000% Luck for 1 roll.');save();render();return}
+ if(name==='Tutorial Potion II'){if(!hasItem(name,1))return;takeItem(name,1);state.activePotions.push({name,luck:6000,rolls:1,started:Date.now()});toast('Tutorial Potion II active: +600,000% Luck for 1 roll.');save();render();return}
+ if(!hasItem(name,1))return;
+ const effects={\"Lucky Potion\":{luck:.05,ms:10000},\"Speed Potion\":{speed:.03,ms:10000},\"Fortune Potion I\":{luck:.50,ms:300000},\"Fortune Potion II\":{luck:.75,ms:300000},\"Fortune Potion III\":{luck:1,ms:300000},\"Haste Potion I\":{speed:.20,ms:300000},\"Haste Potion II\":{speed:.25,ms:300000},\"Haste Potion III\":{speed:.30,ms:300000},\"Jewelry Potion\":{luck:.80,ms:180000},\"Zombie Potion\":{luck:1.50,ms:360000},\"Rage Potion\":{speed:.35,ms:600000},\"Diver Potion\":{speed:.40,ms:300000},\"Frenzy Potion\":{speed:10,ms:600000}};
+ const e=effects[name];if(!e){toast('This Potion is not yet wired into active effects.');return}
+ if(e.ms&&state.activePotions.some(function(p){return p.name===name&&p.ms===e.ms})){toast(name+' is already active.');return}
+ takeItem(name,1);state.activePotions.push({name,luck:e.luck||0,speed:e.speed||0,expires:Date.now()+(e.ms||0)});if(name==='Haste Potion I')markTutorialCraft(name);save();render();toast('Used '+name)}
+function tickPotions(){let changed=false;state.activePotions=(state.activePotions||[]).filter(function(p){if(p.rolls){if(p.rolls<=0)return false;return true}if(p.expires&&Date.now()>=p.expires){changed=true;toast(p.name+' expired.');return false}return true});if(changed)save()}
+function equipGear(name){
+ const inv=state.inventory[name]||0;if(inv<1)return;
+ state.gearsEquipped=state.gearsEquipped||[];
+ const i=state.gearsEquipped.indexOf(name);
+ if(i>=0){state.gearsEquipped.splice(i,1);toast('Unequipped '+name)}
+ else {if(state.gearsEquipped.length>=2){toast('You can equip up to 2 Gears.');return}state.gearsEquipped.push(name);toast('Equipped '+name)}
+ save();render();
+}
+function rollPotionHook(){tickPotions();(state.activePotions||[]).forEach(function(p){if(p.rolls){p.rolls--;if(p.rolls<=0)toast(p.name+' consumed its roll effect.')}})}
+function globalStats(){
+ const unique={};state.auras.forEach(function(a){unique[a.name]=a.rarity});
+ return {username:state.username||'You',aurasCollected:Object.keys(unique).length,collectiveRarity:Object.values(unique).reduce(function(a,b){return a+b},0),rarestRoll:state.rarestRoll||0,rollCount:state.rolls,online:true,equipped:(state.auras.find(function(a){return a.equipped})||{}).name||'None'};
+}
+function localLeaderboard(kind){const g=globalStats();const rows=[{username:'You',value:g[{auras:'aurasCollected',collective:'collectiveRarity',rarest:'rarestRoll',rolls:'rollCount'}[kind]]||0,online:true,equipped:g.equipped}];return rows}
+function sendChat(){const input=document.getElementById('globalChatInput');if(!input)return;const msg=input.value.trim().slice(0,150);if(!msg)return;state.globalChat=(state.globalChat||[]).slice(-149);state.globalChat.push({username:state.username||'You',message:msg,time:Date.now(),rank:state.globalRank||'Unranked',aura:globalStats().equipped,rarity:(state.auras.find(function(a){return a.equipped})||{}).rarity||0});input.value='';save();render()}
+function globalView(){
+ const g=globalStats(),chat=(state.globalChat||[]).slice(-150);
+ const board=[['Auras Collected','auras'],['Collective Rarity','collective'],['Rarest Roll','rarest'],['Roll Count','rolls']].map(function(b){return '<div class="global-board panel"><div class="section-title">'+b[0]+'</div>'+localLeaderboard(b[1]).map(function(x,i){return '<div class="leader-row"><span>#'+(i+1)+' '+x.username+'</span><b>'+fmt(x.value)+'</b></div>'}).join('')+'</div>'}).join('');
+ return '<div class="global-page"><div class="panel global-profile"><div><div class="section-title">Player Rank</div><h1>'+g.username+'</h1><p class="muted">Equipped Aura: '+g.equipped+'</p></div><div class="global-metrics"><span>Unique Auras <b>'+fmt(g.aurasCollected)+'</b></span><span>Rarest Roll <b>1/'+fmt(g.rarestRoll||0)+'</b></span><span>Rolls <b>'+fmt(g.rollCount)+'</b></span></div></div><div class="global-boards">'+board+'</div><div class="panel online-panel"><div class="section-title">Online Players</div><div class="online-row"><b>You</b><span>Online</span><span>'+g.equipped+'</span></div></div><div class="panel chat-panel"><div class="section-title">Global Chat · 150 messages max</div><div class="chat-log">'+(chat.length?chat.map(function(m){return '<div class="chat-msg"><b>'+m.username+'</b><small>'+m.rank+' • '+m.aura+(m.rarity?' • 1/'+fmt(m.rarity):'')+'</small><span>'+m.message+'</span></div>'}).join(''):'<div class="empty">No messages yet.</div>')+'</div><div class="chat-compose"><input id="globalChatInput" maxlength="150" placeholder="Message Global Chat…"><button onclick="sendChat()">Send</button></div></div><p class="muted global-note">Global data is ready for Supabase synchronization; this client currently falls back to local prototype data while the connected project is unavailable.</p></div>';
+}
+function tutorialView(){
+ const t=tutorialState();
+ if(t.phase>=3)return '';
+ if(t.phase===1)return '<div class="tutorial-overlay"><div class="tutorial-card"><div class="section-title">Tutorial · Part I</div><h1>Welcome to Equinox</h1><p>Roll exactly 10 times to learn the core loop.</p><div class="tutorial-progress">'+t.rolls+' / 10 Rolls</div><p class="muted">Your normal Roll… button remains the way forward. Auto Skip does not bypass the ten-roll requirement.</p><button onclick="tutorialSkip()">Skip Tutorial → Auto Roll</button></div></div>';
+ return '<div class="tutorial-overlay"><div class="tutorial-card"><div class="section-title">Tutorial · Part II</div><h1>Meet the NPCs</h1><p>Use the NPC systems to craft a Luck Glove, craft and use a Haste Potion I, and complete one Lime quest.</p><div class="tutorial-tasks"><span class="'+(t.part2.glove?'done':'')+'">🔨 Luck Glove</span><span class="'+(t.part2.haste?'done':'')+'">✦ Haste Potion I</span><span class="'+(t.part2.quest?'done':'')+'">◆ 1 Lime Quest</span></div><p class="muted">Completion grants 2 Tutorial Potion I, 1 Tutorial Potion II, and Auto Roll.</p></div></div>';
+}
 function roll(){
+ rollPotionHook();
  state.rolls++;
+ tutorialRollHook();
  const bonus=state.rolls%10===0?2:1;
- const finalLuck=(((1+state.basicLuck)*bonus)+state.specialLuck)*state.finalMultiplier;
+ const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
  const eligible=AURAS.filter(function(a){
    if(a.crafted||a.exclusive)return false;
    return true;
@@ -61,7 +110,7 @@ function roll(){
  const result=chosen.a;
  const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
  const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
- state.recent.unshift({roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:result.rarity*(chosen.breakthrough?BREAK[state.biome]:1),breakthrough:chosen.breakthrough,bonus:bonus>1,stored:false});
+ const rolledRarity=result.rarity*(chosen.breakthrough?BREAK[state.biome]:1); state.rarestRoll=Math.max(state.rarestRoll||0,rolledRarity); state.recent.unshift({roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:rolledRarity,breakthrough:chosen.breakthrough,bonus:bonus>1,luck:finalLuck,speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false});
  state.recent=state.recent.slice(0,1000000);
 
  if(autoSkip){
@@ -141,11 +190,14 @@ function upgradeStorage(){
 }
 
 function spawnItems(){state.spawns=[];for(let i=0;i<3;i++)state.spawns.push({id:String(Date.now())+i,name:ITEMS[Math.floor(Math.random()*ITEMS.length)],x:8+Math.random()*82,y:8+Math.random()*78});state.lastSpawn=Date.now();save();render()}
-function collect(id){const item=state.spawns.find(function(x){return x.id===id});if(!item)return;state.spawns=state.spawns.filter(function(x){return x.id!==id});addItem(item.name,1);save();render();toast('Collected '+item.name)}
-function maybeSpawn(){if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
+function collect(id){const item=state.spawns.find(function(x){return x.id===id});if(!item)return;state.spawns=state.spawns.filter(function(x){return x.id!==id});addItem(item.name,1);questItemHook(item.name);save();render();toast('Collected '+item.name)}
+function questItemHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Item Collection')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Coins')qs.progress[q.id]=(qs.progress[q.id]||0)+(arguments[0]==='Coins'?1:0)});save()}
+function questRollHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Rolling')qs.progress[q.id]=Math.min(q.target||Infinity,state.rolls);});save()}
+
+function maybeSpawn(){tickPotions();if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){takeItem('Coins',1);roll()}if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
 
 function tab(name){
- if(!['Roll','Inventory','NPCs'].includes(name)){toast(name+' tab is coming next.');return}
+ if(!['Roll','Inventory','NPCs','Global','Achievements','Settings'].includes(name)){return}
  state.activeTab=name;render();
 }
 function npcTab(name){state.npcTab=name;render()}
@@ -219,6 +271,7 @@ const BANK_TIERS=[
 
 const WORKSHOP_RECIPES={
 "Luck Glove":{"type":"Gear","buff":"+25% Luck","recipe":{"Rare":3,"Divinus":2,"Crystallized":1}},
+"Haste Potion I":{"type":"Potion","buff":"+20% Roll Speed for 5 minutes","recipe":{"Speed Potion":10,"Rare":10,"Uncommon":5,"Wind":1}},
 "Desire Glove":{"type":"Gear","buff":"+40% Luck","recipe":{"Rage":1,"Ruby":1,"Diaboli":1,"Bleeding":1}},
 "Lunar Device":{"type":"Gear","buff":"+15% Speed","recipe":{"Rare":1,"Divinus":1,"Lunar":1}},
 "Solar Device":{"type":"Gear","buff":"+50% Luck","recipe":{"Rare":1,"Divinus":1,"Solar":1}},
@@ -272,7 +325,7 @@ function questBoard(){
 }
 function questState(){if(!state.questState||state.questState.hour!==hourKey())state.questState={hour:hourKey(),completed:[],progress:{},qp:0,milestones:{}};return state.questState}
 function questProgress(q){const qs=questState();return qs.progress[q.id]||0}
-function completeQuest(id){const qs=questState(),q=questBoard().find(x=>x.id===id);if(!q||qs.completed.includes(id))return;qs.completed.push(id);qs.qp+=q.qp;const n=qs.completed.length;[5,10,15].forEach(m=>{if(n>=m&&!qs.milestones[m]){qs.milestones[m]=true;const r=QUEST_MILESTONES[m];addItem("Potion Gift Box",r.potions);addItem("Coins",r.coins);toast("Quest milestone "+m+" complete: +"+r.potions+" Potion Gift Box, +"+r.coins+" Coins")}});save();render()}
+function completeQuest(id){const qs=questState(),q=questBoard().find(x=>x.id===id);if(!q||qs.completed.includes(id))return;const progress=qs.progress[id]||0;const target=q.target||1;if(progress<target){if(q.type==='Mixed'){toast('This quest is not complete yet.');return}toast('Progress: '+progress+' / '+target);return}qs.completed.push(id);markTutorialQuest();qs.qp+=q.qp;const n=qs.completed.length;[5,10,15].forEach(m=>{if(n>=m&&!qs.milestones[m]){qs.milestones[m]=true;const r=QUEST_MILESTONES[m];addItem("Potion Gift Box",r.potions);addItem("Coins",r.coins);toast("Quest milestone "+m+" complete: +"+r.potions+" Potion Gift Box, +"+r.coins+" Coins")}});save();render()}
 function questView(){
  const qs=questState();let rows=questBoard();const sort=state.questSort||"difficulty";rows.sort(sort==="type"?(a,b)=>a.type.localeCompare(b.type)||a.difficulty-b.difficulty:(a,b)=>a.difficulty-b.difficulty||a.type.localeCompare(b.type));
  return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Lime · Global Quest Board</div><h1>15 Quests This Hour</h1><p class="muted">Shared hourly set • '+qs.completed.length+'/15 completed • '+qs.qp+' QP</p></div><button onclick="state.questSort=state.questSort===\'difficulty\'?\'type\':\'difficulty\';save();render()">Sort: '+(sort==="difficulty"?"Difficulty":"Type")+'</button></div><div class="quest-grid">'+rows.map(q=>'<div class="quest-card '+(qs.completed.includes(q.id)?'done':'')+'"><div><b>'+q.objective+'</b><small>'+q.type+' · Difficulty '+q.difficulty+' · '+q.qp+' QP</small></div><button '+(qs.completed.includes(q.id)?'disabled':'')+' onclick="completeQuest('+q.id+')">'+(qs.completed.includes(q.id)?'Completed':'Complete')+'</button></div>').join('')+'</div><div class="quest-milestones"><b>Hourly Milestones</b><span>5 → 1 Potion Gift Box + 500 Coins</span><span>10 → 2 Potion Gift Boxes + 1,000 Coins</span><span>15 → 3 Potion Gift Boxes + 1,500 Coins</span></div></div>';
@@ -290,7 +343,8 @@ function bankUpgrade(){const current=state.bankTier||0;if(current>=12){toast("Ba
 function bankDeposit(amount){amount=Math.floor(Number(amount));const b=bankTierData();const qs=questState();const used=state.bankDepositHour===hourKey()?state.bankDeposited||0:0;if(!amount||amount<1){toast("Enter a valid amount.");return}if(amount+used>b[3]){toast("Hourly deposit limit reached.");return}if((state.inventory.Coins||0)<amount){toast("Not enough Coins.");return}if((state.bankBalance||0)+amount>b[2]){toast("Bank capacity would be exceeded.");return}takeItem("Coins",amount);state.bankBalance=(state.bankBalance||0)+amount;state.bankDepositHour=hourKey();state.bankDeposited=used+amount;save();render();toast("Deposited "+fmt(amount)+" Coins.")}
 function bankWithdraw(){const b=bankTierData();if((state.bankBalance||0)<=0)return;if((state.bankBalance||0)<b[2]&&b[0]<12){toast("Withdrawal unlocks at Bank capacity.");return}addItem("Coins",Math.floor(state.bankBalance||0));state.bankBalance=0;save();render();toast("Bank withdrawn.")}
 function bankView(){const b=bankTierData();return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Mari · Personal Bank</div><h1>Bank '+b[0]+'</h1><p class="muted">'+b[4]+' • '+b[1].toFixed(2)+'× hourly interest</p></div><button onclick="bankUpgrade()">Upgrade</button></div><div class="bank-grid"><div class="bank-stat"><span>Stored</span><b>'+fmt(Math.floor(state.bankBalance||0))+' / '+fmt(b[2])+'</b></div><div class="bank-stat"><span>Deposit / hour</span><b>'+fmt(state.bankDeposited||0)+' / '+fmt(b[3])+'</b></div><div class="bank-stat"><span>Multiplier</span><b>'+b[1].toFixed(2)+'×</b></div></div><div class="bank-actions"><input id="depositAmount" type="number" min="1" placeholder="Coins to deposit"><button onclick="bankDeposit(document.getElementById(\'depositAmount\').value)">Deposit</button><button onclick="bankWithdraw()">Withdraw</button></div></div>'}
-function craftRecipe(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return;for(const [item,n] of Object.entries(rec.recipe)){const aura=state.auras.filter(x=>x.name===item&&!x.favorite&&!x.equipped);const inv=state.inventory[item]||0;if(aura.length+inv<n){toast("Missing "+item+" × "+n);return}}for(const [item,n] of Object.entries(rec.recipe)){let left=n;state.auras=state.auras.filter(x=>{if(left<=0)return true;if(x.name===item&&!x.favorite&&!x.equipped){left--;return false}return true});if(left)takeItem(item,left)}if(rec.type==="Aura"){const d=auraDef(name);state.auras.push({id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),name,rarity:d?d.rarity:0,tier:d?d.computedTier:rec.buff,rolledAt:Date.now(),favorite:false,autoSkip:false,autoEquip:false,equipped:false})}else addItem(name,1);save();render();toast("Crafted "+name)}
+function craftRecipe(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return;for(const [item,n] of Object.entries(rec.recipe)){const aura=state.auras.filter(x=>x.name===item&&!x.favorite&&!x.equipped);const inv=state.inventory[item]||0;if(aura.length+inv<n){toast("Missing "+item+" × "+n);return}}for(const [item,n] of Object.entries(rec.recipe)){let left=n;state.auras=state.auras.filter(x=>{if(left<=0)return true;if(x.name===item&&!x.favorite&&!x.equipped){left--;return false}return true});if(left)takeItem(item,left)}if(rec.type==="Aura"){const d=auraDef(name);state.auras.push({id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),name,rarity:d?d.rarity:0,tier:d?d.computedTier:rec.buff,rolledAt:Date.now(),favorite:false,autoSkip:false,autoEquip:false,equipped:false})}else addItem(name,1);markTutorialCraft(name);questCraftHook();save();render();toast("Crafted "+name)}
+function questCraftHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Crafting')qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
 function workshopView(){const names=Object.keys(WORKSHOP_RECIPES);return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Jake · Workshop</div><h1>Crafting</h1><p class="muted">Favorited or equipped Auras cannot be consumed. Recipes permanently consume ingredients.</p></div></div><div class="recipe-grid">'+names.map(name=>{const r=WORKSHOP_RECIPES[name];return '<div class="recipe-card"><small>'+r.type+'</small><h2>'+name+'</h2><p>'+r.buff+'</p><div>'+Object.entries(r.recipe).map(([k,v])=>'<span>'+v+' × '+k+'</span>').join('')+'</div><button onclick="craftRecipe('+JSON.stringify(name).replace(/</g,'&lt;')+')">Craft</button></div>'}).join('')+'</div></div>'}
 function cauldronView(){const names=Object.keys(POTION_EFFECTS);return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Stella · Cauldron</div><h1>Potions</h1><p class="muted">Timed and special Potions use the canonical Potion rules. Curse duration is 10× active duration.</p></div></div><div class="potion-grid">'+names.map(name=>'<div class="potion-card"><small>Potion</small><h2>'+name+'</h2><p>'+POTION_EFFECTS[name]+'</p><button onclick="addItem('+JSON.stringify(name).replace(/</g,'&lt;')+',1);save();render();toast(\'Added 1 '+name+' for prototype testing.\')">Use / Test</button></div>').join('')+'</div></div>'}
 const JESTER_POOL=["Lucky Potion","Speed Potion","Fortune Potion I","Fortune Potion II","Fortune Potion III","Fortune Potion IV","Fortune Potion V","Fortune Potion VI","Haste Potion I","Haste Potion II","Haste Potion III","Haste Potion IV","Haste Potion V","Haste Potion VI","Jewelry Potion","Zombie Potion","Rage Potion","Diver Potion","Godly Potion — Zeus","Godly Potion — Poseidon","Godly Potion — Hades","Forbidden Potion I","Forbidden Potion II","Forbidden Potion III","Warp Potion","Potion of Bound","Heavenly Potion I","Heavenly Potion II","Godlike Potion","Oblivion Potion","Red Moon Potion I","Red Moon Potion II","Fortune-Haste Potion","Overclock Potion","Momentum Potion","Fate Potion","Gambler's Potion","Frenzy Potion","Greed Potion I","Greed Potion II","Greed Potion III","Greed Potion IV","Desperation Potion","Unstable Potion","Berserker Potion","Second Chance Potion","Echo Potion","Chain Potion","Reverse Potion I","Reverse Potion II","Reverse Potion III","Overflow Potion I","Overflow Potion II","Overflow Potion III","Paradox Potion","Fortune's Curse","Echo of Fortune","Acceleration Potion","Chain Reaction Potion"];
@@ -320,14 +374,14 @@ function rollView(){
  const recent=state.recent.slice(0,5).map(function(r,i){return '<div class="recent-row"><span><b>#'+fmt(r.roll||state.rolls-i)+'</b> '+r.name+(r.stored===false?' <small>(not stored)</small>':'')+'</span><small>1/'+fmt(r.rolledRarity||r.rarity)+(r.breakthrough?' • BT':'')+'</small></div>'}).join('')||'<div class="empty">No rolls yet.</div>';
  const spawns=state.spawns.length?state.spawns.map(function(s){return '<button class="spawn" style="left:'+s.x+'%;top:'+s.y+'%" onclick="collect(\''+s.id+'\')">'+s.name+'</button>'}).join(''):'<div class="empty">Personal ground items will appear here.</div>';
  const last=state.recent[0]?'<div class="aura-name">'+state.recent[0].name+'</div><div class="rarity">1/'+fmt(state.recent[0].rolledRarity||state.recent[0].rarity)+(state.recent[0].breakthrough?' • BREAKTHROUGH':'')+(state.recent[0].bonus?' • BONUS ROLL':'')+'</div>':'<div class="rarity">Your next Aura appears here.</div>';
- return '<div class="roll-grid"><section><div class="panel hero"><h1>ROLL FOR AN AURA</h1><button class="roll-btn" onclick="roll()">ROLL…</button><div class="last-result">'+last+'</div></div><div class="panel" style="margin-top:18px"><div class="section-title">Spawning Items</div><div class="spawn-area">'+spawns+'</div></div></section><aside class="panel"><div class="section-title">Recent Rolls</div><div class="recent">'+recent+'</div><div class="section-title" style="margin-top:22px">Current Stats</div><div class="stats"><div class="stat"><span>Total Luck</span><b>'+totalLuck().toFixed(2)+'x</b></div><div class="stat"><span>Roll Speed</span><b>'+state.speed.toFixed(2)+'x</b></div></div></aside></div>';
+ return '<div class="roll-grid"><section><div class="panel hero"><h1>ROLL FOR AN AURA</h1><button class="roll-btn" onclick="roll()">ROLL…</button><div class="auto-roll-control"><button onclick="state.autoRoll=!state.autoRoll;if(state.autoRoll&&!(state.inventory.Coins>0)){state.autoRoll=false;toast('Auto Roll requires at least 1 Coin.')}save();render()">Auto Roll: '+(state.autoRoll?'ON':'OFF')+'</button><span>−50% Speed • 1 Coin per roll</span></div><div class="last-result">'+last+'</div></div><div class="panel" style="margin-top:18px"><div class="section-title">Spawning Items</div><div class="spawn-area">'+spawns+'</div></div></section><aside class="panel"><div class="section-title">Recent Rolls</div><div class="recent">'+recent+'</div><div class="section-title" style="margin-top:22px">Current Stats</div><div class="stats"><div class="stat"><span>Total Luck</span><b>'+totalLuck().toFixed(2)+'x</b></div><div class="stat"><span>Roll Speed</span><b>'+state.speed.toFixed(2)+'x</b></div></div></aside></div>';
 }
 function invPreview(){const x=Object.entries(state.inventory);return x.length?x.map(function(e){return '<div class="info"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join(''):'<div class="empty">Nothing collected.</div>'}
 function render(){
  const active=state.activeTab;
- let mainContent=active==='Inventory'?inventoryView():active==='NPCs'?npcView():rollView();
- document.getElementById('app').innerHTML='<div class="shell"><header class="topbar"><div class="logo">EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls)+'</b></span><span>Luck <b>'+totalLuck().toFixed(2)+'x</b></span><span>Speed <b>'+state.speed.toFixed(2)+'x</b></span></div></header><div class="layout"><nav class="tabs"><button class="tab '+(active==='Roll'?'active':'')+'" onclick="tab(\'Roll\')">◉ Roll</button><button class="tab '+(active==='Inventory'?'active':'')+'" onclick="tab(\'Inventory\')">▣ Inventory</button><button class="tab '+(active==='NPCs'?'active':'')+'" onclick="tab(\'NPCs\')">♙ NPCs</button><button class="tab" onclick="tab(\'Global\')">◎ Global</button><button class="tab" onclick="tab(\'Settings\')">⚙ Settings</button><button class="tab" onclick="tab(\'Achievements\')">★ Achievements</button></nav><main>'+mainContent+'</main><aside class="side"><div class="section-title">World State</div><div class="info-list"><div class="info"><span>Biome</span><b>'+state.biome+'</b></div><div class="info"><span>Time</span><b>'+state.dayNight+'</b></div><div class="info"><span>Dimension</span><b>'+state.dimension+'</b></div><div class="info"><span>Total Rolls</span><b>'+fmt(state.rolls)+'</b></div></div><div class="section-title" style="margin-top:24px">Inventory Preview</div><div class="info-list">'+invPreview()+'</div></aside></div><footer class="footer">Equinox • '+active+' tab • Progress saved locally in this prototype.</footer><div id="notices" class="notice-stack"></div></div>';
- if(active==='Inventory')wireInventory();
+ let mainContent=active==='Inventory'?inventoryView():active==='NPCs'?npcView():active==='Global'?globalView():rollView();
+ document.getElementById('app').innerHTML='<div class="shell"><header class="topbar"><div class="logo">EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls)+'</b></span><span>Luck <b>'+totalLuck().toFixed(2)+'x</b></span><span>Speed <b>'+totalSpeed().toFixed(2)+'x</b></span></div></header><div class="layout"><nav class="tabs"><button class="tab '+(active==='Roll'?'active':'')+'" onclick="tab(\'Roll\')">◉ Roll</button><button class="tab '+(active==='Inventory'?'active':'')+'" onclick="tab(\'Inventory\')">▣ Inventory</button><button class="tab '+(active==='NPCs'?'active':'')+'" onclick="tab(\'NPCs\')">♙ NPCs</button><button class="tab" onclick="tab(\'Global\')">◎ Global</button><button class="tab" onclick="tab(\'Settings\')">⚙ Settings</button><button class="tab" onclick="tab(\'Achievements\')">★ Achievements</button></nav><main>'+mainContent+'</main><aside class="side"><div class="section-title">World State</div><div class="info-list"><div class="info"><span>Biome</span><b>'+state.biome+'</b></div><div class="info"><span>Time</span><b>'+state.dayNight+'</b></div><div class="info"><span>Dimension</span><b>'+state.dimension+'</b></div><div class="info"><span>Total Rolls</span><b>'+fmt(state.rolls)+'</b></div></div><div class="section-title" style="margin-top:24px">Inventory Preview</div><div class="info-list">'+invPreview()+'</div></aside></div><footer class="footer">Equinox • '+active+' tab • Progress saved locally in this prototype.</footer><div id="notices" class="notice-stack"></div></div>';
+ if(active==='Inventory')wireInventory(); if(active==='Roll'&&tutorialState().phase<3)document.getElementById('app').insertAdjacentHTML('beforeend',tutorialView());
 }
 setInterval(maybeSpawn,1000);
 render();
