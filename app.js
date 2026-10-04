@@ -475,3 +475,123 @@ function potionCurseStrength(name){return /Curse/i.test(POTION_EFFECTS[name]||''
 function enhancePotion(name){const cfg=BREWING_STAND[name];if(!cfg||!hasItem(name,1))return;if((state.inventory['Dark Points']||0)<cfg.dark){toast('Need '+cfg.dark+' Dark Points.');return}if((state.inventory.Coins||0)<cfg.coins){toast('Need '+fmt(cfg.coins)+' Coins.');return}takeItem(name,1);takeItem('Dark Points',cfg.dark);takeItem('Coins',cfg.coins);const success=Math.random()<cfg.success;if(success){const enhanced='Enhanced '+name;addItem(enhanced,1);const ast=achievementState().stats;ast.potionEnhancements=(ast.potionEnhancements||0)+1;toast('Brewing Stand succeeded: '+enhanced+' ×'+cfg.multiplier)}else toast('Brewing Stand failed. The Potion, Dark Points, and Coins were consumed.');achievementCheck();save();render()}
 function activateCurse(name,brewingMultiplier,copies){const strength=potionCurseStrength(name)*(brewingMultiplier||1)*Math.max(1,copies||1);if(!strength)return;const duration=potionDurationMs(name)*10;state.curses=state.curses||{};state.curses[name]={strength:strength,expires:Date.now()+duration};const ast=achievementState().stats;ast.curseReceived=(ast.curseReceived||0)+1;ast.curseStacks=(ast.curseStacks||0)+Math.max(1,copies||1);toast('Curse active: '+name+' ×'+strength.toFixed(2));save()}
 
+
+
+/* Phase 4 — live Supabase global integration.
+ * supabase.js owns Auth/client creation; this module connects the existing UI
+ * to the already-secured Phase 4 tables without exposing privileged keys.
+ */
+const EQUINOX_GLOBAL_DATA={profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0};
+function eq4escape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+async function eq4RefreshGlobal(force){
+  if(typeof EQUINOX_SUPABASE==='undefined')return;
+  const now=Date.now();
+  if(!force&&EQUINOX_GLOBAL_DATA.loaded&&now-EQUINOX_GLOBAL_DATA.lastRefresh<10000)return;
+  const [p,o,ch]=await Promise.all([
+    EQUINOX_SUPABASE.from('profiles').select('id,username,auras_collected,collective_rarity,roll_count,rarest_roll_rarity,global_rank,equipped_aura_id').order('auras_collected',{ascending:false}).limit(10),
+    EQUINOX_SUPABASE.from('online_presence').select('user_id,username,global_rank,equipped_aura_name,equipped_aura_rarity,last_seen').gte('last_seen',new Date(Date.now()-90000).toISOString()).order('last_seen',{ascending:false}).limit(10),
+    EQUINOX_SUPABASE.from('chat_messages').select('id,user_id,username,global_rank,equipped_aura_name,equipped_aura_rarity,message,created_at').order('created_at',{ascending:false}).limit(150)
+  ]);
+  if(p.error||o.error||ch.error){console.warn('Equinox global sync:',p.error||o.error||ch.error);return;}
+  EQUINOX_GLOBAL_DATA.profiles=p.data||[];
+  EQUINOX_GLOBAL_DATA.presence=o.data||[];
+  EQUINOX_GLOBAL_DATA.chat=(ch.data||[]).reverse();
+  EQUINOX_GLOBAL_DATA.loaded=true;
+  EQUINOX_GLOBAL_DATA.lastRefresh=now;
+  if(state&&state.activeTab==='Global')render();
+}
+
+function eq4Rows(field){
+  return EQUINOX_GLOBAL_DATA.profiles.slice().sort((a,b)=>Number(b[field]||0)-Number(a[field]||0)).slice(0,10);
+}
+
+function eq4GlobalView(){
+  const g=globalStats();
+  const boards=[['Auras Collected','auras_collected'],['Collective Rarity','collective_rarity'],['Rarest Roll','rarest_roll_rarity'],['Roll Count','roll_count']].map(function(pair){
+    const rows=eq4Rows(pair[1]);
+    return '<div class="global-board panel"><div class="section-title">'+pair[0]+'</div>'+
+      (rows.length?rows.map((x,i)=>'<div class="leader-row"><span>#'+(i+1)+' '+eq4escape(x.username)+'</span><b>'+fmt(Number(x[pair[1]]||0))+'</b></div>').join(''):'<div class="empty">No global players yet.</div>')+
+      '</div>';
+  }).join('');
+  const online=EQUINOX_GLOBAL_DATA.presence.map(x=>'<div class="online-row"><b>'+eq4escape(x.username)+'</b><span>Online</span><span>'+eq4escape(x.equipped_aura_name||'None')+'</span></div>').join('')||'<div class="empty">No other players online.</div>';
+  const chat=EQUINOX_GLOBAL_DATA.chat.map(m=>'<div class="chat-msg"><b>'+eq4escape(m.username)+'</b><small>'+eq4escape(m.global_rank||'Unranked')+' • '+eq4escape(m.equipped_aura_name||'None')+(m.equipped_aura_rarity?' • 1/'+fmt(m.equipped_aura_rarity):'')+' <button class="chat-flag" onclick="eq4FlagChat('+m.id+')">Flag</button></small><span>'+eq4escape(m.message)+'</span></div>').join('')||'<div class="empty">No messages yet.</div>';
+  return '<div class="global-page"><div class="panel global-profile"><div><div class="section-title">Player Rank</div><h1>'+eq4escape(g.username)+'</h1><p class="muted">Equipped Aura: '+eq4escape(g.equipped)+(g.title?' • Title: ['+eq4escape(g.title)+']':'')+'</p></div><div class="global-metrics"><span>Unique Auras <b>'+fmt(g.aurasCollected)+'</b></span><span>Rarest Roll <b>1/'+fmt(g.rarestRoll||0)+'</b></span><span>Rolls <b>'+fmt(g.rollCount)+'</b></span></div></div><div class="global-boards">'+boards+'</div><div class="panel online-panel"><div class="section-title">Online Players</div>'+online+'</div><div class="panel chat-panel"><div class="section-title">Global Chat · 150 messages max</div><div class="chat-log">'+chat+'</div><div class="chat-compose"><input id="globalChatInput" maxlength="150" placeholder="Message Global Chat…"><button onclick="eq4SendChat()">Send</button></div></div><p class="muted global-note">Live global data • Supabase connected</p></div>';
+}
+
+async function eq4SendChat(){
+  if(typeof EQUINOX_SUPABASE==='undefined')return;
+  const input=document.getElementById('globalChatInput');
+  const message=(input?.value||'').trim().slice(0,150);
+  if(!message)return;
+  const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
+  const user=sessionData?.session?.user;
+  if(!user)return;
+  const ban=await EQUINOX_SUPABASE.from('chat_bans').select('banned_until').eq('user_id',user.id).maybeSingle();
+  if(ban.data?.banned_until&&new Date(ban.data.banned_until)>new Date()){toast('Global Chat is unavailable while your account is banned.');return;}
+  const account=JSON.parse(localStorage.getItem('equinox-user')||'{}');
+  const aura=state.auras.find(a=>a.equipped);
+  const {error}=await EQUINOX_SUPABASE.from('chat_messages').insert({
+    user_id:user.id,
+    username:account.username||state.username||'Player',
+    global_rank:state.globalRank||'Unranked',
+    equipped_aura_id:aura?.id||null,
+    equipped_aura_name:aura?.name||null,
+    equipped_aura_rarity:aura?.rarity||null,
+    message:message
+  });
+  if(error){toast(error.message);return;}
+  input.value='';
+  await eq4RefreshGlobal(true);
+  render();
+}
+
+async function eq4FlagChat(messageId){
+  if(typeof EQUINOX_SUPABASE==='undefined')return;
+  const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
+  const user=sessionData?.session?.user;
+  if(!user)return;
+  const reason=prompt('Why are you flagging this message?');
+  if(!reason)return;
+  const {error}=await EQUINOX_SUPABASE.from('chat_flags').insert({message_id:messageId,flagger_id:user.id,reason:reason.slice(0,200)});
+  toast(error?'Unable to flag this message.':'Message flagged.');
+}
+
+async function eq4Presence(){
+  if(typeof EQUINOX_SUPABASE==='undefined')return;
+  const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
+  const user=sessionData?.session?.user;
+  if(!user)return;
+  const account=JSON.parse(localStorage.getItem('equinox-user')||'{}');
+  const aura=state.auras.find(a=>a.equipped);
+  await EQUINOX_SUPABASE.from('online_presence').upsert({
+    user_id:user.id,
+    username:account.username||state.username||'Player',
+    global_rank:state.globalRank||'Unranked',
+    equipped_aura_id:aura?.id||null,
+    equipped_aura_name:aura?.name||null,
+    equipped_aura_rarity:aura?.rarity||null,
+    last_seen:new Date().toISOString()
+  },{onConflict:'user_id'});
+}
+
+function installEquinoxPhase4(){
+  if(window.__equinoXPhase4Installed||typeof EQUINOX_SUPABASE==='undefined'){if(typeof EQUINOX_SUPABASE==='undefined')setTimeout(installEquinoxPhase4,100);return;}
+  window.__equinoXPhase4Installed=true;
+  if(typeof globalView==='function')globalView=eq4GlobalView;
+  window.eq4SendChat=eq4SendChat;
+  window.eq4FlagChat=eq4FlagChat;
+  eq4RefreshGlobal(true);
+  eq4Presence();
+  setInterval(function(){if(state&&state.activeTab==='Global')eq4RefreshGlobal(false);},10000);
+  setInterval(eq4Presence,20000);
+  try{
+    EQUINOX_SUPABASE.channel('equinox-phase4-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},()=>eq4RefreshGlobal(true))
+      .on('postgres_changes',{event:'*',schema:'public',table:'chat_messages'},()=>eq4RefreshGlobal(true))
+      .on('postgres_changes',{event:'*',schema:'public',table:'online_presence'},()=>eq4RefreshGlobal(true))
+      .subscribe();
+  }catch(e){console.warn('Realtime unavailable; global polling remains active.',e);}
+  render();
+}
+setTimeout(installEquinoxPhase4,0);
