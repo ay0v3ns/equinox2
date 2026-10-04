@@ -662,6 +662,36 @@ function craftRecipe(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return;const
 function questCraftHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Crafting')qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
 function workshopView(){const names=Object.keys(WORKSHOP_RECIPES);return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Jake · Workshop</div><h1>Crafting</h1><p class="muted">Favorited or equipped Auras cannot be consumed. Recipes permanently consume ingredients.</p></div></div><div class="recipe-grid">'+names.map(name=>{const r=WORKSHOP_RECIPES[name];return '<div class="recipe-card"><small>'+r.type+'</small><h2>'+name+'</h2><p>'+r.buff+'</p><div>'+Object.entries(r.recipe).map(([k,v])=>'<span>'+v+' × '+k+'</span>').join('')+'</div><button onclick="craftRecipe('+JSON.stringify(name).replace(/</g,'&lt;')+')">Craft</button></div>'}).join('')+'</div></div>'}
 function cauldronView(){const names=Object.keys(POTION_EFFECTS);return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Stella · Cauldron</div><h1>Potions</h1><p class="muted">Timed and special Potions use the canonical Potion rules. Curse duration is 10× active duration.</p></div></div><div class="potion-grid">'+names.map(name=>'<div class="potion-card"><small>Potion</small><h2>'+name+'</h2><p>'+POTION_EFFECTS[name]+'</p><button onclick="usePotion('+JSON.stringify(name).replace(/</g,'&lt;')+')">Use</button></div>').join('')+'</div></div>'}
+const POTION_RECIPES={
+ 'Fortune Potion I':{'Lucky Potion':5,'Rare':5,'Uncommon':1,'Gilded':1},
+ 'Fortune Potion II':{'Fortune Potion I':1,'Lucky Potion':10,'Rare':10,'Uncommon':5,'Gilded':2},
+ 'Fortune Potion III':{'Fortune Potion II':1,'Lucky Potion':15,'Rare':15,'Uncommon':10,'Gilded':5},
+ 'Haste Potion I':{'Speed Potion':10,'Rare':10,'Uncommon':5,'Wind':1},
+ 'Haste Potion II':{'Haste Potion I':1,'Speed Potion':20,'Rare':15,'Uncommon':15,'Wind':2},
+ 'Haste Potion III':{'Speed Potion':50},
+ 'Jewelry Potion':{'Lucky Potion':10,'Gilded':5,'Shiny':1,'Ruby':1},
+ 'Zombie Potion':{'Lucky Potion':10,'Undead':1,'Bleeding':1},
+ 'Rage Potion':{'Speed Potion':10,'Rage':5,'Diaboli':1},
+ 'Diver Potion':{'Speed Potion':20,'Nautilus':1,'Aquatic':1},
+ 'Godly Potion — Zeus':{'Lucky Potion':20,'Speed Potion':20,'Wind':1,'Stormal':1,'Zeus':1},
+ 'Godly Potion — Poseidon':{'Speed Potion':20,'Aquatic':1,'Nautilus':1,'Poseidon':1},
+ 'Godly Potion — Hades':{'Lucky Potion':20,'Bleeding':1,'Diaboli':1,'Hades':1}
+};
+function craftPotion(name){
+ const rec=POTION_RECIPES[name];if(!rec)return;
+ for(const [item,n] of Object.entries(rec)){
+   const have=state.auras.filter(function(a){return a.name===item&&!a.favorite&&!a.equipped}).length+(state.inventory[item]||0);
+   if(have<n){toast('Missing '+item+' × '+n);return}
+ }
+ for(const [item,n] of Object.entries(rec)){
+   let left=n;
+   state.auras=state.auras.filter(function(a){if(left>0&&a.name===item&&!a.favorite&&!a.equipped){left--;return false}return true});
+   if(left)takeItem(item,left);
+ }
+ addItem(name,1);
+ const ast=achievementState().stats;ast.potionsCrafted=(ast.potionsCrafted||0)+1;ast.potionNames=ast.potionNames||[];if(!ast.potionNames.includes(name))ast.potionNames.push(name);
+ markTutorialCraft(name);questCraftHook();achievementCheck();save();render();toast('Crafted '+name);
+}
 const JESTER_POOL=["Lucky Potion","Speed Potion","Fortune Potion I","Fortune Potion II","Fortune Potion III","Fortune Potion IV","Fortune Potion V","Fortune Potion VI","Haste Potion I","Haste Potion II","Haste Potion III","Haste Potion IV","Haste Potion V","Haste Potion VI","Jewelry Potion","Zombie Potion","Rage Potion","Diver Potion","Godly Potion — Zeus","Godly Potion — Poseidon","Godly Potion — Hades","Forbidden Potion I","Forbidden Potion II","Forbidden Potion III","Warp Potion","Potion of Bound","Heavenly Potion I","Heavenly Potion II","Godlike Potion","Oblivion Potion","Red Moon Potion I","Red Moon Potion II","Fortune-Haste Potion","Overclock Potion","Momentum Potion","Fate Potion","Gambler's Potion","Frenzy Potion","Greed Potion I","Greed Potion II","Greed Potion III","Greed Potion IV","Desperation Potion","Unstable Potion","Berserker Potion","Second Chance Potion","Echo Potion","Chain Potion","Reverse Potion I","Reverse Potion II","Reverse Potion III","Overflow Potion I","Overflow Potion II","Overflow Potion III","Paradox Potion","Fortune's Curse","Echo of Fortune","Acceleration Potion","Chain Reaction Potion"];
 function jesterRoll(){const luck=Math.max(0,totalLuck()),speed=Math.max(0,state.speed*100),coin=Object.entries(state.inventory).reduce((s,[n,c])=>s+(n==="Coins"?c:0),0);const L=luck/(luck+100),S=speed/(speed+100),C=coin/(coin+1000),influence=(L+S+C)/3;const weights=JESTER_POOL.map((name,i)=>({name,weight:(1+(i%7)/10)*(1+influence*(0.5+(i%5)/10))}));const total=weights.reduce((s,x)=>s+x.weight,0);let r=Math.random()*total;let pick=weights[weights.length-1];for(const x of weights){r-=x.weight;if(r<=0){pick=x;break}}addItem(pick.name,1);save();render();toast("Jester awarded: "+pick.name)}
 function jesterView(){const luck=Math.max(0,totalLuck()),sp=Math.max(0,totalSpeed()),coins=state.inventory.Coins||0;const ls=(luck/(luck+100))*100,ss=(sp/(sp+100))*100,cs=(coins/(coins+1000))*100;return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Jester · Gamble</div><h1>The Gamble</h1><p class="muted">Luck, Roll Speed, and Coin Value each contribute one-third of Jester influence.</p></div></div><div class="jester-panel"><div class="jester-stat"><span>Luck Score</span><b>'+ls.toFixed(2)+'%</b></div><div class="jester-stat"><span>Speed Score</span><b>'+ss.toFixed(2)+'%</b></div><div class="jester-stat"><span>Coin Value Score</span><b>'+cs.toFixed(2)+'%</b></div><button class="gamble-btn" onclick="jesterRoll()">Gamble</button></div></div>'}
