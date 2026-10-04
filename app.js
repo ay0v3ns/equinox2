@@ -31,7 +31,7 @@ function load(){
   return next;
  }catch(e){return Object.assign({},defaults)}
 }
-function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+function save(){if(state&&state.settings&&state.settings.autoSave===false)return;localStorage.setItem(KEY,JSON.stringify(state));}
 function bankTick(){if(!state)return;const now=hourKey();if(!state.bankLastTick){state.bankLastTick=now;return}const elapsed=Math.max(0,now-state.bankLastTick);if(elapsed<1)return;const b=BANK_TIERS[(state.bankTier||1)-1]||BANK_TIERS[0];if((state.bankBalance||0)>0)state.bankBalance=Math.min(b[2],state.bankBalance*Math.pow(b[1],elapsed));state.bankLastTick=now;save()}
 function fmt(n){return new Intl.NumberFormat('en-US').format(n)}
 function gearLuck(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+({"Luck Glove":0.25,"Desire Glove":0.40,"Solar Device":0.50,"Gemstone Gauntlet":0.55,"Frozen Gauntlet":1.50,"Eclipse Device":0.50,"Dark Matter Device":0.60,"Aqua Device":0.50,"Shining Star":0.70,"Jackpot Gauntlet":0.77,"Exo Gauntlet":1.00}[n]||0)},0)}
@@ -292,7 +292,7 @@ function settingEnabled(key){return state.settings&&state.settings[key]!==false}
 function toggleSetting(key){
  if(!state.settings)state.settings=Object.assign({},defaults.settings);
  state.settings[key]=!state.settings[key];
- save();render();
+ localStorage.setItem(KEY,JSON.stringify(state));render();
 }
 function resetProgress(){
  if(!confirm('Reset all Equinox progress on this browser? This cannot be undone.'))return;
