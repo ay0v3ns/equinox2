@@ -60,7 +60,7 @@ function roll(){
  if(!chosen)chosen=eligible[eligible.length-1]||{a:AURAS[0],breakthrough:false};
  const result=chosen.a;
  const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
- const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip}) || state.automation==='equip';
+ const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
  state.recent.unshift({roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:result.rarity*(chosen.breakthrough?BREAK[state.biome]:1),breakthrough:chosen.breakthrough,bonus:bonus>1,stored:false});
  state.recent=state.recent.slice(0,1000000);
 
