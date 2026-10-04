@@ -49,6 +49,9 @@ function equinoxAuthToggle() {
 }
 
 async function equinoxAuthSubmit() {
+  const submitButton = document.querySelector('.auth-submit');
+  if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Signing in…'; }
+  try {
   const email = document.getElementById('auth-email')?.value.trim();
   const password = document.getElementById('auth-password')?.value || '';
   const username = document.getElementById('auth-username')?.value.trim() || '';
@@ -71,6 +74,13 @@ async function equinoxAuthSubmit() {
     if (error) return renderAuthGate(error.message);
   }
   await equinoxHydrate();
+  } catch (e) {
+    console.error('Equinox authentication failed', e);
+    renderAuthGate(e?.message || 'Unable to sign in right now. Please try again.');
+  } finally {
+    const button = document.querySelector('.auth-submit');
+    if (button) { button.disabled = false; button.textContent = AUTH_UI.mode === 'signup' ? 'Create Account' : 'Sign In'; }
+  }
 }
 
 async function equinoxHydrate() {
@@ -81,10 +91,21 @@ async function equinoxHydrate() {
     return;
   }
   const uid = session.user.id;
-  const { data: profile, error: profileError } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('id', uid).maybeSingle();
+  let { data: profile, error: profileError } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('user_id', uid).maybeSingle();
   if (profileError) {
-    showAuthGate(profileError.message);
+    showAuthGate(profileError.message || 'Unable to load your profile.');
     return;
+  }
+  if (!profile) {
+    const fallbackUsername = session.user.user_metadata?.username || (session.user.email || 'Player').split('@')[0].replace(/[^A-Za-z0-9_]/g,'').slice(0,20) || 'Player';
+    const { data: createdProfile, error: createProfileError } = await EQUINOX_SUPABASE.from('profiles')
+      .insert({ user_id: uid, username: fallbackUsername })
+      .select('*').maybeSingle();
+    if (createProfileError) {
+      showAuthGate(createProfileError.message || 'Unable to create your player profile.');
+      return;
+    }
+    profile = createdProfile;
   }
   const { data: cloudSave } = await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id', uid).maybeSingle();
   const hasCloudSave = cloudSave?.save_data && typeof cloudSave.save_data === 'object' && Object.keys(cloudSave.save_data).length;
@@ -106,10 +127,10 @@ async function equinoxSyncProfile() {
   try {
     const s = JSON.parse(raw);
     const username = JSON.parse(localStorage.getItem('equinox-user') || '{}').username || s.username || 'Player';
-    let { data: profile } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    let { data: profile } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
     if (!profile) {
       const { data: created } = await EQUINOX_SUPABASE.from('profiles')
-        .insert({ id:user.id, username:username })
+        .insert({ user_id:user.id, username:username })
         .select('*').maybeSingle();
       profile = created;
     }
@@ -132,7 +153,7 @@ async function equinoxSyncProfile() {
       rarest_roll_rarity: Number(s.rarestRoll || 0),
       equipped_aura_id: equipped?.id || null,
       updated_at: new Date().toISOString()
-    }).eq('id', user.id);
+    }).eq('user_id', user.id);
 
     // The existing database uses an identity primary key for aura_collection,
     // so sync by the local aura_id instead of assuming a composite primary key.
