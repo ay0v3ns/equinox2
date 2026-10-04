@@ -47,7 +47,7 @@ function gearLuck(){return (state.gearsEquipped||[]).reduce(function(sum,n){retu
 function gearSpeed(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+({"Lunar Device":0.15,"Eclipse Device":0.15,"Dark Matter Device":0.15,"Aqua Device":0.10,"Shining Star":0.20,"Jackpot Gauntlet":0.07,"Exo Gauntlet":0.25}[n]||0)},0)}
 function potionLuck(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.luck||0)},0)}
 function potionSpeed(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0)}
-function totalLuck(){return ((1+state.basicLuck+gearLuck()+potionLuck())+state.specialLuck)*state.finalMultiplier}
+function totalLuck(){return (((1+state.basicLuck+gearLuck())*1)+(state.specialLuck+potionLuck()))*state.finalMultiplier}
 function totalSpeed(){return Math.max(0.01,state.speed*(1+gearSpeed()+potionSpeed()))}
 function effectiveRollSpeed(){return Math.max(0.01,totalSpeed()*(state.autoRoll?0.5:1))}
 function rollCooldownMs(){return Math.max(50,Math.floor(3200/effectiveRollSpeed()))}
