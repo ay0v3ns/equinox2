@@ -105,6 +105,15 @@ async function equinoxSyncProfile() {
   if (!raw) return;
   try {
     const s = JSON.parse(raw);
+    const username = JSON.parse(localStorage.getItem('equinox-user') || '{}').username || s.username || 'Player';
+    let { data: profile } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    if (!profile) {
+      const { data: created } = await EQUINOX_SUPABASE.from('profiles')
+        .insert({ id:user.id, username:username })
+        .select('*').maybeSingle();
+      profile = created;
+    }
+
     const auras = Array.isArray(s.auras) ? s.auras : [];
     const unique = new Map();
     auras.forEach(a => {
@@ -115,6 +124,7 @@ async function equinoxSyncProfile() {
     const uniqueAuras = [...unique.values()];
     const collectiveRarity = uniqueAuras.reduce((sum,a)=>sum+Number(a.rarity||0),0);
     const equipped = auras.find(a=>a.id===s.equippedAuraId) || auras.find(a=>a.equipped);
+
     await EQUINOX_SUPABASE.from('profiles').update({
       auras_collected: uniqueAuras.length,
       collective_rarity: collectiveRarity,
@@ -124,45 +134,63 @@ async function equinoxSyncProfile() {
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
 
-    if (uniqueAuras.length) {
-      const rows = uniqueAuras.map(a => ({
-        user_id:user.id,
-        aura_id:String(a.id || a.name),
-        aura_name:a.name,
-        rarity:Number(a.rarity||0),
-        tier:a.tier || null,
+    // The existing database uses an identity primary key for aura_collection,
+    // so sync by the local aura_id instead of assuming a composite primary key.
+    for (const a of auras) {
+      if (!a?.name) continue;
+      const auraId = String(a.id || (a.name + '-' + String(a.rolledAt || '')));
+      const row = {
+        user_id:user.id, aura_id:auraId, aura_name:a.name,
+        rarity:Number(a.rarity||0), tier:a.tier||null,
         rolled_at:new Date(a.rolledAt || Date.now()).toISOString(),
-        favorite:!!a.favorite,
-        auto_skip:!!a.autoSkip,
-        auto_equip:!!a.autoEquip,
-        equipped:!!a.equipped
-      }));
-      await EQUINOX_SUPABASE.from('aura_collection').upsert(rows,{onConflict:'user_id,aura_id'});
+        favorite:!!a.favorite, auto_skip:!!a.autoSkip,
+        auto_equip:!!a.autoEquip, equipped:!!a.equipped
+      };
+      const { data: existing } = await EQUINOX_SUPABASE.from('aura_collection')
+        .select('id').eq('user_id',user.id).eq('aura_id',auraId).limit(1).maybeSingle();
+      if (existing?.id) {
+        await EQUINOX_SUPABASE.from('aura_collection').update(row).eq('id',existing.id);
+      } else {
+        await EQUINOX_SUPABASE.from('aura_collection').insert(row);
+      }
     }
 
     const recent = Array.isArray(s.recent) ? s.recent : [];
     const newest = recent.find(r=>Number(r.roll)===Number(s.rolls));
     if (newest && Number(newest.roll)>0) {
-      await EQUINOX_SUPABASE.from('roll_history').upsert({
-        user_id:user.id,
-        roll_number:Number(newest.roll),
+      const row = {
+        user_id:user.id, roll_number:Number(newest.roll),
         aura_id:newest.name ? String(newest.name) : null,
         aura_name:newest.name || null,
         rarity:Number(newest.rolledRarity || newest.rarity || 0),
-        luck:Number(newest.luck || 1),
-        roll_speed:Number(newest.speed || 1),
-        biome:newest.biome || s.biome || null,
-        day_night:newest.time || s.dayNight || null,
-        breakthrough:!!newest.breakthrough,
-        bonus_roll:!!newest.bonus,
+        luck:Number(newest.luck || 1), roll_speed:Number(newest.speed || 1),
+        biome:newest.biome || s.biome || null, day_night:newest.time || s.dayNight || null,
+        breakthrough:!!newest.breakthrough, bonus_roll:!!newest.bonus,
         rolled_at:new Date().toISOString()
-      },{onConflict:'user_id,roll_number'});
+      };
+      const { data: existing } = await EQUINOX_SUPABASE.from('roll_history')
+        .select('id').eq('user_id',user.id).eq('roll_number',Number(newest.roll)).limit(1).maybeSingle();
+      if (existing?.id) {
+        await EQUINOX_SUPABASE.from('roll_history').update(row).eq('id',existing.id);
+      } else {
+        await EQUINOX_SUPABASE.from('roll_history').insert(row);
+      }
+    }
+
+    if (s.settings) {
+      await EQUINOX_SUPABASE.from('user_settings').upsert({
+        user_id:user.id, settings:s.settings, updated_at:new Date().toISOString()
+      });
+    }
+
+    if (s.achievements?.unlocked?.length) {
+      const rows=s.achievements.unlocked.map(id=>({user_id:user.id,achievement_id:String(id)}));
+      await EQUINOX_SUPABASE.from('achievement_unlocks').upsert(rows,{onConflict:'user_id,achievement_id'});
     }
   } catch (e) {
     console.warn('Equinox profile sync failed',e);
   }
 }
-
 let equinoxOriginalSave = null;
 function installEquinoxSaveSync() {
   if (typeof window.save !== 'function' || equinoxOriginalSave) return;
