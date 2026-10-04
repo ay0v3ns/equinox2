@@ -58,7 +58,7 @@ async function equinoxAuthSubmit() {
   if (!email || !password) return renderAuthGate('Email and password are required.');
   if (AUTH_UI.mode === 'signup') {
     if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) return renderAuthGate('Username must be 3–20 letters, numbers, or underscores.');
-    const { data: taken, error: takenError } = await EQUINOX_SUPABASE.from('profiles').select('id').ilike('username', username).limit(1);
+    const { data: taken, error: takenError } = await EQUINOX_SUPABASE.from('profiles').select('user_id').ilike('username', username).limit(1);
     if (takenError) return renderAuthGate(takenError.message);
     if (taken?.length) return renderAuthGate('That username is already taken.');
     const { data, error } = await EQUINOX_SUPABASE.auth.signUp({
