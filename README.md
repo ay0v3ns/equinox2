@@ -26,3 +26,10 @@ Equinox is being built tab-by-tab from the authoritative Equinox game document.
 - Inventory item counts
 
 The remaining tabs and systems are being implemented incrementally so each finished system can be tested before the next one is added.
+
+
+## Current implementation status
+- NPC systems are connected to rolling, inventory, crafting, Potions, Gear effects, quests, Bank compounding, and the tutorial.
+- Tutorial Part I/II is implemented, including the exact ten-roll gate, Tutorial Potions, NPC tasks, and Auto Roll unlock.
+- Global tab UI is implemented with leaderboard/chat/player-display structures and a local fallback.
+- Supabase synchronization is intentionally pending while the connected project is unavailable; no fake shared-player data is generated.
