@@ -105,14 +105,62 @@ async function equinoxSyncProfile() {
   if (!raw) return;
   try {
     const s = JSON.parse(raw);
+    const auras = Array.isArray(s.auras) ? s.auras : [];
+    const unique = new Map();
+    auras.forEach(a => {
+      if (!a?.name) return;
+      const old = unique.get(a.name);
+      if (!old || Number(a.rarity || 0) > Number(old.rarity || 0)) unique.set(a.name, a);
+    });
+    const uniqueAuras = [...unique.values()];
+    const collectiveRarity = uniqueAuras.reduce((sum,a)=>sum+Number(a.rarity||0),0);
+    const equipped = auras.find(a=>a.id===s.equippedAuraId) || auras.find(a=>a.equipped);
     await EQUINOX_SUPABASE.from('profiles').update({
-      auras_collected: Array.isArray(s.auras) ? s.auras.length : 0,
+      auras_collected: uniqueAuras.length,
+      collective_rarity: collectiveRarity,
       roll_count: Number(s.rolls || 0),
       rarest_roll_rarity: Number(s.rarestRoll || 0),
-      equipped_aura_id: s.equippedAuraId || null,
+      equipped_aura_id: equipped?.id || null,
       updated_at: new Date().toISOString()
     }).eq('id', user.id);
-  } catch {}
+
+    if (uniqueAuras.length) {
+      const rows = uniqueAuras.map(a => ({
+        user_id:user.id,
+        aura_id:String(a.id || a.name),
+        aura_name:a.name,
+        rarity:Number(a.rarity||0),
+        tier:a.tier || null,
+        rolled_at:new Date(a.rolledAt || Date.now()).toISOString(),
+        favorite:!!a.favorite,
+        auto_skip:!!a.autoSkip,
+        auto_equip:!!a.autoEquip,
+        equipped:!!a.equipped
+      }));
+      await EQUINOX_SUPABASE.from('aura_collection').upsert(rows,{onConflict:'user_id,aura_id'});
+    }
+
+    const recent = Array.isArray(s.recent) ? s.recent : [];
+    const newest = recent.find(r=>Number(r.roll)===Number(s.rolls));
+    if (newest && Number(newest.roll)>0) {
+      await EQUINOX_SUPABASE.from('roll_history').upsert({
+        user_id:user.id,
+        roll_number:Number(newest.roll),
+        aura_id:newest.name ? String(newest.name) : null,
+        aura_name:newest.name || null,
+        rarity:Number(newest.rolledRarity || newest.rarity || 0),
+        luck:Number(newest.luck || 1),
+        roll_speed:Number(newest.speed || 1),
+        biome:newest.biome || s.biome || null,
+        day_night:newest.time || s.dayNight || null,
+        breakthrough:!!newest.breakthrough,
+        bonus_roll:!!newest.bonus,
+        rolled_at:new Date().toISOString()
+      },{onConflict:'user_id,roll_number'});
+    }
+  } catch (e) {
+    console.warn('Equinox profile sync failed',e);
+  }
 }
 
 let equinoxOriginalSave = null;
