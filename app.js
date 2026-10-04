@@ -167,28 +167,155 @@ function inventoryView(){
 }
 function wireInventory(){const s=document.getElementById('invSearch'),sort=document.getElementById('invSort');if(s)s.oninput=function(){window.equinoxInventorySearch=s.value;render()};if(sort)sort.onchange=function(){window.equinoxInventorySort=sort.value;render()};}
 
+
+// ===== Canonical NPC data =====
+const QUEST_POOL=[
+["Rolling",1,"Roll 100 times",100],["Rolling",1,"Roll 250 times",250],["Rolling",1,"Roll 500 times",500],
+["Rolling",2,"Roll 1,000 times",1000],["Rolling",2,"Roll 2,500 times",2500],["Rolling",2,"Roll 5,000 times",5000],
+["Rolling",3,"Roll 10,000 times",10000],["Rolling",3,"Roll 15,000 times",15000],["Rolling",3,"Roll 25,000 times",25000],
+["Rolling",4,"Roll 50,000 times",50000],["Rolling",4,"Roll 75,000 times",75000],["Rolling",4,"Roll 100,000 times",100000],
+["Rolling",5,"Roll 250,000 times",250000],["Rolling",5,"Roll 500,000 times",500000],["Rolling",5,"Roll 1,000,000 times",1000000],
+["Aura",1,"Obtain an Epic Aura"],["Aura",1,"Obtain 3 different Epic Auras"],["Aura",1,"Obtain an Aura rarer than 1/5,000"],
+["Aura",2,"Obtain a Unique Aura"],["Aura",2,"Obtain 3 different Unique Auras"],["Aura",2,"Obtain an Aura rarer than 1/25,000"],
+["Aura",3,"Obtain a Mythic Aura"],["Aura",3,"Obtain 3 different Mythic-or-higher Auras"],["Aura",3,"Obtain an Aura rarer than 1/250,000"],
+["Aura",4,"Obtain an Exalted Aura"],["Aura",4,"Obtain an Aura rarer than 1/5,000,000"],["Aura",4,"Obtain 3 different Auras of 1/1,000,000 rarity or higher"],
+["Aura",5,"Obtain a Glorious Aura"],["Aura",5,"Obtain an Aura rarer than 1/100,000,000"],["Aura",5,"Obtain a Transcendent-or-higher Aura"],
+["Biome",1,"Spend 5 minutes in Windy"],["Biome",1,"Spend 5 minutes in Snowy"],["Biome",2,"Spend 5 minutes in Rainy"],["Biome",2,"Spend 5 minutes in Sandstorm"],
+["Biome",3,"Spend 10 minutes in Hell"],["Biome",3,"Spend 10 minutes in Starfall"],["Biome",4,"Spend 10 minutes in Heaven"],["Biome",4,"Spend 10 minutes in Corruption"],
+["Biome",5,"Spend 15 minutes in Dreamspace"],["Biome",5,"Spend 15 minutes in Glitched"],
+["Crafting",1,"Craft 1 item"],["Crafting",1,"Craft 3 items"],["Crafting",2,"Craft 5 items"],["Crafting",2,"Craft an item requiring 3 different ingredients"],
+["Crafting",3,"Craft 10 items"],["Crafting",3,"Craft an item requiring a Rare-or-higher ingredient"],["Crafting",4,"Craft 15 items"],["Crafting",4,"Craft an item requiring an Epic-or-higher ingredient"],["Crafting",5,"Craft 25 items"],["Crafting",5,"Craft an item requiring a Mythic-or-higher ingredient"],
+["Item Collection",1,"Collect 10 items",10],["Item Collection",1,"Collect 25 items",25],["Item Collection",2,"Collect 50 items",50],["Item Collection",2,"Collect 100 items",100],
+["Item Collection",3,"Collect 250 items",250],["Item Collection",3,"Collect 500 items",500],["Item Collection",4,"Collect 1,000 items",1000],["Item Collection",4,"Collect 2,500 items",2500],["Item Collection",5,"Collect 5,000 items",5000],["Item Collection",5,"Collect 10,000 items",10000],
+["Coins",1,"Collect 100 Coins",100],["Coins",1,"Collect 250 Coins",250],["Coins",2,"Collect 500 Coins",500],["Coins",2,"Collect 1,000 Coins",1000],["Coins",3,"Collect 2,500 Coins",2500],["Coins",3,"Collect 5,000 Coins",5000],["Coins",4,"Collect 10,000 Coins",10000],["Coins",4,"Collect 25,000 Coins",25000],["Coins",5,"Collect 50,000 Coins",50000],["Coins",5,"Collect 100,000 Coins",100000],
+["Gear",1,"Craft 1 Gear",1],["Gear",1,"Craft 2 Gear",2],["Gear",2,"Craft 5 Gear",5],["Gear",2,"Craft a Gear with 2 or more Advances"],["Gear",3,"Craft 10 Gear",10],["Gear",3,"Craft a Gear with 4 or more Advances"],["Gear",4,"Craft a Gear with 6 or more Advances"],["Gear",5,"Craft a Gear with 8 or more Advances"],
+["Potions",1,"Craft 1 Potion",1],["Potions",1,"Craft 3 Potions",3],["Potions",2,"Craft 5 Potions",5],["Potions",2,"Use 5 Potions",5],["Potions",3,"Craft 10 Potions",10],["Potions",3,"Use 10 Potions",10],["Potions",4,"Craft a Potion requiring a Mythic-or-higher ingredient"],["Potions",5,"Successfully enhance a Potion at the Brewing Stand"],
+["Time Played",1,"Play for 5 minutes",5],["Time Played",1,"Play for 10 minutes",10],["Time Played",2,"Play for 20 minutes",20],["Time Played",3,"Play for 30 minutes",30],["Time Played",4,"Play for 60 minutes",60],["Time Played",5,"Play for 120 minutes",120],
+["Breakthrough",1,"Get 1 Breakthrough",1],["Breakthrough",2,"Get 2 Breakthroughs",2],["Breakthrough",3,"Get 5 Breakthroughs",5],["Breakthrough",4,"Get 10 Breakthroughs",10],
+["Mixed",1,"Roll 500 times and collect 100 Coins"],["Mixed",2,"Roll 2,500 times and obtain an Epic Aura"],["Mixed",3,"Roll 10,000 times while playing in a non-Normal biome"],["Mixed",4,"Obtain a Unique-or-higher Aura while playing in a biome other than Normal"]
+];
+const QP_RANGES={1:[1,2],2:[2,4],3:[4,7],4:[7,12],5:[12,20]};
+const QUEST_MILESTONES={5:{potions:1,coins:500},10:{potions:2,coins:1000},15:{potions:3,coins:1500}};
+
+const SHOP_POOL=[
+["Potion","Fortune Potion I",100,50,75],["Potion","Haste Potion I",100,50,75],["Potion","Fortune Potion II",50,35,50],["Potion","Haste Potion II",50,35,50],["Potion","Fortune Potion III",50,25,40],["Potion","Haste Potion III",50,25,40],["Potion","Jewelry Potion",50,25,35],["Potion","Zombie Potion",20,20,30],["Potion","Rage Potion",20,20,30],["Potion","Diver Potion",20,15,25],["Potion","Fortune Potion IV",20,15,25],["Potion","Haste Potion IV",20,15,25],["Potion","Fortune-Haste Potion",20,10,20],["Potion","Overclock Potion",7,7,12],["Potion","Momentum Potion",7,5,10],["Potion","Fate Potion",7,5,10],["Potion","Gambler's Potion",7,5,10],["Potion","Frenzy Potion",2,1,3],
+["Gear","Luck Glove",100,15,25],["Gear","Lunar Device",100,15,25],["Gear","Desire Glove",100,12,20],["Gear","Solar Device",100,12,20],["Gear","Gemstone Gauntlet",100,10,18],["Gear","Frozen Gauntlet",50,10,15],["Gear","Eclipse Device",50,10,15],["Gear","Dark Matter Device",50,10,15],["Gear","Aqua Device",50,8,15],["Gear","Shining Star",50,8,12],["Gear","Jackpot Gauntlet",20,6,10],["Gear","Exo Gauntlet",20,5,10],["Gear","Windstorm Device",20,5,8],["Gear","Flesh Device",20,5,8],["Gear","Subzero Device",20,4,7],["Gear","Galactic Device",7,3,5],["Gear","Volcanic Device",7,2,4],["Gear","Exoflex Device",7,2,3],["Gear","Hologrammer",2,1,2],["Gear","Ragnaröker",0.5,1,1],
+["Item","Lucky Potion",100,75,100],["Item","Speed Potion",100,75,100],["Item","Wind Essence",100,50,75],["Item","Icicle",100,50,75],["Item","Rainy Bottle",100,50,75],["Item","Hourglass",100,50,75],["Item","Eternal Flame",50,30,50],["Item","Piece of Star",50,30,50],["Item","Feather Vial",50,30,50],["Item","Corruptaine",50,25,40],["Item","Quartz",50,25,40],["Item","Comet",20,15,25],["Item","Lunar",20,15,25],["Item","NULL?",20,10,20],["Item","Darklight Shard",20,10,20],["Item","Darklight Orb",7,3,8],["Item","Powered",7,3,8],["Item","Permafrost",7,2,6],["Item","Cursed Fragments",0.5,1,1]
+];
+const BANK_TIERS=[
+[1,1.10,50000,5000,"Basic Bank",3500,{"Gear A":2,"Gear B":2,"Rare":2,"Divinus: Angel":1}],
+[2,1.15,75000,7500,"Faster Deposits",5000,{"Gear A":3,"Gear B":3,"Divinus: Angel":2,"Gilded":2}],
+[3,1.20,125000,10000,"Coin Collection Bonus I",7500,{"Gear A":4,"Gear B":4,"DIABOLI":3,"Precious":2}],
+[4,1.25,175000,12500,"Shop Price Reduction I",10000,{"Gear A":5,"Gear B":5,"Sidereum":3,"Lost Soul":2}],
+[5,1.30,250000,15000,"Offline Coin Collection I",15000,{"Gear A":6,"Gear B":6,"Aquatic":3,"Solar":2}],
+[6,1.40,350000,20000,"Coin Collection Bonus II",25000,{"Gear A":8,"Gear B":8,"Stormal":3,"Exotic":2}],
+[7,1.50,500000,30000,"Shop Price Reduction II",40000,{"Gear A":10,"Gear B":10,"Aether":3,"Celestial":2}],
+[8,1.60,750000,40000,"Offline Coin Collection II",75000,{"Gear A":12,"Gear B":12,"Arcane":3,"Magnetic: Reverse Polarity":2}],
+[9,1.70,1000000,50000,"Coin Collection Bonus III",125000,{"Gear A":15,"Gear B":15,"Gravitational":3,"Origin":2}],
+[10,1.80,1500000,75000,"Shop Price Reduction III",250000,{"Gear A":20,"Gear B":20,"Starscourge":3,"Chromatic":2}],
+[11,1.90,2500000,100000,"Offline Coin Collection III",500000,{"Gear A":30,"Gear B":30,"Ethereal":3,"Matrix":2}],
+[12,2.00,5000000,150000,"Bank Mastery",1000000,{"Gear A":40,"Gear B":40,"Gravitational":1,"Origin":1,"Chromatic":1,"Matrix":1,"Virtual":1}]
+];
+
+const WORKSHOP_RECIPES={
+"Luck Glove":{"type":"Gear","buff":"+25% Luck","recipe":{"Rare":3,"Divinus":2,"Crystallized":1}},
+"Desire Glove":{"type":"Gear","buff":"+40% Luck","recipe":{"Rage":1,"Ruby":1,"Diaboli":1,"Bleeding":1}},
+"Lunar Device":{"type":"Gear","buff":"+15% Speed","recipe":{"Rare":1,"Divinus":1,"Lunar":1}},
+"Solar Device":{"type":"Gear","buff":"+50% Luck","recipe":{"Rare":1,"Divinus":1,"Solar":1}},
+"Gemstone Gauntlet":{"type":"Gear","buff":"+55% Luck","recipe":{"Topaz":1,"Ruby":1,"Emerald":1,"Sapphire":1,"Aquamarine":1,"Quartz":1}},
+"Frozen Gauntlet":{"type":"Gear","buff":"+150% Luck, -25% Speed","recipe":{"Glacier":1,"Permafrost":1}},
+"Eclipse Device":{"type":"Gear","buff":"+50% Luck, +15% Speed","recipe":{"Solar Device":1,"Lunar Device":1,"Eclipse":1}},
+"Dark Matter Device":{"type":"Gear","buff":"+60% Luck, +15% Speed, +5 Dark Points per biome change","recipe":{"Ink":1,"Glock":1,"Ash":1}},
+"Aqua Device":{"type":"Gear","buff":"+50% Luck, +10% Speed, +100% Speed during Rainy","recipe":{"Aquamarine":1,"Aquatic":1,"Nautilus":1}},
+"Shining Star":{"type":"Gear","buff":"+70% Luck, +20% Speed, +250% Luck during Starfall","recipe":{"Star Rider":1,"Starlight":2}},
+"Jackpot Gauntlet":{"type":"Gear","buff":"+77% Luck, +7% Speed","recipe":{"Rare":777,"Gilded":77,"Jackpot":77}},
+"Exo Gauntlet":{"type":"Gear","buff":"+100% Luck, +25% Speed","recipe":{"Gilded":3,"Precious":2,"Magnetic":2}},
+"Eclipse":{"type":"Aura","buff":"Unique Tier Alignment","recipe":{"Divinus":1,"Lunar":1,"Solar":1}},
+"Cell Asteroides":{"type":"Aura","buff":"Exalted Tier Alignment","recipe":{"Gravitational":1,"Comet":25,"Starlight":35,"Lunar":40,"Solar":40,"Magnetic":500,"Atomic":750,"Hydrogen":1000}},
+"Hyper-Chroma":{"type":"Aura","buff":"Exalted Tier Alignment","recipe":{"Chromatic":3,"Hyper-Volt":1,"Astral":1,"Ruby":30,"Topaz":25,"Emerald":25,"Sapphire":25,"Aquamarine":20,"Quartz":10}},
+"A.T.L.A.S.":{"type":"Aura","buff":"Glorious Tier Alignment","recipe":{"Atlas":1,"Overseer":1,"Fatal Error":1,"Origin":1,"Gravitational":1,"Aether":1,"Starlight":1,"Magnetic":1,"Ash":1,"Forbidden":1}},
+"Calamity of the Crimson Moon":{"type":"Aura","buff":"Challenged+ Tier Alignment","recipe":{"Fragments of the Crimson Moon":3,"Cursed Fragments":50,"Cursed Crystals":5}},
+"Master-Hand":{"type":"Aura","buff":"Transcendent Tier Alignment","recipe":{"Atlas":4,"Harnessed: Elements":15,"Velocity":100,"Hyper-Volt":50,"Hades":150,"Aquatic: Flame":200,"Rage: Brawler":600,"Copper":20000,"Rage: Heated":50000}},
+"Compass?":{"type":"Item","buff":"6 uses; toggles Isles of Luck/Limbo","recipe":{"Undefined":4,"Lunar":10,"Solar":10,"Forbidden":44}},
+"Strange Controller":{"type":"Item","buff":"45 minute cooldown; natural biome weighting; 1/5,000 Cyberspace replacement","recipe":{"Wind Essence":1,"Icicle":1,"Rainy Bottle":1,"Eternal Flame":1,"Piece of Star":1,"Corruptaine":1,"NULL?":1}},
+"Biome Randomizer":{"type":"Item","buff":"1h30m cooldown; weighted biome pool; 1/2,500 Cyberspace replacement","recipe":{"Undefined":1,"Hades":1,"Poseidon":1,"Galaxy":1,"Astral":1,"Permafrost":1,"Stormal":1,"Divinus: Guardian":1,"Strange Controller":4}},
+"Singularity Catalyst":{"type":"Item","buff":"2 hour cooldown; directly enters Singularity","recipe":{"Gargantua":1,"Sirius":2,"Orion":5,"Galaxy":5,"Comet":30}},
+"Item Collector":{"type":"Item","buff":"Automatically collects ground items; 1/20 duplicate chance except Coins","recipe":{"BOUNDED":1,"Aether":1,"Nautilus":2,"Magnetic":50,"Precious":100}}
+};
+
+const POTION_EFFECTS={
+"Lucky Potion":"+5% Luck for 10 seconds","Speed Potion":"+3% Roll Speed for 10 seconds",
+"Fortune Potion I":"+50% Luck for 5 minutes","Fortune Potion II":"+75% Luck for 5 minutes","Fortune Potion III":"+100% Luck for 5 minutes",
+"Haste Potion I":"+20% Roll Speed for 5 minutes","Haste Potion II":"+25% Roll Speed for 5 minutes","Haste Potion III":"+30% Roll Speed for 5 minutes",
+"Jewelry Potion":"+80% Luck for 3 minutes","Zombie Potion":"+150% Luck for 6 minutes","Rage Potion":"+35% Roll Speed for 10 minutes","Diver Potion":"+40% Roll Speed for 5 minutes",
+"Godly Potion — Zeus":"+200% Luck, +30% Speed for 4 hours","Godly Potion — Poseidon":"-50% Luck, +75% Speed for 4 hours","Godly Potion — Hades":"+300% Luck, -10% Speed for 4 hours",
+"Forbidden Potion I":"+70% Luck, +10% Speed for 30 minutes","Forbidden Potion II":"+325% Luck, +25% Speed for 1 hour","Forbidden Potion III":"+1,350% Luck, +75% Speed for 3 hours",
+"Warp Potion":"+2,000% Roll Speed for 2,500 rolls","Momentum Potion":"+50% Luck and +50% Speed; Speed grows with rolls","Fate Potion":"+150% Luck for 5 minutes; one qualifying roll rerolls once",
+"Gambler's Potion":"+300% Luck for 6 minutes; per-roll double/halve effect","Frenzy Potion":"+1,000% Roll Speed for 10 minutes",
+"Greed Potion I":"+2,000% Luck for 10 minutes; Curse after expiration","Greed Potion II":"+8,000% Luck for 10 minutes; Curse after expiration","Greed Potion III":"+32,000% Luck for 10 minutes; Curse after expiration","Greed Potion IV":"+128,000% Luck for 10 minutes; Curse after expiration",
+"Desperation Potion":"+5,000% Luck below 10% storage capacity, otherwise +500%","Unstable Potion":"+3,000% Luck for 5 minutes; volatile trigger",
+"Berserker Potion":"+500% Luck and +250% Speed for 5 minutes; grows with rolls","Second Chance Potion":"Rerolls the first Auto-Skipped roll once during its active period",
+"Echo Potion":"+750% Luck for 5 minutes; 50% returns after expiration","Chain Potion":"+500% Luck; consecutive non-skipped rolls increase it",
+"Reverse Potion I":"Converts 25% of final Roll Speed into Luck","Reverse Potion II":"Converts 50% of final Roll Speed into Luck","Reverse Potion III":"Converts 100% of final Roll Speed into Luck",
+"Overflow Potion I":"Converts Luck above 1,000% into Speed","Overflow Potion II":"Converts Luck above 5,000% into Speed","Overflow Potion III":"Converts Luck above 25,000% into Speed",
+"Paradox Potion":"+1,000% Luck and +500% Speed; compensating reaction","Fortune's Curse":"+5,000% Luck for 5 minutes; Curse after expiration","Echo of Fortune":"+2,000% Luck for 5 minutes; partial return after expiration",
+"Acceleration Potion":"+300% Speed for 5 minutes; roll interval improves with milestones","Chain Reaction Potion":"+1,500% Luck; rare Aura grants a stronger next roll"
+};
+
+function hourKey(){return Math.floor(Date.now()/3600000)}
+function seededRandom(seed){let x=Math.sin(seed)*10000;return x-Math.floor(x)}
+function questBoard(){
+ const h=hourKey(); const pool=QUEST_POOL.map((q,i)=>({id:i+1,type:q[0],difficulty:q[1],objective:q[2],target:q[3],_i:i}));
+ let seed=h*97+17, selected=[];
+ while(selected.length<15){seed=seededRandom(seed)*1000000;const i=Math.floor(seed)%pool.length;const q=pool[i];if(!selected.some(x=>x.id===q.id)){const range=QP_RANGES[q.difficulty];const qp=range[0]+(Math.floor(seededRandom(seed+q.id)*1000)%(range[1]-range[0]+1));selected.push({...q,qp})}}
+ return selected;
+}
+function questState(){if(!state.questState||state.questState.hour!==hourKey())state.questState={hour:hourKey(),completed:[],progress:{},qp:0,milestones:{}};return state.questState}
+function questProgress(q){const qs=questState();return qs.progress[q.id]||0}
+function completeQuest(id){const qs=questState(),q=questBoard().find(x=>x.id===id);if(!q||qs.completed.includes(id))return;qs.completed.push(id);qs.qp+=q.qp;const n=qs.completed.length;[5,10,15].forEach(m=>{if(n>=m&&!qs.milestones[m]){qs.milestones[m]=true;const r=QUEST_MILESTONES[m];addItem("Potion Gift Box",r.potions);addItem("Coins",r.coins);toast("Quest milestone "+m+" complete: +"+r.potions+" Potion Gift Box, +"+r.coins+" Coins")}});save();render()}
+function questView(){
+ const qs=questState();let rows=questBoard();const sort=state.questSort||"difficulty";rows.sort(sort==="type"?(a,b)=>a.type.localeCompare(b.type)||a.difficulty-b.difficulty:(a,b)=>a.difficulty-b.difficulty||a.type.localeCompare(b.type));
+ return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Lime · Global Quest Board</div><h1>15 Quests This Hour</h1><p class="muted">Shared hourly set • '+qs.completed.length+'/15 completed • '+qs.qp+' QP</p></div><button onclick="state.questSort=state.questSort===\'difficulty\'?\'type\':\'difficulty\';save();render()">Sort: '+(sort==="difficulty"?"Difficulty":"Type")+'</button></div><div class="quest-grid">'+rows.map(q=>'<div class="quest-card '+(qs.completed.includes(q.id)?'done':'')+'"><div><b>'+q.objective+'</b><small>'+q.type+' · Difficulty '+q.difficulty+' · '+q.qp+' QP</small></div><button '+(qs.completed.includes(q.id)?'disabled':'')+' onclick="completeQuest('+q.id+')">'+(qs.completed.includes(q.id)?'Completed':'Complete')+'</button></div>').join('')+'</div><div class="quest-milestones"><b>Hourly Milestones</b><span>5 → 1 Potion Gift Box + 500 Coins</span><span>10 → 2 Potion Gift Boxes + 1,000 Coins</span><span>15 → 3 Potion Gift Boxes + 1,500 Coins</span></div></div>';
+}
+function shopStock(){
+ const h=hourKey(); if(!state.shopState||state.shopState.hour!==h){
+   const rng=(n)=>seededRandom(h*31+n); const pick=(type,offset)=>{const pool=SHOP_POOL.filter(x=>x[0]===type);let total=pool.reduce((s,x)=>s+x[2],0),r=rng(offset)*total;for(const x of pool){r-=x[2];if(r<=0)return x}return pool[pool.length-1]};
+   const used=new Set();const out=[];[["Potion",1],["Potion",2],["Gear",3],["Gear",4],["Item",5],["Item",6]].forEach(([t,o])=>{let x,guard=0;do{x=pick(t,o+guard++);}while(used.has(x[1])&&guard<50);used.add(x[1]);out.push({type:x[0],name:x[1],stock:x[3]+Math.floor(rng(o+20)*(x[4]-x[3]+1)),initialStock:0,bought:false,weight:x[2]})});out.forEach(x=>x.initialStock=x.stock);state.shopState={hour:h,items:out};save()}return state.shopState}
+function shopPrice(name){const row=SHOP_POOL.find(x=>x[1]===name);if(!row)return 0;return Math.max(1,Math.floor((auraDef(name)?.rarity?2*auraDef(name).rarity:100)* (1-(bankShopReduction()/100))))}
+function bankShopReduction(){const b=state.bankTier||0;return b>=10?10:b>=7?6:b>=4?3:0}
+function buyShopItem(i){const shop=shopStock(),x=shop.items[i];if(!x||x.stock<=0||x.bought)return;const price=shopPrice(x.name);if((state.inventory.Coins||0)<price){toast("Need "+fmt(price)+" Coins.");return}takeItem("Coins",price);x.stock--;x.bought=true;addItem(x.name,1);save();render();toast("Bought "+x.name)}
+function shopView(){const shop=shopStock();return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Mari · Shared Hourly Shop</div><h1>Shop</h1><p class="muted">Six global items • 2 Potions • 2 Gears • 2 Ground Items • refreshes hourly</p></div></div><div class="shop-grid">'+shop.items.map((x,i)=>'<div class="shop-card"><small>'+x.type+'</small><h2>'+x.name+'</h2><div>Stock: '+(x.stock>0?x.stock:'Sold Out')+'</div><div>Price: '+fmt(shopPrice(x.name))+' Coins</div><button '+(x.stock<=0||x.bought?'disabled':'')+' onclick="buyShopItem('+i+')">'+(x.bought?'Purchased':x.stock<=0?'Sold Out':'Buy')+'</button></div>').join('')+'</div></div>'}
+function bankTierData(){return BANK_TIERS[(state.bankTier||1)-1]||BANK_TIERS[0]}
+function bankUpgrade(){const current=state.bankTier||0;if(current>=12){toast("Bank XII already mastered.");return}const next=BANK_TIERS[current];if(!next)return;for(const [item,n] of Object.entries(next[6]))if((item==="Coins"?(state.inventory.Coins||0):(state.inventory[item]||0))<n){toast("Need "+n+" × "+item+".");return}for(const [item,n] of Object.entries(next[6])){if(item==="Coins")takeItem("Coins",n);else if(item==="Gear A"||item==="Gear B")takeItem(item,n);else {for(let i=0;i<n;i++){const a=state.auras.find(x=>x.name===item&&!x.favorite&&!x.equipped);if(!a){toast("Missing "+item+".");return}state.auras=state.auras.filter(x=>x.id!==a.id)}}}state.bankTier=next[0];save();render();toast("Bank upgraded to "+next[0])}
+function bankDeposit(amount){amount=Math.floor(Number(amount));const b=bankTierData();const qs=questState();const used=state.bankDepositHour===hourKey()?state.bankDeposited||0:0;if(!amount||amount<1){toast("Enter a valid amount.");return}if(amount+used>b[3]){toast("Hourly deposit limit reached.");return}if((state.inventory.Coins||0)<amount){toast("Not enough Coins.");return}if((state.bankBalance||0)+amount>b[2]){toast("Bank capacity would be exceeded.");return}takeItem("Coins",amount);state.bankBalance=(state.bankBalance||0)+amount;state.bankDepositHour=hourKey();state.bankDeposited=used+amount;save();render();toast("Deposited "+fmt(amount)+" Coins.")}
+function bankWithdraw(){const b=bankTierData();if((state.bankBalance||0)<=0)return;if((state.bankBalance||0)<b[2]&&b[0]<12){toast("Withdrawal unlocks at Bank capacity.");return}addItem("Coins",Math.floor(state.bankBalance||0));state.bankBalance=0;save();render();toast("Bank withdrawn.")}
+function bankView(){const b=bankTierData();return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Mari · Personal Bank</div><h1>Bank '+b[0]+'</h1><p class="muted">'+b[4]+' • '+b[1].toFixed(2)+'× hourly interest</p></div><button onclick="bankUpgrade()">Upgrade</button></div><div class="bank-grid"><div class="bank-stat"><span>Stored</span><b>'+fmt(Math.floor(state.bankBalance||0))+' / '+fmt(b[2])+'</b></div><div class="bank-stat"><span>Deposit / hour</span><b>'+fmt(state.bankDeposited||0)+' / '+fmt(b[3])+'</b></div><div class="bank-stat"><span>Multiplier</span><b>'+b[1].toFixed(2)+'×</b></div></div><div class="bank-actions"><input id="depositAmount" type="number" min="1" placeholder="Coins to deposit"><button onclick="bankDeposit(document.getElementById(\'depositAmount\').value)">Deposit</button><button onclick="bankWithdraw()">Withdraw</button></div></div>'}
+function craftRecipe(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return;for(const [item,n] of Object.entries(rec.recipe)){const aura=state.auras.filter(x=>x.name===item&&!x.favorite&&!x.equipped);const inv=state.inventory[item]||0;if(aura.length+inv<n){toast("Missing "+item+" × "+n);return}}for(const [item,n] of Object.entries(rec.recipe)){let left=n;state.auras=state.auras.filter(x=>{if(left<=0)return true;if(x.name===item&&!x.favorite&&!x.equipped){left--;return false}return true});if(left)takeItem(item,left)}if(rec.type==="Aura"){const d=auraDef(name);state.auras.push({id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),name,rarity:d?d.rarity:0,tier:d?d.computedTier:rec.buff,rolledAt:Date.now(),favorite:false,autoSkip:false,autoEquip:false,equipped:false})}else addItem(name,1);save();render();toast("Crafted "+name)}
+function workshopView(){const names=Object.keys(WORKSHOP_RECIPES);return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Jake · Workshop</div><h1>Crafting</h1><p class="muted">Favorited or equipped Auras cannot be consumed. Recipes permanently consume ingredients.</p></div></div><div class="recipe-grid">'+names.map(name=>{const r=WORKSHOP_RECIPES[name];return '<div class="recipe-card"><small>'+r.type+'</small><h2>'+name+'</h2><p>'+r.buff+'</p><div>'+Object.entries(r.recipe).map(([k,v])=>'<span>'+v+' × '+k+'</span>').join('')+'</div><button onclick="craftRecipe('+JSON.stringify(name).replace(/</g,'&lt;')+')">Craft</button></div>'}).join('')+'</div></div>'}
+function cauldronView(){const names=Object.keys(POTION_EFFECTS);return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Stella · Cauldron</div><h1>Potions</h1><p class="muted">Timed and special Potions use the canonical Potion rules. Curse duration is 10× active duration.</p></div></div><div class="potion-grid">'+names.map(name=>'<div class="potion-card"><small>Potion</small><h2>'+name+'</h2><p>'+POTION_EFFECTS[name]+'</p><button onclick="addItem('+JSON.stringify(name).replace(/</g,'&lt;')+',1);save();render();toast(\'Added 1 '+name+' for prototype testing.\')">Use / Test</button></div>').join('')+'</div></div>'}
+const JESTER_POOL=["Lucky Potion","Speed Potion","Fortune Potion I","Fortune Potion II","Fortune Potion III","Fortune Potion IV","Fortune Potion V","Fortune Potion VI","Haste Potion I","Haste Potion II","Haste Potion III","Haste Potion IV","Haste Potion V","Haste Potion VI","Jewelry Potion","Zombie Potion","Rage Potion","Diver Potion","Godly Potion — Zeus","Godly Potion — Poseidon","Godly Potion — Hades","Forbidden Potion I","Forbidden Potion II","Forbidden Potion III","Warp Potion","Potion of Bound","Heavenly Potion I","Heavenly Potion II","Godlike Potion","Oblivion Potion","Red Moon Potion I","Red Moon Potion II","Fortune-Haste Potion","Overclock Potion","Momentum Potion","Fate Potion","Gambler's Potion","Frenzy Potion","Greed Potion I","Greed Potion II","Greed Potion III","Greed Potion IV","Desperation Potion","Unstable Potion","Berserker Potion","Second Chance Potion","Echo Potion","Chain Potion","Reverse Potion I","Reverse Potion II","Reverse Potion III","Overflow Potion I","Overflow Potion II","Overflow Potion III","Paradox Potion","Fortune's Curse","Echo of Fortune","Acceleration Potion","Chain Reaction Potion"];
+function jesterRoll(){const luck=Math.max(0,totalLuck()),speed=Math.max(0,state.speed*100),coin=Object.entries(state.inventory).reduce((s,[n,c])=>s+(n==="Coins"?c:0),0);const L=luck/(luck+100),S=speed/(speed+100),C=coin/(coin+1000),influence=(L+S+C)/3;const weights=JESTER_POOL.map((name,i)=>({name,weight:(1+(i%7)/10)*(1+influence*(0.5+(i%5)/10))}));const total=weights.reduce((s,x)=>s+x.weight,0);let r=Math.random()*total;let pick=weights[weights.length-1];for(const x of weights){r-=x.weight;if(r<=0){pick=x;break}}addItem(pick.name,1);save();render();toast("Jester awarded: "+pick.name)}
+function jesterView(){return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Jester · Gamble</div><h1>The Gamble</h1><p class="muted">Luck, Roll Speed, and Coin Value each contribute one-third of Jester influence. Every reward retains a nonzero chance.</p></div></div><div class="jester-panel"><div class="jester-stat"><span>Luck Score</span><b>'+((Math.max(0,totalLuck())/(Math.max(0,totalLuck())+100))*100).toFixed(2)+'%</b></div><div class="jester-stat"><span>Speed Score</span><b>'+((Math.max(0,state.speed*100)/(Math.max(0,state.speed*100)+100))*100).toFixed(2)+'%</b></div><div class="jester-stat"><span>Coin Value Score</span><b>'+(((state.inventory.Coins||0)/((state.inventory.Coins||0)+1000))*100).toFixed(2)+'%</b></div><button class="gamble-btn" onclick="jesterRoll()">Gamble</button></div><p class="muted">Special outcomes are handled separately by the canonical Potion systems: Oblivion, Red Moon I, and Red Moon II can produce their fixed-rarity outcomes.</p></div>}
+
 const NPCS={
- Jake:{role:'Workshop',icon:'🔨',desc:'Craft Auras, Gears, biome-changing items, and other special items.',lore:'Jake is one of the original players of Equinox. His hammer is the foundation of the Workshop.'},
- Stella:{role:'Cauldron',icon:'✦',desc:'Craft Potions from Auras and other ingredients.',lore:'Stella arrived in a flash of light and built her Cauldron from stardust. She keeps Jake’s original hammer in her pocket and never uses it.'},
- Lime:{role:'Quests',icon:'◆',desc:'Complete the global hourly quest board and earn Quest Points.',lore:'Lime does not like questions. Ask her anything about the quests and you will receive the same answer: “Ask my boss.”'},
- Jester:{role:'Gamble',icon:'♠',desc:'Use the deterministic Gamble system for unusual Potion and item outcomes.',lore:'Jester never speaks. He is wealthy, silent, and associated with the higher-value items from Mari’s Shop.'},
- Mari:{role:'Shop & Bank',icon:'▣',desc:'Buy hourly-stock items with Coins and progress the Bank.',lore:'Mari began as a player and became the keeper of Coinage, the Shop, and the Bank.'}
+ Jake:{role:'Workshop',icon:'🔨',desc:'Craft Auras, Gears, biome-changing items, and other special items.',lore:'Jake is one of the original players. His Workshop turns Auras and Items into Gear and other crafted content.'},
+ Stella:{role:'Cauldron',icon:'✦',desc:'Craft and test Potions using the canonical Potion system.',lore:'Stella is the embodiment of shooting stars. She built the Cauldron from stardust and keeps Jake’s original hammer in her pocket.'},
+ Lime:{role:'Quests',icon:'◆',desc:'Complete the globally shared hourly quest board.',lore:'Lime dislikes questions. Her usual answer remains: “Ask my boss.”'},
+ Jester:{role:'Gamble',icon:'♠',desc:'Use Luck, Roll Speed, and Coin Value to influence the Gamble.',lore:'Jester never speaks. His curse took his voice, but not his amusement.'},
+ Mari:{role:'Shop & Bank',icon:'▣',desc:'Buy from the shared hourly Shop or manage your personal Bank.',lore:'Mari became the keeper of Coinage, the Shop, and the Bank.'}
 };
 function npcView(){
- if(state.npcTab!=='home')return npcDetail(state.npcTab);
- return '<div class="npc-page"><div class="panel npc-hero"><div class="section-title">NPCs</div><h1>The Isles’ Progression Systems</h1><p class="muted">Five NPCs control five different progression paths. Choose one to open its system.</p></div><div class="npc-grid">'+Object.keys(NPCS).map(function(name){const n=NPCS[name];return '<button class="npc-card" onclick="npcTab(\''+name+'\')"><span class="npc-icon">'+n.icon+'</span><div><h2>'+name+'</h2><small>'+n.role+'</small><p>'+n.desc+'</p></div></button>'}).join('')+'</div></div>';
+ if(state.npcTab==='Lime')return questView();
+ if(state.npcTab==='MariShop')return shopView();
+ if(state.npcTab==='MariBank')return bankView();
+ if(state.npcTab==='Mari')return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Mari · Shop & Bank</div><h1>Coinage</h1><p class="muted">The Shop is global/shared. The Bank is personal.</p></div></div><div class="npc-action-grid"><div><h2>Hourly Shop</h2><p>Six shared items refresh every global hour. Stock is consumed globally.</p><button onclick="npcTab(\'MariShop\')">Open Shop</button></div><div><h2>Personal Bank</h2><p>Bank I–XII compounds hourly and continues offline.</p><button onclick="npcTab(\'MariBank\')">Open Bank</button></div></div></div>';
+ if(state.npcTab==='Jake')return workshopView();
+ if(state.npcTab==='Stella')return cauldronView();
+ if(state.npcTab==='Jester')return jesterView();
+ if(state.npcTab==='home'){}
+ return '<div class="npc-page"><div class="panel npc-hero"><div class="section-title">NPCs</div><h1>The Isles’ Progression Systems</h1><p class="muted">Choose a system. Global systems are explicitly separated from personal progression.</p></div><div class="npc-grid">'+Object.keys(NPCS).map(function(name){const n=NPCS[name];return '<button class="npc-card" onclick="npcTab(\''+name+'\')"><span class="npc-icon">'+n.icon+'</span><div><h2>'+name+'</h2><small>'+n.role+'</small><p>'+n.desc+'</p></div></button>'}).join('')+'</div></div>';
 }
-function npcDetail(name){
- const n=NPCS[name];
- let body='';
- if(name==='Lime')body='<div class="quest-preview"><b>Hourly Quest Board</b><p>15 globally shared quests are generated each hour from the 100-quest pool. You can complete all 15.</p><div class="quest-ranges"><span>I · 1–2 QP</span><span>II · 2–4 QP</span><span>III · 4–7 QP</span><span>IV · 7–12 QP</span><span>V · 12–20 QP</span></div><button onclick="toast(\'Quest board system is next to be wired from the canonical 100-quest pool.\')">Open Quest Board</button></div>';
- if(name==='Mari')body='<div class="npc-action-grid"><div><b>Shop</b><p>Hourly global stock, purchased with Coins.</p><button onclick="toast(\'Mari Shop mechanics are queued for the next NPC pass.\')">Open Shop</button></div><div><b>Bank</b><p>Storage and withdrawal progression built around Gear A and Gear B.</p><button onclick="toast(\'Bank mechanics are queued for the next NPC pass.\')">Open Bank</button></div></div>';
- if(name==='Jake')body='<div class="npc-action-grid"><div><b>Workshop</b><p>Crafting permanently consumes recipe ingredients. Favorited Auras cannot be used until Unfavorited.</p><button onclick="toast(\'Workshop recipes will be wired from the canonical recipe tables next.\')">Open Workshop</button></div></div>';
- if(name==='Stella')body='<div class="npc-action-grid"><div><b>Cauldron</b><p>Craft Timed and Rolled Potions, including Luck and Speed Advances.</p><button onclick="toast(\'Cauldron recipes will be wired from the canonical potion tables next.\')">Open Cauldron</button></div></div>';
- if(name==='Jester')body='<div class="npc-action-grid"><div><b>Gamble</b><p>Jester’s Gamble uses the canonical stat-driven normalization and special-outcome rules.</p><button onclick="toast(\'Jester’s canonical Gamble system is queued for implementation.\')">Open Gamble</button></div></div>';
- return '<div class="npc-page"><button class="back-btn" onclick="npcTab(\'home\')">← All NPCs</button><div class="panel npc-detail"><div class="npc-title"><span class="npc-icon">'+n.icon+'</span><div><div class="section-title">'+n.role+'</div><h1>'+name+'</h1></div></div><p class="npc-lore">'+n.lore+'</p>'+body+'</div></div>';
-}
-
+function npcDetailUnused(){}
 function rollView(){
  const recent=state.recent.slice(0,5).map(function(r,i){return '<div class="recent-row"><span><b>#'+fmt(r.roll||state.rolls-i)+'</b> '+r.name+(r.stored===false?' <small>(not stored)</small>':'')+'</span><small>1/'+fmt(r.rolledRarity||r.rarity)+(r.breakthrough?' • BT':'')+'</small></div>'}).join('')||'<div class="empty">No rolls yet.</div>';
  const spawns=state.spawns.length?state.spawns.map(function(s){return '<button class="spawn" style="left:'+s.x+'%;top:'+s.y+'%" onclick="collect(\''+s.id+'\')">'+s.name+'</button>'}).join(''):'<div class="empty">Personal ground items will appear here.</div>';
