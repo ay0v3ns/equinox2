@@ -87,13 +87,14 @@ async function equinoxHydrate() {
     return;
   }
   const { data: cloudSave } = await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id', uid).maybeSingle();
-  if (cloudSave?.save_data && typeof cloudSave.save_data === 'object' && Object.keys(cloudSave.save_data).length) {
+  const hasCloudSave = cloudSave?.save_data && typeof cloudSave.save_data === 'object' && Object.keys(cloudSave.save_data).length;
+  if (hasCloudSave) {
     localStorage.setItem('equinox-save-v1', JSON.stringify(cloudSave.save_data));
   }
   localStorage.setItem('equinox-user', JSON.stringify({id:uid,email:session.user.email,username:profile?.username || session.user.user_metadata?.username || ''}));
   hideAuthGate();
   if (typeof window.render === 'function') window.render();
-  equinoxSyncProfile();
+  if (hasCloudSave) await equinoxSyncProfile(); else await equinoxCloudSave();
 }
 
 async function equinoxSyncProfile() {
