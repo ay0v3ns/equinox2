@@ -215,9 +215,9 @@
     window.globalView=function(){
       const html=String(original.apply(this,arguments)),s=state.settings;
       let out=html;
-      if(!s.globalChatDisplay)out=out.replace(/<div class="panel chat-panel">[\\s\\S]*?<\\/div><p class="muted global-note">/,'<p class="muted global-note">');
-      if(!s.globalLeaderboardDisplay)out=out.replace(/<div class="global-boards">[\\s\\S]*?<\\/div><div class="panel online-panel">/,'<div class="panel online-panel">');
-      if(!s.onlineLeaderboardDisplay)out=out.replace(/<div class="panel online-panel">[\\s\\S]*?<\\/div><div class="panel chat-panel">/,'<div class="panel chat-panel">');
+      if(!s.globalChatDisplay){const a=out.indexOf('<div class="panel chat-panel">');const b=out.indexOf('<p class="muted global-note">',a);if(a>=0&&b>=0)out=out.slice(0,a)+out.slice(b);}
+      if(!s.globalLeaderboardDisplay){const a=out.indexOf('<div class="global-boards">');const b=out.indexOf('<div class="panel online-panel">',a);if(a>=0&&b>=0)out=out.slice(0,a)+out.slice(b);}
+      if(!s.onlineLeaderboardDisplay){const a=out.indexOf('<div class="panel online-panel">');const b=out.indexOf('<div class="panel chat-panel">',a);if(a>=0&&b>=0)out=out.slice(0,a)+out.slice(b);}
       return out;
     };
   }
