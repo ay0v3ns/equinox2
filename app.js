@@ -197,11 +197,15 @@ function conditionTargets(a){
 }
 function matchesTarget(target){
  if(target==='Limbo')return state.dimension==='Limbo';
+ const potionTarget=target.replace(/ effect$/i,'').trim();
+ if((state.activePotions||[]).some(function(p){return p.name===potionTarget}))return true;
  return state.biome===target;
 }
 function contextMatches(a){
  const c=a.condition||'';
  if(!c)return true;
+ const bt=c.match(/^(.+?)\s+—\s+Breakthrough\s+1\//i);
+ if(bt)return state.dimension!=='Limbo'&&state.biome===bt[1].trim();
  if(/craftable via|crafted via|special crafting/i.test(c))return false;
  if(/during Nighttime|Exclusive to Nighttime/i.test(c))return state.dayNight==='Night';
  if(/during Daytime|Exclusive to Daytime/i.test(c))return state.dayNight==='Day';
