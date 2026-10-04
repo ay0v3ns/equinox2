@@ -5,7 +5,8 @@ const ITEMS=['Coins','Lucky Potion','Speed Potion','Gear A','Gear B'];
 
 const defaults={
  rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
- dimension:'Isles of Luck',dayNight:'Day',activeTab:'Roll',auraCapacity:20,
+ dimension:'Isles of Luck',dayNight:'Day',biomeStartedAt:Date.now(),dayNightStartedAt:Date.now(),nextRollAt:0,
+ activeTab:'Roll',auraCapacity:20,
  recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
  automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,reducedMotion:false,autoSave:true},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
@@ -16,6 +17,10 @@ function load(){
   const raw=JSON.parse(localStorage.getItem(KEY)||'{}');
   const next=Object.assign({},defaults,raw);
   next.settings=Object.assign({},defaults.settings,raw.settings||{});
+  const now=Date.now();
+  next.biomeStartedAt=Number(next.biomeStartedAt)||now;
+  next.dayNightStartedAt=Number(next.dayNightStartedAt)||now;
+  next.nextRollAt=Number(next.nextRollAt)||0;
   // Migrate the original grouped Aura object into individual Aura inventory objects.
   if(!Array.isArray(next.auras)){
    const grouped=next.auras||{};
@@ -41,6 +46,8 @@ function potionLuck(){return (state.activePotions||[]).reduce(function(sum,p){re
 function potionSpeed(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0)}
 function totalLuck(){return ((1+state.basicLuck+gearLuck()+potionLuck())+state.specialLuck)*state.finalMultiplier}
 function totalSpeed(){return Math.max(0.01,state.speed*(1+gearSpeed()+potionSpeed()))}
+function effectiveRollSpeed(){return Math.max(0.01,totalSpeed()*(state.autoRoll?0.5:1))}
+function rollCooldownMs(){return Math.max(50,Math.floor(3200/effectiveRollSpeed()))}
 function toast(msg){ if(!settingEnabled('notifications'))return;const e=document.createElement('div');e.className='notice';e.textContent=msg;document.getElementById('notices').appendChild(e);setTimeout(function(){e.remove()},3200)}
 function auraDef(name){return AURAS.find(function(a){return a.name===name})}
 function auraSlots(){return state.auras.length}
@@ -172,40 +179,83 @@ function tutorialView(){
  if(t.phase===1)return '<div class="tutorial-overlay"><div class="tutorial-card"><div class="section-title">Tutorial · Part I</div><h1>Welcome to Equinox</h1><p>Roll exactly 10 times to learn the core loop.</p><div class="tutorial-progress">'+t.rolls+' / 10 Rolls</div><p class="muted">Your normal Roll… button remains the way forward. Auto Skip does not bypass the ten-roll requirement.</p><button onclick="tutorialSkip()">Skip Tutorial → Auto Roll</button></div></div>';
  return '<div class="tutorial-overlay"><div class="tutorial-card"><div class="section-title">Tutorial · Part II</div><h1>Meet the NPCs</h1><p>Use the NPC systems to craft a Luck Glove, craft and use a Haste Potion I, and complete one Lime quest.</p><div class="tutorial-tasks"><span class="'+(t.part2.glove?'done':'')+'">🔨 Luck Glove</span><span class="'+(t.part2.haste?'done':'')+'">✦ Haste Potion I</span><span class="'+(t.part2.quest?'done':'')+'">◆ 1 Lime Quest</span></div><p class="muted">Completion grants 2 Tutorial Potion I, 1 Tutorial Potion II, and Auto Roll.</p></div></div>';
 }
-function roll(){
- rollPotionHook();
- state.rolls++;
- tutorialRollHook();
- const bonus=state.rolls%10===0?2:1;
- const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
- const eligible=AURAS.filter(function(a){
-   if(a.crafted||a.exclusive)return false;
-   return true;
- }).map(function(a){
-   const breakthrough=!!(a.nativeBiome&&a.nativeBiome!==state.biome&&BREAK[state.biome]>1);
-   const listValue=Math.max(1,Math.floor((a.rarity*(breakthrough?BREAK[state.biome]:1))/finalLuck));
-   return {a:a,breakthrough:breakthrough,listValue:listValue};
- }).filter(function(x){return x.listValue>1});
- let chosen=null;
- for(let i=0;i<eligible.length;i++){
-   if(Math.floor(Math.random()*eligible[i].listValue)+1===1){chosen=eligible[i];break}
+function conditionDenominator(a){
+ const c=a.condition||'';
+ const m=c.match(/1 in ([\\d,]+)/i);
+ return m?Number(m[1].replace(/,/g,'')):null;
+}
+function contextMatches(a){
+ const c=a.condition||'';
+ if(!c)return true;
+ if(/craftable via/i.test(c)||/crafted via/i.test(c))return false;
+ if(/Exclusive to (The )?Limbo biome|Exclusive to Limbo/i.test(c))return state.dimension==='Limbo';
+ if(/Exclusive to Nighttime/i.test(c)||/during Nighttime/i.test(c))return state.dayNight==='Night';
+ if(/Exclusive to Daytime/i.test(c)||/during Daytime/i.test(c))return state.dayNight==='Day';
+ const exclusive=c.match(/Exclusive to (?:the )?(.+?)(?: biome| Weather)?$/i);
+ if(exclusive){
+   const target=exclusive[1].trim();
+   const aliases={'Rainy Weather':'Rainy','The Limbo biome':'Limbo'};
+   const wanted=aliases[target]||target;
+   if(wanted==='Nighttime')return state.dayNight==='Night';
+   if(wanted==='Daytime')return state.dayNight==='Day';
+   if(wanted==='Limbo')return state.dimension==='Limbo';
+   return state.biome===wanted;
  }
- if(!chosen)chosen=eligible[eligible.length-1]||{a:AURAS[0],breakthrough:false};
- const result=chosen.a;
- const ast=achievementState().stats;if(chosen.breakthrough){ast.breakthrough=true;ast.breakthroughBiomes=ast.breakthroughBiomes||[];if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;}
- questAuraHook(result,chosen.breakthrough);
+ const inside=c.match(/inside (.+)$/i);
+ if(inside){
+   const targets=inside[1].split(/\\s+or\\s+/i).map(x=>x.trim().replace(/\\s+biome$/i,''));
+   return targets.some(function(t){return t==='Limbo'?state.dimension==='Limbo':state.biome===t});
+ }
+ const bt=c.match(/^(.+?)\\s+—\\s+Breakthrough\\s+1\\//i);
+ if(bt)return state.biome===bt[1].trim();
+ return true;
+}
+function isNativeContext(a){
+ if(!a.nativeBiome)return false;
+ const n=a.nativeBiome.replace(/^The /,'').replace(/ biome$/i,'').trim();
+ return n==='Limbo'?state.dimension==='Limbo':state.biome===n;
+}
+function isAuraEligible(a){
+ if(a.crafted)return false;
+ if(a.exclusive && !contextMatches(a))return false;
+ if(!contextMatches(a))return false;
+ if(a.nativeBiome){
+   const native=isNativeContext(a);
+   if(!native){
+     if(a.exclusive||a.fixed)return false;
+     if(!BREAK[state.biome]||BREAK[state.biome]<=1)return false;
+   }
+ }
+ return true;
+}
+function auraRollData(a){
+ const c=a.condition||'';
+ const explicit=conditionDenominator(a);
+ const native=isNativeContext(a);
+ const breakthroughOnly=/—\\s*Breakthrough\\s+1\\//i.test(c);
+ let denominator=a.rarity;
+ let breakthrough=false;
+ if(explicit && (native || breakthroughOnly || /during (Nighttime|Daytime)/i.test(c))){
+   denominator=explicit;
+   breakthrough=breakthroughOnly;
+ }else if(breakthroughOnly){
+   denominator=explicit||a.rarity;
+   breakthrough=true;
+ }else if(a.nativeBiome && !native){
+   denominator=Math.floor(a.rarity*(BREAK[state.biome]||1));
+   breakthrough=true;
+ }
+ return {denominator:Math.max(1,Math.floor(denominator)),breakthrough:breakthrough};
+}
+function addRolledAura(result,rolledRarity,breakthrough,finalLuck,bonus){
  const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
  const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
- const rolledRarity=result.rarity*(chosen.breakthrough?BREAK[state.biome]:1); state.rarestRoll=Math.max(state.rarestRoll||0,rolledRarity); state.recent.unshift({roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:rolledRarity,breakthrough:chosen.breakthrough,bonus:bonus>1,luck:finalLuck,speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false});
+ state.rarestRoll=Math.max(state.rarestRoll||0,rolledRarity);
+ state.recent.unshift({roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:rolledRarity,breakthrough:breakthrough,bonus:bonus>1,luck:finalLuck,speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false});
  state.recent=state.recent.slice(0,1000000);
-
  if(autoSkip){
-   save();render();
-   toast('Auto Skip: '+result.name);
-   setTimeout(roll,0);
-   return;
+   save();render();toast('Auto Skip: '+result.name);return false;
  }
-
  if(auraSlots()>=state.auraCapacity){
    const candidates=state.auras.filter(function(a){return !a.favorite}).sort(function(a,b){
      if(a.rarity!==b.rarity)return a.rarity-b.rarity;
@@ -214,29 +264,64 @@ function roll(){
    if(candidates.length){
      const victim=candidates[0];
      const replace=!settingEnabled('confirmAuraRemoval')||confirm('Aura Storage is full. Remove '+victim.name+' (1/'+fmt(victim.rarity)+') and keep '+result.name+'?');
-     if(replace){
-       state.auras=state.auras.filter(function(a){return a.id!==victim.id});
-     }else{
-       save();render();toast('Skipped '+result.name+' — storage unchanged.');return;
-     }
+     if(replace)state.auras=state.auras.filter(function(a){return a.id!==victim.id});
+     else{save();render();toast('Skipped '+result.name+' — storage unchanged.');return false;}
    }else{
-     save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return;
+     save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return false;
    }
  }
- const obj={
-   id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
-   name:result.name,rarity:result.rarity,tier:result.tier,rolledAt:Date.now(),
-   favorite:false,autoSkip:false,autoEquip:false,equipped:false
- };
+ const obj={id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),name:result.name,rarity:result.rarity,tier:result.tier,rolledAt:Date.now(),favorite:false,autoSkip:false,autoEquip:false,equipped:false};
  state.auras.push(obj);
  state.recent[0].stored=true;
+ const ast=achievementState().stats;
+ if(breakthrough){ast.breakthrough=true;ast.breakthroughBiomes=ast.breakthroughBiomes||[];if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;}
+ questAuraHook(result,breakthrough);
  achievementCheck();
- if(autoEquip){
-   state.auras.forEach(function(a){a.equipped=false});
-   obj.equipped=true;state.equippedAuraId=obj.id;
- }
+ if(autoEquip){state.auras.forEach(function(a){a.equipped=false});obj.equipped=true;state.equippedAuraId=obj.id;}
  save();render();
- toast(chosen.breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: 2x Luck':'Roll complete'));
+ toast(breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: 2x Luck':'Roll complete'));
+ return true;
+}
+function roll(){
+ const now=Date.now();
+ if(now<state.nextRollAt)return false;
+ rollPotionHook();
+ state.rolls++;
+ tutorialRollHook();
+ const bonus=state.rolls%10===0?2:1;
+ const finalLuck=(((1+state.basicLuck+gearLuck())*bonus)+(state.specialLuck+potionLuck()))*state.finalMultiplier;
+ const eligible=AURAS.filter(isAuraEligible).map(function(a){
+   const d=auraRollData(a);
+   return {a:a,breakthrough:d.breakthrough,listValue:a.fixed?d.denominator:Math.max(1,Math.floor(d.denominator/finalLuck)),rolledRarity:d.denominator};
+ }).filter(function(x){
+   if(x.a.fixed)return true;
+   return x.listValue>1;
+ }).sort(function(x,y){return y.rolledRarity-x.rolledRarity});
+ let chosen=null;
+ const fixed=eligible.filter(function(x){return x.a.fixed});
+ for(let i=0;i<fixed.length;i++){
+   if(Math.floor(Math.random()*fixed[i].listValue)+1===1){chosen=fixed[i];break;}
+ }
+ if(!chosen){
+   const ordinary=eligible.filter(function(x){return !x.a.fixed});
+   for(let i=0;i<ordinary.length;i++){
+     if(Math.floor(Math.random()*ordinary[i].listValue)+1===1){chosen=ordinary[i];break;}
+   }
+   if(!chosen){
+     const fallback=ordinary.find(function(x){return x.listValue===1});
+     if(fallback)chosen=fallback;
+   }
+ }
+ if(!chosen){
+   state.nextRollAt=now+rollCooldownMs();
+   save();render();toast('No eligible Aura selected.');return false;
+ }
+ state.nextRollAt=now+rollCooldownMs();
+ const stored=addRolledAura(chosen.a,chosen.rolledRarity,chosen.breakthrough,finalLuck,bonus);
+ if(!stored && chosen.a && state.auras.some(function(a){return a.name===chosen.a.name&&a.autoSkip})){
+   state.nextRollAt=Date.now()+rollCooldownMs();
+ }
+ return true;
 }
 
 function toggleFavorite(id){
@@ -282,7 +367,68 @@ function questItemHook(itemName){const qs=questState();questBoard().forEach(func
 function questRollHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Rolling')qs.progress[q.id]=Math.min(q.target||Infinity,state.rolls);});save()}
 function questAuraHook(result,breakthrough){const qs=questState();questBoard().forEach(function(q){if(q.type==='Aura')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Breakthrough'&&breakthrough)qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
 
-function maybeSpawn(){tickPotions();if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){takeItem('Coins',1);roll()}else if(state.autoRoll&&!(state.inventory.Coins>0)){state.autoRoll=false;save();toast('Auto Roll stopped: no Coins remaining.')}if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
+const BIOME_RULES={
+ Windy:500,Snowy:600,Rainy:750,Sandstorm:3000,Hell:6666,Starfall:7500,Heaven:7777,Corruption:9000,Null:13333,
+ Dreamspace:150000,'Crimson Moon':75000,Glitched:30000,Cloudy:650,Downpour:1500,Oceanic:11000
+};
+const BIOME_BREAKTHROUGH={
+ Cyberspace:2,Windy:3,Snowy:3,Rainy:4,Sandstorm:4,Starfall:5,Heaven:5,Corruption:5,Singularity:5,Hell:6,Dreamspace:7,'Crimson Moon':8,Glitched:10,Null:1000,Cloudy:3,Downpour:4,Oceanic:50
+};
+function setBiome(name,reason){
+ const old=state.biome;
+ state.biome=name;
+ state.biomeStartedAt=Date.now();
+ if(old!==name){
+   toast(reason==='natural'?'Biome spawned: '+name:'Biome changed: '+name);
+   achievementState().stats.biomesSeen=achievementState().stats.biomesSeen||[];
+   if(!achievementState().stats.biomesSeen.includes(name))achievementState().stats.biomesSeen.push(name);
+ }
+ save();render();
+}
+function naturalBiomeCheck(seconds){
+ if(state.biome!=='Normal'||state.dimension==='Limbo')return;
+ const successes=[];
+ Object.keys(BIOME_RULES).forEach(function(name){
+   const d=BIOME_RULES[name];
+   const p=1-Math.pow(1-1/d,Math.max(1,seconds));
+   if(Math.random()<p)successes.push(name);
+ });
+ if(successes.length)setBiome(successes[Math.floor(Math.random()*successes.length)],'natural');
+}
+function updateWorldClock(){
+ const now=Date.now();
+ if(!state.biomeStartedAt)state.biomeStartedAt=now;
+ if(!state.dayNightStartedAt)state.dayNightStartedAt=now;
+ const biomeElapsed=now-state.biomeStartedAt;
+ if(state.biome!=='Normal'&&biomeElapsed>=360000){
+   setBiome('Normal','natural');
+ }
+ const dayElapsed=now-state.dayNightStartedAt;
+ if(dayElapsed>=1200000){
+   const flips=Math.floor(dayElapsed/1200000);
+   if(flips%2===1)state.dayNight=state.dayNight==='Day'?'Night':'Day';
+   state.dayNightStartedAt+=flips*1200000;
+   toast('Time changed to '+state.dayNight);
+ }
+ if(state.biome==='Normal'&&now-(state.lastWorldCheck||now)>=1000){
+   const seconds=Math.min(60,Math.floor((now-(state.lastWorldCheck||now))/1000));
+   state.lastWorldCheck=now;
+   naturalBiomeCheck(seconds);
+ }else if(!state.lastWorldCheck)state.lastWorldCheck=now;
+}
+function maybeSpawn(){
+ tickPotions();
+ updateWorldClock();
+ const now=Date.now();
+ if(state.autoRoll&&tutorialState().phase>=3&&state.inventory.Coins>0&&now>=state.nextRollAt){
+   takeItem('Coins',1);
+   if(!roll())addItem('Coins',1);
+ }else if(state.autoRoll&&!(state.inventory.Coins>0)){
+   state.autoRoll=false;save();toast('Auto Roll stopped: no Coins remaining.');
+ }
+ if(!state.lastSpawn){state.lastSpawn=now;save();return}
+ if(now-state.lastSpawn>=60000)spawnItems();
+}
 
 function tab(name){
  if(!['Roll','Inventory','NPCs','Global','Achievements','Settings'].includes(name)){return}
@@ -494,5 +640,5 @@ function render(){
  document.getElementById('app').innerHTML='<div class="shell"><header class="topbar"><div class="logo">EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls)+'</b></span><span>Luck <b>'+totalLuck().toFixed(2)+'x</b></span><span>Speed <b>'+totalSpeed().toFixed(2)+'x</b></span></div></header><div class="layout"><nav class="tabs"><button class="tab '+(active==='Roll'?'active':'')+'" onclick="tab(\'Roll\')">◉ Roll</button><button class="tab '+(active==='Inventory'?'active':'')+'" onclick="tab(\'Inventory\')">▣ Inventory</button><button class="tab '+(active==='NPCs'?'active':'')+'" onclick="tab(\'NPCs\')">♙ NPCs</button><button class="tab" onclick="tab(\'Global\')">◎ Global</button><button class="tab" onclick="tab(\'Settings\')">⚙ Settings</button><button class="tab" onclick="tab(\'Achievements\')">★ Achievements</button></nav><main>'+mainContent+'</main><aside class="side"><div class="section-title">World State</div><div class="info-list"><div class="info"><span>Biome</span><b>'+state.biome+'</b></div><div class="info"><span>Time</span><b>'+state.dayNight+'</b></div><div class="info"><span>Dimension</span><b>'+state.dimension+'</b></div><div class="info"><span>Total Rolls</span><b>'+fmt(state.rolls)+'</b></div></div><div class="section-title" style="margin-top:24px">Inventory Preview</div><div class="info-list">'+invPreview()+'</div></aside></div><footer class="footer">Equinox • '+active+' tab • Progress saved locally in this prototype.</footer><div id="notices" class="notice-stack"></div></div>';
  if(active==='Inventory')wireInventory(); document.documentElement.classList.toggle('reduced-motion',!!(state.settings&&state.settings.reducedMotion)); if(active==='Roll'&&tutorialState().phase===1)document.getElementById('app').insertAdjacentHTML('beforeend',tutorialView()); if(tutorialState().phase===2&&active!=='Roll')document.querySelector('main').insertAdjacentHTML('afterbegin',tutorialView());
 }
-setInterval(maybeSpawn,1000);
+setInterval(maybeSpawn,100);
 render();
