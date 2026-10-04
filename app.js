@@ -191,7 +191,7 @@ function contextMatches(a){
  if(/Exclusive to (The )?Limbo biome|Exclusive to Limbo/i.test(c))return state.dimension==='Limbo';
  if(/Exclusive to Nighttime/i.test(c)||/during Nighttime/i.test(c))return state.dayNight==='Night';
  if(/Exclusive to Daytime/i.test(c)||/during Daytime/i.test(c))return state.dayNight==='Day';
- const exclusive=c.match(/Exclusive to (?:the )?(.+?)(?: biome| Weather)?$/i);
+ const exclusive=c.match(/Exclusive to (?:the )?(.+?)(?: biome| Weather|;| unaffected by|$)/i);
  if(exclusive){
    const target=exclusive[1].trim();
    const aliases={'Rainy Weather':'Rainy','The Limbo biome':'Limbo'};
