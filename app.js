@@ -181,7 +181,7 @@ function tutorialView(){
 }
 function conditionDenominator(a){
  const c=a.condition||'';
- const m=c.match(/1 in ([\\d,]+)/i);
+ const m=c.match(/1 in ([\d,]+)/i);
  return m?Number(m[1].replace(/,/g,'')):null;
 }
 function contextMatches(a){
@@ -203,10 +203,10 @@ function contextMatches(a){
  }
  const inside=c.match(/inside (.+)$/i);
  if(inside){
-   const targets=inside[1].split(/\\s+or\\s+/i).map(x=>x.trim().replace(/\\s+biome$/i,''));
+   const targets=inside[1].split(/\s+or\s+/i).map(x=>x.trim().replace(/\s+biome$/i,''));
    return targets.some(function(t){return t==='Limbo'?state.dimension==='Limbo':state.biome===t});
  }
- const bt=c.match(/^(.+?)\\s+—\\s+Breakthrough\\s+1\\//i);
+ const bt=c.match(/^(.+?)\s+—\s+Breakthrough\s+1\//i);
  if(bt)return state.biome===bt[1].trim();
  return true;
 }
@@ -232,7 +232,7 @@ function auraRollData(a){
  const c=a.condition||'';
  const explicit=conditionDenominator(a);
  const native=isNativeContext(a);
- const breakthroughOnly=/—\\s*Breakthrough\\s+1\\//i.test(c);
+ const breakthroughOnly=/—\s*Breakthrough\s+1\//i.test(c);
  let denominator=a.rarity;
  let breakthrough=false;
  if(explicit && (native || breakthroughOnly || /during (Nighttime|Daytime)/i.test(c))){
