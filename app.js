@@ -9,7 +9,7 @@ const defaults={
  recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
  automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked'
 };
-let state=load();
+let state=load(); bankTick();
 
 function load(){
  try{
@@ -32,6 +32,7 @@ function load(){
  }catch(e){return Object.assign({},defaults)}
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function bankTick(){if(!state)return;const now=hourKey();if(!state.bankLastTick){state.bankLastTick=now;return}const elapsed=Math.max(0,now-state.bankLastTick);if(elapsed<1)return;const b=BANK_TIERS[(state.bankTier||1)-1]||BANK_TIERS[0];if((state.bankBalance||0)>0)state.bankBalance=Math.min(b[2],state.bankBalance*Math.pow(b[1],elapsed));state.bankLastTick=now;save()}
 function fmt(n){return new Intl.NumberFormat('en-US').format(n)}
 function gearLuck(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+({"Luck Glove":0.25,"Desire Glove":0.40,"Solar Device":0.50,"Gemstone Gauntlet":0.55,"Frozen Gauntlet":1.50,"Eclipse Device":0.50,"Dark Matter Device":0.60,"Aqua Device":0.50,"Shining Star":0.70,"Jackpot Gauntlet":0.77,"Exo Gauntlet":1.00}[n]||0)},0)}
 function gearSpeed(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+({"Lunar Device":0.15,"Eclipse Device":0.15,"Dark Matter Device":0.15,"Aqua Device":0.10,"Shining Star":0.20,"Jackpot Gauntlet":0.07,"Exo Gauntlet":0.25}[n]||0)},0)}
@@ -108,6 +109,7 @@ function roll(){
  }
  if(!chosen)chosen=eligible[eligible.length-1]||{a:AURAS[0],breakthrough:false};
  const result=chosen.a;
+ questAuraHook(result,chosen.breakthrough);
  const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
  const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
  const rolledRarity=result.rarity*(chosen.breakthrough?BREAK[state.biome]:1); state.rarestRoll=Math.max(state.rarestRoll||0,rolledRarity); state.recent.unshift({roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:rolledRarity,breakthrough:chosen.breakthrough,bonus:bonus>1,luck:finalLuck,speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false});
@@ -191,10 +193,11 @@ function upgradeStorage(){
 
 function spawnItems(){state.spawns=[];for(let i=0;i<3;i++)state.spawns.push({id:String(Date.now())+i,name:ITEMS[Math.floor(Math.random()*ITEMS.length)],x:8+Math.random()*82,y:8+Math.random()*78});state.lastSpawn=Date.now();save();render()}
 function collect(id){const item=state.spawns.find(function(x){return x.id===id});if(!item)return;state.spawns=state.spawns.filter(function(x){return x.id!==id});addItem(item.name,1);questItemHook(item.name);save();render();toast('Collected '+item.name)}
-function questItemHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Item Collection')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Coins')qs.progress[q.id]=(qs.progress[q.id]||0)+(arguments[0]==='Coins'?1:0)});save()}
+function questItemHook(itemName){const qs=questState();questBoard().forEach(function(q){if(q.type==='Item Collection')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Coins'&&itemName==='Coins')qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
 function questRollHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Rolling')qs.progress[q.id]=Math.min(q.target||Infinity,state.rolls);});save()}
+function questAuraHook(result,breakthrough){const qs=questState();questBoard().forEach(function(q){if(q.type==='Aura')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Breakthrough'&&breakthrough)qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
 
-function maybeSpawn(){tickPotions();if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){takeItem('Coins',1);roll()}if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
+function maybeSpawn(){tickPotions();if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){takeItem('Coins',1);roll()}else if(state.autoRoll&&!(state.inventory.Coins>0)){state.autoRoll=false;save();toast('Auto Roll stopped: no Coins remaining.')}if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
 
 function tab(name){
  if(!['Roll','Inventory','NPCs','Global','Achievements','Settings'].includes(name)){return}
@@ -213,7 +216,7 @@ function inventoryView(){
    return '<div class="aura-card '+(a.equipped?'equipped':'')+'"><div class="aura-main"><div><b>'+a.name+'</b><small>1/'+fmt(a.rarity)+' • '+a.tier+(a.equipped?' • EQUIPPED':'')+'</small></div><div class="aura-tags">'+(a.favorite?'★ Favorited':'')+(a.autoSkip?' • Auto Skip':'')+(a.autoEquip?' • Auto Equip':'')+'</div></div><div class="aura-actions"><button onclick="toggleFavorite(\''+a.id+'\')">'+(a.favorite?'Unfavorite':'Favorite')+'</button><button onclick="equipAura(\''+a.id+'\')">Equip</button><button onclick="setAuraAutomation(\''+a.id+'\',\'skip\')">'+(a.autoSkip?'Disable Skip':'Auto Skip')+'</button><button onclick="setAuraAutomation(\''+a.id+'\',\'equip\')">'+(a.autoEquip?'Disable Equip':'Auto Equip')+'</button><button class="danger" onclick="discardAura(\''+a.id+'\')">Remove</button></div></div>';
  }).join('')||'<div class="empty">No collected Auras match this filter.</div>';
  const potionRows=Object.entries(state.inventory).filter(function(e){return /Potion/.test(e[0])}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Potions yet.</div>';
- const gearRows=Object.entries(state.inventory).filter(function(e){return /^Gear /.test(e[0])}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Gears yet.</div>';
+ const gearRows=Object.entries(state.inventory).filter(function(e){return e[0].endsWith('Glove')||e[0].endsWith('Device')||e[0].endsWith('Gauntlet')||e[0]==='Shining Star'||e[0]==='Hologrammer'||e[0]==='Ragnaröker'}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+' '+((state.gearsEquipped||[]).includes(e[0])?'• EQUIPPED':'')+'</span><button onclick="equipGear('+JSON.stringify(e[0])+')">'+((state.gearsEquipped||[]).includes(e[0])?'Unequip':'Equip')+'</button><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Gears yet.</div>';
  const miscRows=Object.entries(state.inventory).filter(function(e){return e[0]==='Coins'||(!/Potion/.test(e[0])&&!/^Gear /.test(e[0]))}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Miscellaneous items yet.</div>';
  return '<div class="panel inventory-panel"><div class="inventory-head"><div><div class="section-title">Aura Storage</div><h2>'+auraSlots()+' / '+state.auraCapacity+' Aura Slots</h2><p class="muted">Every Aura copy occupies its own slot. Favorites are protected from automatic removal.</p></div><div class="inventory-controls"><input id="invSearch" placeholder="Search Auras..." value="'+(window.equinoxInventorySearch||'')+'"><select id="invSort"><option value="rarity"'+(sort==='rarity'?' selected':'')+'>Highest Rarity at Top</option><option value="recent"'+(sort==='recent'?' selected':'')+'>Most Recently Rolled at Top</option><option value="alpha"'+(sort==='alpha'?' selected':'')+'>Alphabetical</option></select></div></div><div class="inventory-toolbar"><span>Automation: <b>'+({none:'None',skip:'Auto Skip',equip:'Auto Equip'}[state.automation])+'</b></span><button onclick="upgradeStorage()">Upgrade Storage (+3)</button></div><div class="aura-grid">'+auraCards+'</div></div><div class="inventory-columns"><div class="panel"><div class="section-title">Potions</div>'+potionRows+'</div><div class="panel"><div class="section-title">Gears</div>'+gearRows+'</div><div class="panel"><div class="section-title">Miscellaneous</div>'+miscRows+'</div></div>';
 }
@@ -381,7 +384,7 @@ function render(){
  const active=state.activeTab;
  let mainContent=active==='Inventory'?inventoryView():active==='NPCs'?npcView():active==='Global'?globalView():rollView();
  document.getElementById('app').innerHTML='<div class="shell"><header class="topbar"><div class="logo">EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls)+'</b></span><span>Luck <b>'+totalLuck().toFixed(2)+'x</b></span><span>Speed <b>'+totalSpeed().toFixed(2)+'x</b></span></div></header><div class="layout"><nav class="tabs"><button class="tab '+(active==='Roll'?'active':'')+'" onclick="tab(\'Roll\')">◉ Roll</button><button class="tab '+(active==='Inventory'?'active':'')+'" onclick="tab(\'Inventory\')">▣ Inventory</button><button class="tab '+(active==='NPCs'?'active':'')+'" onclick="tab(\'NPCs\')">♙ NPCs</button><button class="tab" onclick="tab(\'Global\')">◎ Global</button><button class="tab" onclick="tab(\'Settings\')">⚙ Settings</button><button class="tab" onclick="tab(\'Achievements\')">★ Achievements</button></nav><main>'+mainContent+'</main><aside class="side"><div class="section-title">World State</div><div class="info-list"><div class="info"><span>Biome</span><b>'+state.biome+'</b></div><div class="info"><span>Time</span><b>'+state.dayNight+'</b></div><div class="info"><span>Dimension</span><b>'+state.dimension+'</b></div><div class="info"><span>Total Rolls</span><b>'+fmt(state.rolls)+'</b></div></div><div class="section-title" style="margin-top:24px">Inventory Preview</div><div class="info-list">'+invPreview()+'</div></aside></div><footer class="footer">Equinox • '+active+' tab • Progress saved locally in this prototype.</footer><div id="notices" class="notice-stack"></div></div>';
- if(active==='Inventory')wireInventory(); if(active==='Roll'&&tutorialState().phase<3)document.getElementById('app').insertAdjacentHTML('beforeend',tutorialView());
+ if(active==='Inventory')wireInventory(); if(active==='Roll'&&tutorialState().phase===1)document.getElementById('app').insertAdjacentHTML('beforeend',tutorialView()); if(tutorialState().phase===2&&active!=='Roll')document.querySelector('main').insertAdjacentHTML('afterbegin',tutorialView());
 }
 setInterval(maybeSpawn,1000);
 render();
