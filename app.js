@@ -7,7 +7,7 @@ const defaults={
  rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
  dimension:'Isles of Luck',dayNight:'Day',activeTab:'Roll',auraCapacity:20,
  recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
- automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
+ automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,reducedMotion:false,autoSave:true},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
 let state=load(); bankTick();
 
@@ -40,7 +40,7 @@ function potionLuck(){return (state.activePotions||[]).reduce(function(sum,p){re
 function potionSpeed(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0)}
 function totalLuck(){return ((1+state.basicLuck+gearLuck()+potionLuck())+state.specialLuck)*state.finalMultiplier}
 function totalSpeed(){return Math.max(0.01,state.speed*(1+gearSpeed()+potionSpeed()))}
-function toast(msg){const e=document.createElement('div');e.className='notice';e.textContent=msg;document.getElementById('notices').appendChild(e);setTimeout(function(){e.remove()},3200)}
+function toast(msg){ if(!settingEnabled('notifications'))return;const e=document.createElement('div');e.className='notice';e.textContent=msg;document.getElementById('notices').appendChild(e);setTimeout(function(){e.remove()},3200)}
 function auraDef(name){return AURAS.find(function(a){return a.name===name})}
 function auraSlots(){return state.auras.length}
 function hasItem(name,n){return (state.inventory[name]||0)>=n}
@@ -288,6 +288,28 @@ function tab(name){
  state.activeTab=name;render();
 }
 function npcTab(name){state.npcTab=name;render()}
+function settingEnabled(key){return state.settings&&state.settings[key]!==false}
+function toggleSetting(key){
+ if(!state.settings)state.settings=Object.assign({},defaults.settings);
+ state.settings[key]=!state.settings[key];
+ save();render();
+}
+function resetProgress(){
+ if(!confirm('Reset all Equinox progress on this browser? This cannot be undone.'))return;
+ localStorage.removeItem(KEY);
+ location.reload();
+}
+function settingsView(){
+ const s=state.settings||defaults.settings;
+ return '<div class="settings-page"><div class="panel settings-hero"><div class="section-title">Game Settings</div><h1>Settings</h1><p class="muted">Gameplay preferences are saved with this browser. Your account and global systems can be connected separately later.</p></div>'+
+ '<div class="settings-grid"><section class="panel settings-section"><div class="section-title">Gameplay</div>'+
+ '<div class="setting-row"><div><b>Auto-save</b><small>Save progress whenever a setting or system changes.</small></div><button class="setting-toggle '+(s.autoSave?'on':'')+'" onclick="toggleSetting(\'autoSave\')">'+(s.autoSave?'ON':'OFF')+'</button></div>'+
+ '<div class="setting-row"><div><b>Confirm Aura Removal</b><small>Ask before removing an Aura from a full inventory.</small></div><button class="setting-toggle '+(s.confirmAuraRemoval?'on':'')+'" onclick="toggleSetting(\'confirmAuraRemoval\')">'+(s.confirmAuraRemoval?'ON':'OFF')+'</button></div>'+
+ '</section><section class="panel settings-section"><div class="section-title">Interface</div>'+
+ '<div class="setting-row"><div><b>Notifications</b><small>Show gameplay notifications in the bottom-left.</small></div><button class="setting-toggle '+(s.notifications?'on':'')+'" onclick="toggleSetting(\'notifications\')">'+(s.notifications?'ON':'OFF')+'</button></div>'+
+ '<div class="setting-row"><div><b>Reduced Motion</b><small>Reduce interface movement and transitions.</small></div><button class="setting-toggle '+(s.reducedMotion?'on':'')+'" onclick="toggleSetting(\'reducedMotion\')">'+(s.reducedMotion?'ON':'OFF')+'</button></div>'+
+ '</section></div><section class="panel settings-danger"><div><div class="section-title">Game Data</div><h2>Reset Progress</h2><p class="muted">Delete this browser's Equinox save and start from the beginning.</p></div><button onclick="resetProgress()">Reset All Progress</button></section></div>';
+}
 
 function inventoryView(){
  const query=(window.equinoxInventorySearch||'').toLowerCase();
@@ -467,9 +489,9 @@ function invPreview(){const x=Object.entries(state.inventory);return x.length?x.
 function render(){
  checkAchievements();
  const active=state.activeTab;
- let mainContent=active==='Inventory'?inventoryView():active==='NPCs'?npcView():active==='Global'?globalView():active==='Achievements'?achievementsView():rollView();
+ let mainContent=active==='Inventory'?inventoryView():active==='NPCs'?npcView():active==='Global'?globalView():active==='Achievements'?achievementsView():active==='Settings'?settingsView():rollView();
  document.getElementById('app').innerHTML='<div class="shell"><header class="topbar"><div class="logo">EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls)+'</b></span><span>Luck <b>'+totalLuck().toFixed(2)+'x</b></span><span>Speed <b>'+totalSpeed().toFixed(2)+'x</b></span></div></header><div class="layout"><nav class="tabs"><button class="tab '+(active==='Roll'?'active':'')+'" onclick="tab(\'Roll\')">◉ Roll</button><button class="tab '+(active==='Inventory'?'active':'')+'" onclick="tab(\'Inventory\')">▣ Inventory</button><button class="tab '+(active==='NPCs'?'active':'')+'" onclick="tab(\'NPCs\')">♙ NPCs</button><button class="tab" onclick="tab(\'Global\')">◎ Global</button><button class="tab" onclick="tab(\'Settings\')">⚙ Settings</button><button class="tab" onclick="tab(\'Achievements\')">★ Achievements</button></nav><main>'+mainContent+'</main><aside class="side"><div class="section-title">World State</div><div class="info-list"><div class="info"><span>Biome</span><b>'+state.biome+'</b></div><div class="info"><span>Time</span><b>'+state.dayNight+'</b></div><div class="info"><span>Dimension</span><b>'+state.dimension+'</b></div><div class="info"><span>Total Rolls</span><b>'+fmt(state.rolls)+'</b></div></div><div class="section-title" style="margin-top:24px">Inventory Preview</div><div class="info-list">'+invPreview()+'</div></aside></div><footer class="footer">Equinox • '+active+' tab • Progress saved locally in this prototype.</footer><div id="notices" class="notice-stack"></div></div>';
- if(active==='Inventory')wireInventory(); if(active==='Roll'&&tutorialState().phase===1)document.getElementById('app').insertAdjacentHTML('beforeend',tutorialView()); if(tutorialState().phase===2&&active!=='Roll')document.querySelector('main').insertAdjacentHTML('afterbegin',tutorialView());
+ if(active==='Inventory')wireInventory(); if(state.settings&&state.settings.reducedMotion)document.documentElement.classList.add('reduced-motion'); if(active==='Roll'&&tutorialState().phase===1)document.getElementById('app').insertAdjacentHTML('beforeend',tutorialView()); if(tutorialState().phase===2&&active!=='Roll')document.querySelector('main').insertAdjacentHTML('afterbegin',tutorialView());
 }
 setInterval(maybeSpawn,1000);
 render();
