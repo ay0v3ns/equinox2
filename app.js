@@ -319,7 +319,7 @@ function roll(){
  state.nextRollAt=now+rollCooldownMs();
  const stored=addRolledAura(chosen.a,chosen.rolledRarity,chosen.breakthrough,finalLuck,bonus);
  if(!stored && chosen.a && state.auras.some(function(a){return a.name===chosen.a.name&&a.autoSkip})){
-   state.nextRollAt=Date.now()+rollCooldownMs();
+   setTimeout(function(){roll()},rollCooldownMs());
  }
  return true;
 }
