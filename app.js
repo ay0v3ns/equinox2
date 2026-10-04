@@ -21,6 +21,9 @@ function load(){
   next.biomeStartedAt=Number(next.biomeStartedAt)||now;
   next.dayNightStartedAt=Number(next.dayNightStartedAt)||now;
   next.nextRollAt=Number(next.nextRollAt)||0;
+  next.worldDayNight=next.worldDayNight==='Night'?'Night':(next.worldDayNight||next.dayNight||'Day');
+  next.worldDayNightStartedAt=Number(next.worldDayNightStartedAt)||next.dayNightStartedAt;
+  next.lastWorldCheck=Number(next.lastWorldCheck)||now;
   // Migrate the original grouped Aura object into individual Aura inventory objects.
   if(!Array.isArray(next.auras)){
    const grouped=next.auras||{};
@@ -181,67 +184,63 @@ function tutorialView(){
 }
 function conditionDenominator(a){
  const c=a.condition||'';
- const m=c.match(/1 in ([\d,]+)/i);
+ const m=c.match(/(?:1 in|Drops at 1 in) ([\d,]+)/i);
  return m?Number(m[1].replace(/,/g,'')):null;
+}
+function conditionTargets(a){
+ const c=a.condition||'';
+ const inside=c.match(/inside (.+)$/i);
+ if(inside)return inside[1].split(/\s+or\s+/i).map(function(x){return x.trim().replace(/^the\s+/i,'').replace(/\s+biome$/i,'')}).filter(Boolean);
+ const exclusive=c.match(/Exclusive to (?:the )?(.+?)(?: biome| Weather|;| unaffected by|$)/i);
+ if(exclusive)return [exclusive[1].trim().replace(/^the\s+/i,'')];
+ return [];
+}
+function matchesTarget(target){
+ if(target==='Limbo')return state.dimension==='Limbo';
+ return state.biome===target;
 }
 function contextMatches(a){
  const c=a.condition||'';
  if(!c)return true;
- if(/craftable via/i.test(c)||/crafted via/i.test(c))return false;
- if(/Exclusive to (The )?Limbo biome|Exclusive to Limbo/i.test(c))return state.dimension==='Limbo';
- if(/Exclusive to Nighttime/i.test(c)||/during Nighttime/i.test(c))return state.dayNight==='Night';
- if(/Exclusive to Daytime/i.test(c)||/during Daytime/i.test(c))return state.dayNight==='Day';
- const exclusive=c.match(/Exclusive to (?:the )?(.+?)(?: biome| Weather|;| unaffected by|$)/i);
- if(exclusive){
-   const target=exclusive[1].trim();
-   const aliases={'Rainy Weather':'Rainy','The Limbo biome':'Limbo'};
-   const wanted=aliases[target]||target;
-   if(wanted==='Nighttime')return state.dayNight==='Night';
-   if(wanted==='Daytime')return state.dayNight==='Day';
-   if(wanted==='Limbo')return state.dimension==='Limbo';
-   return state.biome===wanted;
- }
- const inside=c.match(/inside (.+)$/i);
- if(inside){
-   const targets=inside[1].split(/\s+or\s+/i).map(x=>x.trim().replace(/\s+biome$/i,''));
-   return targets.some(function(t){return t==='Limbo'?state.dimension==='Limbo':state.biome===t});
- }
- const bt=c.match(/^(.+?)\s+—\s+Breakthrough\s+1\//i);
- if(bt)return state.biome===bt[1].trim();
+ if(/craftable via|crafted via|special crafting/i.test(c))return false;
+ if(/during Nighttime|Exclusive to Nighttime/i.test(c))return state.dayNight==='Night';
+ if(/during Daytime|Exclusive to Daytime/i.test(c))return state.dayNight==='Day';
+ const targets=conditionTargets(a);
+ if(targets.length)return targets.some(matchesTarget);
  return true;
 }
 function isNativeContext(a){
  if(!a.nativeBiome)return false;
- const n=a.nativeBiome.replace(/^The /,'').replace(/ biome$/i,'').trim();
- return n==='Limbo'?state.dimension==='Limbo':state.biome===n;
+ const raw=a.nativeBiome.replace(/^The /,'').replace(/ biome$/i,'').trim();
+ return raw.split(/\s+or\s+/i).some(function(n){
+   n=n.trim();
+   return n==='Limbo'?state.dimension==='Limbo':state.biome===n;
+ });
+}
+function hasBiomeBreakthrough(a){
+ return !!a.nativeBiome && state.dimension!=='Limbo' && state.biome!=='Normal' && !!BREAK[state.biome] && !a.exclusive && !a.fixed && !a.crafted;
 }
 function isAuraEligible(a){
  if(a.crafted)return false;
- if(a.exclusive && !contextMatches(a))return false;
- if(!contextMatches(a))return false;
+ const native=isNativeContext(a);
  if(a.nativeBiome){
-   const native=isNativeContext(a);
-   if(!native){
-     if(a.exclusive||a.fixed)return false;
-     if(!BREAK[state.biome]||BREAK[state.biome]<=1)return false;
-   }
+   if(native)return contextMatches(a);
+   return hasBiomeBreakthrough(a);
  }
- return true;
+ return contextMatches(a);
 }
 function auraRollData(a){
  const c=a.condition||'';
- const explicit=conditionDenominator(a);
  const native=isNativeContext(a);
  const breakthroughOnly=/—\s*Breakthrough\s+1\//i.test(c);
  let denominator=a.rarity;
  let breakthrough=false;
- if(explicit && (native || breakthroughOnly || /during (Nighttime|Daytime)/i.test(c))){
-   denominator=explicit;
-   breakthrough=breakthroughOnly;
+ if(native){
+   denominator=conditionDenominator(a)||a.rarity;
  }else if(breakthroughOnly){
-   denominator=explicit||a.rarity;
+   denominator=conditionDenominator(a)||a.rarity;
    breakthrough=true;
- }else if(a.nativeBiome && !native){
+ }else if(hasBiomeBreakthrough(a)){
    denominator=Math.floor(a.rarity*(BREAK[state.biome]||1));
    breakthrough=true;
  }
@@ -290,25 +289,22 @@ function roll(){
  tutorialRollHook();
  const bonus=state.rolls%10===0?2:1;
  const finalLuck=(((1+state.basicLuck+gearLuck())*bonus)+(state.specialLuck+potionLuck()))*state.finalMultiplier;
- const eligible=AURAS.filter(isAuraEligible).map(function(a){
+ const allEligible=AURAS.filter(isAuraEligible).map(function(a){
    const d=auraRollData(a);
    return {a:a,breakthrough:d.breakthrough,listValue:a.fixed?d.denominator:Math.max(1,Math.floor(d.denominator/finalLuck)),rolledRarity:d.denominator};
- }).filter(function(x){
-   if(x.a.fixed)return true;
-   return x.listValue>1;
  }).sort(function(x,y){return y.rolledRarity-x.rolledRarity});
  let chosen=null;
- const fixed=eligible.filter(function(x){return x.a.fixed});
+ const fixed=allEligible.filter(function(x){return x.a.fixed});
  for(let i=0;i<fixed.length;i++){
    if(Math.floor(Math.random()*fixed[i].listValue)+1===1){chosen=fixed[i];break;}
  }
  if(!chosen){
-   const ordinary=eligible.filter(function(x){return !x.a.fixed});
+   const ordinary=allEligible.filter(function(x){return !x.a.fixed && x.listValue>1});
    for(let i=0;i<ordinary.length;i++){
      if(Math.floor(Math.random()*ordinary[i].listValue)+1===1){chosen=ordinary[i];break;}
    }
    if(!chosen){
-     const fallback=ordinary.find(function(x){return x.listValue===1});
+     const fallback=allEligible.find(function(x){return !x.a.fixed && x.listValue===1});
      if(fallback)chosen=fallback;
    }
  }
@@ -361,8 +357,40 @@ function upgradeStorage(){
  save();render();toast('Aura Storage upgraded to '+state.auraCapacity+' slots.');
 }
 
-function spawnItems(){state.spawns=[];for(let i=0;i<3;i++)state.spawns.push({id:String(Date.now())+i,name:ITEMS[Math.floor(Math.random()*ITEMS.length)],x:8+Math.random()*82,y:8+Math.random()*78});state.lastSpawn=Date.now();save();render()}
-function collect(id){const item=state.spawns.find(function(x){return x.id===id});if(!item)return;state.spawns=state.spawns.filter(function(x){return x.id!==id});addItem(item.name,1);achievementItemCollected(item.name);questItemHook(item.name);achievementCheck();render();toast('Collected '+item.name)}
+const GENERAL_GROUND_ITEMS=['Lucky Potion','Speed Potion','Gear A','Gear B'];
+const BIOME_GROUND_ITEMS={Windy:'Wind Essence',Snowy:'Icicle',Rainy:'Rainy Bottle',Sandstorm:'Hourglass',Hell:'Eternal Flame',Starfall:'Piece of Star',Heaven:'Feather Vial',Corruption:'Corruptaine','Crimson Moon':'Cursed Fragments',Null:'NULL?'};
+const LIMBO_GROUND_ITEMS=['Lucky Potion','Speed Potion'];
+function makeGroundSpawn(name,ttl){
+ const isCoin=name==='Coins';
+ return {id:'spawn-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),name:name,amount:isCoin?(30+Math.floor(Math.random()*71)):1,x:8+Math.random()*82,y:8+Math.random()*78,spawnedAt:Date.now(),expiresAt:Date.now()+(ttl||60000)};
+}
+function spawnItems(){
+ state.spawns=(state.spawns||[]).filter(function(x){return !x.expiresAt||x.expiresAt>Date.now()});
+ const pool=state.dimension==='Limbo'?LIMBO_GROUND_ITEMS:['Coins'].concat(GENERAL_GROUND_ITEMS);
+ for(let i=0;i<3;i++){const name=pool[Math.floor(Math.random()*pool.length)];state.spawns.push(makeGroundSpawn(name,60000));}
+ state.lastSpawn=Date.now();save();render();
+}
+function spawnBiomeItem(name){
+ if(!name||state.dimension==='Limbo')return;
+ state.spawns=(state.spawns||[]).filter(function(x){return !x.biomeItem});
+ const item=makeGroundSpawn(name,45000);item.biomeItem=true;item.biome=state.biome;state.spawns.push(item);save();render();
+}
+function collectGroundItem(item,viaCollector){
+ if(!item)return;
+ state.spawns=(state.spawns||[]).filter(function(x){return x.id!==item.id});
+ addItem(item.name,item.amount||1);
+ achievementItemCollected(item.name);questItemHook(item.name);
+ if(item.name==='Coins')achievementState().stats.coinsEarned=(achievementState().stats.coinsEarned||0)+(item.amount||1);
+ if(viaCollector&&item.name!=='Coins'&&Math.random()<1/20){
+   addItem(item.name,1);achievementItemCollected(item.name);questItemHook(item.name);toast('Item Collector duplicated '+item.name+'.');
+ }
+ achievementCheck();save();render();toast('Collected '+item.name+(item.name==='Coins'?' ×'+fmt(item.amount||1):''));
+}
+function collect(id){const item=(state.spawns||[]).find(function(x){return x.id===id});if(item)collectGroundItem(item,false)}
+function autoCollectGroundItems(){
+ if(!(state.inventory['Item Collector']>0)||state.activeTab!=='Roll')return;
+ (state.spawns||[]).slice().forEach(function(item){collectGroundItem(item,true)});
+}
 function questItemHook(itemName){const qs=questState();questBoard().forEach(function(q){if(q.type==='Item Collection')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Coins'&&itemName==='Coins')qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
 function questRollHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Rolling')qs.progress[q.id]=Math.min(q.target||Infinity,state.rolls);});save()}
 function questAuraHook(result,breakthrough){const qs=questState();questBoard().forEach(function(q){if(q.type==='Aura')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Breakthrough'&&breakthrough)qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
@@ -375,59 +403,62 @@ const BIOME_BREAKTHROUGH={
  Cyberspace:2,Windy:3,Snowy:3,Rainy:4,Sandstorm:4,Starfall:5,Heaven:5,Corruption:5,Singularity:5,Hell:6,Dreamspace:7,'Crimson Moon':8,Glitched:10,Null:1000,Cloudy:3,Downpour:4,Oceanic:50
 };
 function setBiome(name,reason){
- const old=state.biome;
- state.biome=name;
- state.biomeStartedAt=Date.now();
+ const old=state.biome;state.biome=name;state.biomeStartedAt=Date.now();state.lastWorldCheck=Date.now();
  if(old!==name){
-   toast(reason==='natural'?'Biome spawned: '+name:'Biome changed: '+name);
+   toast(reason==='natural'?'Biome spawned: '+name:(reason==='expired'?'Biome ended: '+name:'Biome changed: '+name));
    achievementState().stats.biomesSeen=achievementState().stats.biomesSeen||[];
    if(!achievementState().stats.biomesSeen.includes(name))achievementState().stats.biomesSeen.push(name);
+   if(name!=='Normal'&&state.dimension!=='Limbo'&&BIOME_GROUND_ITEMS[name])spawnBiomeItem(BIOME_GROUND_ITEMS[name]);
  }
  save();render();
 }
 function naturalBiomeCheck(seconds){
  if(state.biome!=='Normal'||state.dimension==='Limbo')return;
- const successes=[];
- Object.keys(BIOME_RULES).forEach(function(name){
-   const d=BIOME_RULES[name];
-   const p=1-Math.pow(1-1/d,Math.max(1,seconds));
-   if(Math.random()<p)successes.push(name);
- });
- if(successes.length)setBiome(successes[Math.floor(Math.random()*successes.length)],'natural');
+ const names=Object.keys(BIOME_RULES);
+ for(let s=0;s<Math.max(1,seconds);s++){
+   for(let i=0;i<names.length;i++){
+     const name=names[i];
+     if(Math.random()<1/BIOME_RULES[name]){setBiome(name,'natural');return;}
+   }
+ }
 }
 function updateWorldClock(){
  const now=Date.now();
  if(!state.biomeStartedAt)state.biomeStartedAt=now;
- if(!state.dayNightStartedAt)state.dayNightStartedAt=now;
- const biomeElapsed=now-state.biomeStartedAt;
- if(state.biome!=='Normal'&&biomeElapsed>=360000){
-   setBiome('Normal','natural');
- }
- const dayElapsed=now-state.dayNightStartedAt;
+ if(!state.worldDayNightStartedAt)state.worldDayNightStartedAt=now;
+ if(!state.worldDayNight)state.worldDayNight=state.dayNight||'Day';
+ const dayElapsed=now-state.worldDayNightStartedAt;
  if(dayElapsed>=1200000){
    const flips=Math.floor(dayElapsed/1200000);
-   if(flips%2===1)state.dayNight=state.dayNight==='Day'?'Night':'Day';
-   state.dayNightStartedAt+=flips*1200000;
-   toast('Time changed to '+state.dayNight);
+   if(flips%2===1)state.worldDayNight=state.worldDayNight==='Day'?'Night':'Day';
+   state.worldDayNightStartedAt+=flips*1200000;
+   if(state.dimension!=='Limbo'){state.dayNight=state.worldDayNight;toast('Time changed to '+state.dayNight);}
  }
- if(state.biome==='Normal'&&now-(state.lastWorldCheck||now)>=1000){
-   const seconds=Math.min(60,Math.floor((now-(state.lastWorldCheck||now))/1000));
-   state.lastWorldCheck=now;
-   naturalBiomeCheck(seconds);
+ if(state.dimension!=='Limbo'){
+   state.dayNight=state.worldDayNight;
+   if(state.biome!=='Normal'&&now-state.biomeStartedAt>=360000)setBiome('Normal','expired');
+   if(state.biome==='Normal'&&now-(state.lastWorldCheck||now)>=1000){
+     const seconds=Math.min(60,Math.floor((now-(state.lastWorldCheck||now))/1000));
+     state.lastWorldCheck=now;naturalBiomeCheck(seconds);
+   }else if(!state.lastWorldCheck)state.lastWorldCheck=now;
  }else if(!state.lastWorldCheck)state.lastWorldCheck=now;
 }
 function maybeSpawn(){
- tickPotions();
- updateWorldClock();
- const now=Date.now();
- if(state.autoRoll&&tutorialState().phase>=3&&state.inventory.Coins>0&&now>=state.nextRollAt){
-   takeItem('Coins',1);
-   if(!roll())addItem('Coins',1);
- }else if(state.autoRoll&&!(state.inventory.Coins>0)){
-   state.autoRoll=false;save();toast('Auto Roll stopped: no Coins remaining.');
- }
+ tickPotions();updateWorldClock();const now=Date.now();
+ state.spawns=(state.spawns||[]).filter(function(x){return !x.expiresAt||x.expiresAt>now});
+ if(state.autoRoll&&tutorialState().phase>=3&&state.inventory.Coins>0&&now>=state.nextRollAt){takeItem('Coins',1);if(!roll())addItem('Coins',1);}
+ else if(state.autoRoll&&!(state.inventory.Coins>0)){state.autoRoll=false;save();toast('Auto Roll stopped: no Coins remaining.');}
  if(!state.lastSpawn){state.lastSpawn=now;save();return}
  if(now-state.lastSpawn>=60000)spawnItems();
+ autoCollectGroundItems();
+}
+
+function useCompass(){
+ const count=state.inventory['Compass?']||0;if(count<1){toast('You do not have a Compass?.');return;}
+ state.compassUses=(state.compassUses||0)+1;
+ if(state.compassUses>=6){takeItem('Compass?',1);state.compassUses=0;toast('Compass? broke after its sixth use.');}else toast('Compass? use '+state.compassUses+' / 6.');
+ if(state.dimension==='Limbo'){state.dimension='Isles of Luck';state.dayNight=state.worldDayNight||state.dayNight;}else{state.dimension='Limbo';}
+ state.spawns=(state.spawns||[]).filter(function(x){return !x.biomeItem});save();render();
 }
 
 function tab(name){
@@ -470,7 +501,7 @@ function inventoryView(){
  }).join('')||'<div class="empty">No collected Auras match this filter.</div>';
  const potionRows=Object.entries(state.inventory).filter(function(e){return /Potion/.test(e[0])}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Potions yet.</div>';
  const gearRows=Object.entries(state.inventory).filter(function(e){return e[0].endsWith('Glove')||e[0].endsWith('Device')||e[0].endsWith('Gauntlet')||e[0]==='Shining Star'||e[0]==='Hologrammer'||e[0]==='Ragnaröker'}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+' '+((state.gearsEquipped||[]).includes(e[0])?'• EQUIPPED':'')+'</span><button onclick="equipGear('+JSON.stringify(e[0])+')">'+((state.gearsEquipped||[]).includes(e[0])?'Unequip':'Equip')+'</button><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Gears yet.</div>';
- const miscRows=Object.entries(state.inventory).filter(function(e){return e[0]==='Coins'||(!/Potion/.test(e[0])&&!/^Gear /.test(e[0]))}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Miscellaneous items yet.</div>';
+ const miscRows=Object.entries(state.inventory).filter(function(e){return e[0]==='Coins'||(!/Potion/.test(e[0])&&!/^Gear /.test(e[0]))}).map(function(e){const action=e[0]==='Compass?'?'<button onclick="useCompass()">Use</button>':e[0]==='Item Collector'?'<span class="muted">ACTIVE</span>':'';return '<div class="inventory-row"><span>'+e[0]+'</span>'+action+'<b>x'+e[1]+'</b></div>';}).join('')||'<div class="empty">No Miscellaneous items yet.</div>';
  return '<div class="panel inventory-panel"><div class="inventory-head"><div><div class="section-title">Aura Storage</div><h2>'+auraSlots()+' / '+state.auraCapacity+' Aura Slots</h2><p class="muted">Every Aura copy occupies its own slot. Favorites are protected from automatic removal.</p></div><div class="inventory-controls"><input id="invSearch" placeholder="Search Auras..." value="'+(window.equinoxInventorySearch||'')+'"><select id="invSort"><option value="rarity"'+(sort==='rarity'?' selected':'')+'>Highest Rarity at Top</option><option value="recent"'+(sort==='recent'?' selected':'')+'>Most Recently Rolled at Top</option><option value="alpha"'+(sort==='alpha'?' selected':'')+'>Alphabetical</option></select></div></div><div class="inventory-toolbar"><span>Automation: <b>'+({none:'None',skip:'Auto Skip',equip:'Auto Equip'}[state.automation])+'</b></span><button onclick="upgradeStorage()">Upgrade Storage (+3)</button></div><div class="aura-grid">'+auraCards+'</div></div><div class="inventory-columns"><div class="panel"><div class="section-title">Potions</div>'+potionRows+'</div><div class="panel"><div class="section-title">Gears</div>'+gearRows+'</div><div class="panel"><div class="section-title">Miscellaneous</div>'+miscRows+'</div></div>';
 }
 function wireInventory(){const s=document.getElementById('invSearch'),sort=document.getElementById('invSort');if(s)s.oninput=function(){window.equinoxInventorySearch=s.value;render()};if(sort)sort.onchange=function(){window.equinoxInventorySort=sort.value;render()};}
