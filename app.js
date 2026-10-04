@@ -226,6 +226,11 @@ function hasBiomeBreakthrough(a){
 }
 function isAuraEligible(a){
  if(a.crafted)return false;
+ if(state.dimension==='Limbo'){
+   const c=a.condition||'';
+   const limboSpecific=/Limbo/i.test(c)||(a.nativeBiome&&/Limbo/i.test(a.nativeBiome));
+   if(!limboSpecific)return false;
+ }
  const native=isNativeContext(a);
  if(a.nativeBiome){
    if(native)return contextMatches(a);
