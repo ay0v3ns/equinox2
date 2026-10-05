@@ -30,6 +30,15 @@ function hideAuthGate() {
   if (AUTH_UI.root) AUTH_UI.root.style.display = 'none';
 }
 
+function equinoxReloadLocalState(){
+  try {
+    if (typeof state === 'undefined' || typeof load !== 'function') return;
+    state = load();
+  } catch (e) {
+    console.warn('Equinox local state reload failed:', e);
+  }
+}
+
 function renderAuthGate(message='') {
   if (!AUTH_UI.root) return;
   const signup = AUTH_UI.mode === 'signup';
@@ -115,18 +124,28 @@ async function equinoxHydrate() {
     }
     profile = createdProfile;
   }
-  const { data: cloudSave } = await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id', uid).maybeSingle();
+  const { data: cloudSave, error: cloudSaveError } = await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id', uid).maybeSingle();
+  if (cloudSaveError) console.warn('Equinox cloud save load failed; continuing with local save:', cloudSaveError);
   const hasCloudSave = cloudSave?.save_data && typeof cloudSave.save_data === 'object' && Object.keys(cloudSave.save_data).length;
   if (hasCloudSave) {
-    localStorage.setItem('equinox-save-v1', JSON.stringify(cloudSave.save_data));
+    try {
+      localStorage.setItem('equinox-save-v1', JSON.stringify(cloudSave.save_data));
+      if (typeof window.equinoxReloadLocalState === 'function') window.equinoxReloadLocalState();
+    } catch (e) {
+      console.warn('Equinox cloud save was invalid; keeping the local save:', e);
+    }
   }
   const analyticsUser = {id:uid,email:session.user.email,username:profile?.username || session.user.user_metadata?.username || ''};
   localStorage.setItem('equinox-user', JSON.stringify(analyticsUser));
   if (window.posthog?.identify) window.posthog.identify(uid, { username: analyticsUser.username });
   if (window.equinoxAnalytics?.capture) window.equinoxAnalytics.capture('equinox_session_started', { has_cloud_save: !!hasCloudSave });
+  if (typeof window.render !== 'function') throw new Error('Equinox game renderer is not ready yet.');
+  window.render();
   hideAuthGate();
-  if (typeof window.render === 'function') window.render();
   if (hasCloudSave) void equinoxSyncProfile(); else void equinoxCloudSave();
+  } catch (e) {
+    console.error('Equinox hydration failed', e);
+    showAuthGate(e?.message || 'Equinox could not finish loading your game. Please try again.');
   } finally {
     AUTH_UI.hydrating = false;
   }
@@ -267,7 +286,6 @@ async function equinoxAuthBoot() {
   installEquinoxSaveSync();
   EQUINOX_SUPABASE.auth.onAuthStateChange((event, session) => {
     if (session?.user) {
-      hideAuthGate();
       if (!AUTH_UI.busy) setTimeout(equinoxHydrate, 0);
     } else if (!AUTH_UI.busy) {
       showAuthGate();
