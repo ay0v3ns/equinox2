@@ -295,7 +295,7 @@ async function eq4LoadSharedQuestBoard(){
     .select('quest_id,hour_key,quest_index,quest_data')
     .eq('hour_key',hourIso)
     .order('quest_index',{ascending:true});
-  if(error)return;
+  if(error) console.warn('Equinox quest sync failed:',error);
   if(!data?.length && typeof window.questBoard==='function'){
     const local=window.questBoard();
     const rows=local.slice(0,15).map((q,i)=>({
@@ -304,14 +304,8 @@ async function eq4LoadSharedQuestBoard(){
       quest_index:i,
       quest_data:q
     }));
-    if(rows.length){
-      await EQUINOX_SUPABASE.from('global_quests').upsert(rows,{onConflict:'quest_id'});
-      const seeded=await EQUINOX_SUPABASE.from('global_quests')
-        .select('quest_id,hour_key,quest_index,quest_data')
-        .eq('hour_key',hourIso)
-        .order('quest_index',{ascending:true});
-      data=seeded.data||rows;
-    }
+    // global_quests is server-owned/read-only from the browser.
+    if(rows.length) data=rows;
   }
   EQ4_SHARED.questRows=data||[];
   EQ4_SHARED.hourIso=hourIso;
@@ -373,9 +367,10 @@ async function eq4SyncSharedQuestProgress(){
 async function eq4LoadSharedShop(){
   if(typeof EQUINOX_SUPABASE==='undefined')return;
   const hourIso=eq4CurrentHourIso();
-  let {data}=await EQUINOX_SUPABASE.from('shop_stock')
+  let {data,error}=await EQUINOX_SUPABASE.from('shop_stock')
     .select('item_id,item_name,rarity,stock,max_stock,hour_key,updated_at')
     .eq('hour_key',hourIso);
+  if(error) console.warn('Equinox shop sync failed:',error);
   if(!data?.length && typeof window.shopStock==='function'){
     const local=window.shopStock();
     const rows=local.items.map((x,i)=>({
@@ -386,13 +381,8 @@ async function eq4LoadSharedShop(){
       max_stock:Number(x.initialStock ?? x.stock ?? 0),
       hour_key:hourIso
     }));
-    if(rows.length){
-      await EQUINOX_SUPABASE.from('shop_stock').upsert(rows,{onConflict:'item_id'});
-      const seeded=await EQUINOX_SUPABASE.from('shop_stock')
-        .select('item_id,item_name,rarity,stock,max_stock,hour_key,updated_at')
-        .eq('hour_key',hourIso);
-      data=seeded.data||rows;
-    }
+    // shop_stock is server-owned/read-only from the browser.
+    if(rows.length) data=rows;
   }
   EQ4_SHARED.shopRows=data||[];
   EQ4_SHARED.hourIso=hourIso;
