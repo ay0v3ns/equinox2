@@ -7,7 +7,9 @@ const EQUINOX_SUPABASE = window.supabase.createClient(EQUINOX_SUPABASE_URL, EQUI
 
 const AUTH_UI = {
   root: null,
-  mode: 'login'
+  mode: 'login',
+  busy: false,
+  hydrating: false
 };
 
 function authEscape(value) {
@@ -49,6 +51,8 @@ function equinoxAuthToggle() {
 }
 
 async function equinoxAuthSubmit() {
+  if (AUTH_UI.busy) return;
+  AUTH_UI.busy = true;
   const submitButton = document.querySelector('.auth-submit');
   if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Signing in…'; }
   try {
@@ -79,11 +83,15 @@ async function equinoxAuthSubmit() {
     renderAuthGate(e?.message || 'Unable to sign in right now. Please try again.');
   } finally {
     const button = document.querySelector('.auth-submit');
+    AUTH_UI.busy = false;
     if (button) { button.disabled = false; button.textContent = AUTH_UI.mode === 'signup' ? 'Create Account' : 'Sign In'; }
   }
 }
 
 async function equinoxHydrate() {
+  if (AUTH_UI.hydrating) return;
+  AUTH_UI.hydrating = true;
+  try {
   const { data: sessionData } = await EQUINOX_SUPABASE.auth.getSession();
   const session = sessionData?.session;
   if (!session?.user) {
@@ -115,7 +123,10 @@ async function equinoxHydrate() {
   localStorage.setItem('equinox-user', JSON.stringify({id:uid,email:session.user.email,username:profile?.username || session.user.user_metadata?.username || ''}));
   hideAuthGate();
   if (typeof window.render === 'function') window.render();
-  if (hasCloudSave) await equinoxSyncProfile(); else await equinoxCloudSave();
+  if (hasCloudSave) void equinoxSyncProfile(); else void equinoxCloudSave();
+  } finally {
+    AUTH_UI.hydrating = false;
+  }
 }
 
 async function equinoxSyncProfile() {
@@ -252,8 +263,8 @@ async function equinoxAuthBoot() {
   EQUINOX_SUPABASE.auth.onAuthStateChange((event, session) => {
     if (session?.user) {
       hideAuthGate();
-      setTimeout(equinoxHydrate, 0);
-    } else {
+      if (!AUTH_UI.busy) setTimeout(equinoxHydrate, 0);
+    } else if (!AUTH_UI.busy) {
       showAuthGate();
     }
   });
