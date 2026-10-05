@@ -94,7 +94,10 @@
       if(hydrateLock)return;
       hydrateLock=true;
       try{return await original.apply(this,arguments);}
-      catch(e){console.warn('Equinox cloud hydration failed:',e);}
+      catch(e){
+        console.warn('Equinox cloud hydration failed:',e);
+        if(typeof window.showAuthGate==='function') window.showAuthGate(e?.message || 'Equinox could not finish loading your game. Please try again.');
+      }
       finally{hydrateLock=false;}
     };
   }
