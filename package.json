@@ -1,0 +1,11 @@
+{
+  "name": "equinox",
+  "private": true,
+  "scripts": {
+    "deploy": "npx wrangler deploy",
+    "build": "node -e \"console.log('Equinox static Worker: no build step required')\""
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
+  }
+}
