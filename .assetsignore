@@ -1,0 +1,15 @@
+README.md
+package.json
+package-lock.json
+bun.lock
+bun.lockb
+wrangler.json
+wrangler.jsonc
+wrangler.toml
+worker.js
+supabase/
+.github/
+.git/
+node_modules/
+*.md
+*.sql
