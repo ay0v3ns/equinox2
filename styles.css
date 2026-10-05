@@ -41,3 +41,7 @@
 .high-contrast{--line:#68748a;--muted:#c8d1e2}.high-contrast .panel,.high-contrast .tab{border-width:2px}.colorblind-mode .setting-toggle.on{box-shadow:0 0 0 2px #fff inset}.compact-interface main{padding:14px}.compact-interface .panel{padding:13px}.compact-interface .tab{padding:9px;margin-bottom:4px}.performance-mode .spawn-area{background:#090c13}.performance-mode .spawn{box-shadow:none}.performance-mode *{animation:none!important}.performance-mode .hero{min-height:300px}
 @media(max-width:1050px){.history-row{grid-template-columns:60px 1fr 90px 90px;}.history-row span:nth-of-type(n+3){display:none}}
 @media(max-width:800px){.settings-select,.setting-range{width:100%;min-width:0}.setting-row{align-items:flex-start;flex-direction:column}.history-search{flex-direction:column}}
+
+
+/* Equinox visual rule: sharp, square UI surfaces. */
+*{border-radius:0!important}
