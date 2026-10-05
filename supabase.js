@@ -58,7 +58,7 @@ async function equinoxAuthSubmit() {
   if (!email || !password) return renderAuthGate('Email and password are required.');
   if (AUTH_UI.mode === 'signup') {
     if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) return renderAuthGate('Username must be 3–20 letters, numbers, or underscores.');
-    const { data: taken, error: takenError } = await EQUINOX_SUPABASE.from('profiles').select('user_id').ilike('username', username).limit(1);
+    const { data: taken, error: takenError } = await EQUINOX_SUPABASE.from('profiles').select('id').ilike('username', username).limit(1);
     if (takenError) return renderAuthGate(takenError.message);
     if (taken?.length) return renderAuthGate('That username is already taken.');
     const { data, error } = await EQUINOX_SUPABASE.auth.signUp({
@@ -91,7 +91,7 @@ async function equinoxHydrate() {
     return;
   }
   const uid = session.user.id;
-  let { data: profile, error: profileError } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('user_id', uid).maybeSingle();
+  let { data: profile, error: profileError } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('id', uid).maybeSingle();
   if (profileError) {
     showAuthGate(profileError.message || 'Unable to load your profile.');
     return;
@@ -99,7 +99,7 @@ async function equinoxHydrate() {
   if (!profile) {
     const fallbackUsername = session.user.user_metadata?.username || (session.user.email || 'Player').split('@')[0].replace(/[^A-Za-z0-9_]/g,'').slice(0,20) || 'Player';
     const { data: createdProfile, error: createProfileError } = await EQUINOX_SUPABASE.from('profiles')
-      .insert({ user_id: uid, username: fallbackUsername })
+      .insert({ id: uid, username: fallbackUsername })
       .select('*').maybeSingle();
     if (createProfileError) {
       showAuthGate(createProfileError.message || 'Unable to create your player profile.');
@@ -127,10 +127,10 @@ async function equinoxSyncProfile() {
   try {
     const s = JSON.parse(raw);
     const username = JSON.parse(localStorage.getItem('equinox-user') || '{}').username || s.username || 'Player';
-    let { data: profile } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
+    let { data: profile } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if (!profile) {
       const { data: created } = await EQUINOX_SUPABASE.from('profiles')
-        .insert({ user_id:user.id, username:username })
+        .insert({ id:user.id, username:username })
         .select('*').maybeSingle();
       profile = created;
     }
@@ -153,7 +153,7 @@ async function equinoxSyncProfile() {
       rarest_roll_rarity: Number(s.rarestRoll || 0),
       equipped_aura_id: equipped?.id || null,
       updated_at: new Date().toISOString()
-    }).eq('user_id', user.id);
+    }).eq('id', user.id);
 
     // The existing database uses an identity primary key for aura_collection,
     // so sync by the local aura_id instead of assuming a composite primary key.
