@@ -74,7 +74,7 @@
       toast('Global Shop is unavailable.'); return;
     }
     if(typeof EQUINOX_SUPABASE==='undefined'){ toast('Global Shop is unavailable.'); return; }
-    const local=typeof shopStock==='function'?shopStock():null;
+    const local=typeof window.activeShopStock==='function'?window.activeShopStock():(typeof window.shopStock==='function'?window.shopStock():null);
     const item=local?.items?.[i];
     if(!item) return;
     if(settingEnabled && settingEnabled('confirmShopPurchase') && !confirm('Buy '+item.name+' for '+fmt(shopPrice(item.name))+' Coins?')) return;
