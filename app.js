@@ -163,6 +163,8 @@ function isGearName(n){return !!gearDefForName(n)}
 function isGearEquipped(n){return (state.gearsEquipped||[]).includes(n)}
 function gearLuckForName(n){const d=gearDefForName(n);let value=Number(d?.luck||0);if(n==='Ragnaröker'&&['Windy','Rainy','Hell'].includes(state.biome))value+=0.45;if(n==='Shining Star'&&state.biome==='Starfall')value+=2.5;return value}
 function gearSpeedForName(n){const d=gearDefForName(n);let value=Number(d?.speed||0);if(n==='Ragnaröker'&&['Windy','Rainy','Hell'].includes(state.biome))value+=0.05;if(n==='Aqua Device'&&state.biome==='Rainy')value+=1;if(n==='Second Hand'&&state.biome==='Sandstorm')value+=1.8;if(n==='Equilibrium Engine'&&Number(state.gearSpecials?.equilibriumSpeedRolls||0)>0)value+=0.5;return value}
+function gearLuck(){return (state.gearsEquipped||[]).reduce(function(sum,name){return sum+gearLuckForName(name)},0)}
+function gearSpeed(){return (state.gearsEquipped||[]).reduce(function(sum,name){return sum+gearSpeedForName(name)},0)}
 function gearFinalLuckMultiplier(){if(isGearEquipped('The Thing'))return 1.7;if(isGearEquipped('Flesh Device'))return 1.2;return 1}
 function gearRemovesBonusRoll(){return isGearEquipped('Flesh Device')||isGearEquipped('The Thing')}
 function gearBonusMultiplierForRoll(rollNumber,forcedBonusMultiplier){if(Number(forcedBonusMultiplier)>0)return Number(forcedBonusMultiplier);if(isGearEquipped('Gravitational Device')&&Number(rollNumber)%5===0)return 2;if(gearRemovesBonusRoll())return 1;return Number(rollNumber)%10===0?2:1}
