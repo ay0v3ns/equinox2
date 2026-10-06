@@ -214,6 +214,52 @@ function tutorialCheck(){const t=tutorialState();if(t.phase===2&&t.part2.glove&&
 function markTutorialQuest(){const t=tutorialState();if(t.phase===2&&!t.part2.quest){t.part2.quest=true;tutorialCheck()}}
 function markTutorialCraft(name){const t=tutorialState();if(t.phase!==2)return;if(name==='Luck Glove')t.part2.glove=true;if(name==='Haste Potion I')t.part2.haste=true;tutorialCheck()}
 const BREWING_STAND={"Lucky Potion":{"dark":5,"coins":100,"success":0.9,"multiplier":1.5},"Speed Potion":{"dark":5,"coins":100,"success":0.9,"multiplier":1.5},"Fortune Potion I":{"dark":15,"coins":500,"success":0.85,"multiplier":1.5},"Fortune Potion II":{"dark":25,"coins":1000,"success":0.82,"multiplier":1.5},"Fortune Potion III":{"dark":40,"coins":2500,"success":0.78,"multiplier":1.6},"Haste Potion I":{"dark":15,"coins":500,"success":0.85,"multiplier":1.5},"Haste Potion II":{"dark":25,"coins":1000,"success":0.82,"multiplier":1.5},"Haste Potion III":{"dark":40,"coins":2500,"success":0.78,"multiplier":1.6},"Jewelry Potion":{"dark":20,"coins":750,"success":0.82,"multiplier":1.5},"Zombie Potion":{"dark":30,"coins":1500,"success":0.78,"multiplier":1.5},"Rage Potion":{"dark":30,"coins":1500,"success":0.78,"multiplier":1.5},"Diver Potion":{"dark":30,"coins":1500,"success":0.78,"multiplier":1.5},"Godly Potion — Zeus":{"dark":100,"coins":10000,"success":0.6,"multiplier":1.5},"Godly Potion — Poseidon":{"dark":100,"coins":10000,"success":0.6,"multiplier":1.5},"Godly Potion — Hades":{"dark":100,"coins":10000,"success":0.6,"multiplier":1.5},"Forbidden Potion I":{"dark":50,"coins":2500,"success":0.7,"multiplier":1.5},"Forbidden Potion II":{"dark":100,"coins":7500,"success":0.6,"multiplier":1.6},"Forbidden Potion III":{"dark":250,"coins":25000,"success":0.45,"multiplier":1.75},"Warp Potion":{"dark":500,"coins":50000,"success":0.4,"multiplier":1.5},"Potion of Bound":{"dark":1000,"coins":100000,"success":0.3,"multiplier":1.5},"Heavenly Potion I":{"dark":1500,"coins":150000,"success":0.25,"multiplier":1.5},"Heavenly Potion II":{"dark":5000,"coins":500000,"success":0.15,"multiplier":1.5},"Godlike Potion":{"dark":10000,"coins":1000000,"success":0.1,"multiplier":1.5},"Oblivion Potion":{"dark":12500,"coins":1500000,"success":0.08,"multiplier":1.5},"Red Moon Potion I":{"dark":4000,"coins":400000,"success":0.2,"multiplier":1.5},"Red Moon Potion II":{"dark":8000,"coins":800000,"success":0.12,"multiplier":1.5},"Fortune Potion IV":{"dark":75,"coins":5000,"success":0.72,"multiplier":1.7},"Fortune Potion V":{"dark":150,"coins":15000,"success":0.65,"multiplier":1.8},"Fortune Potion VI":{"dark":300,"coins":50000,"success":0.55,"multiplier":2},"Haste Potion IV":{"dark":75,"coins":5000,"success":0.72,"multiplier":1.7},"Haste Potion V":{"dark":150,"coins":15000,"success":0.65,"multiplier":1.8},"Haste Potion VI":{"dark":300,"coins":50000,"success":0.55,"multiplier":2},"Fortune-Haste Potion":{"dark":250,"coins":25000,"success":0.6,"multiplier":1.75},"Overclock Potion":{"dark":300,"coins":35000,"success":0.55,"multiplier":1.75},"Momentum Potion":{"dark":350,"coins":40000,"success":0.52,"multiplier":1.75},"Fate Potion":{"dark":400,"coins":50000,"success":0.5,"multiplier":1.75},"Gambler's Potion":{"dark":500,"coins":60000,"success":0.45,"multiplier":2},"Frenzy Potion":{"dark":600,"coins":75000,"success":0.45,"multiplier":1.75},"Greed Potion I":{"dark":700,"coins":80000,"success":0.4,"multiplier":1.75},"Greed Potion II":{"dark":1000,"coins":125000,"success":0.32,"multiplier":1.75},"Greed Potion III":{"dark":2000,"coins":250000,"success":0.25,"multiplier":2},"Greed Potion IV":{"dark":4000,"coins":500000,"success":0.18,"multiplier":2},"Desperation Potion":{"dark":900,"coins":100000,"success":0.35,"multiplier":1.75},"Unstable Potion":{"dark":1000,"coins":125000,"success":0.3,"multiplier":2},"Berserker Potion":{"dark":1250,"coins":150000,"success":0.28,"multiplier":1.75},"Second Chance Potion":{"dark":450,"coins":50000,"success":0.48,"multiplier":1.75},"Echo Potion":{"dark":750,"coins":90000,"success":0.38,"multiplier":1.75},"Chain Potion":{"dark":800,"coins":100000,"success":0.4,"multiplier":1.75},"Reverse Potion I":{"dark":900,"coins":100000,"success":0.35,"multiplier":1.5},"Reverse Potion II":{"dark":1500,"coins":175000,"success":0.28,"multiplier":1.5},"Reverse Potion III":{"dark":2500,"coins":300000,"success":0.2,"multiplier":1.5},"Overflow Potion I":{"dark":1000,"coins":125000,"success":0.35,"multiplier":1.5},"Overflow Potion II":{"dark":1750,"coins":200000,"success":0.27,"multiplier":1.5},"Overflow Potion III":{"dark":3000,"coins":350000,"success":0.2,"multiplier":1.5},"Paradox Potion":{"dark":2500,"coins":300000,"success":0.22,"multiplier":1.75},"Fortune's Curse":{"dark":1250,"coins":150000,"success":0.3,"multiplier":1.75},"Echo of Fortune":{"dark":1250,"coins":150000,"success":0.32,"multiplier":1.75},"Acceleration Potion":{"dark":1200,"coins":150000,"success":0.32,"multiplier":1.75},"Chain Reaction Potion":{"dark":1750,"coins":200000,"success":0.25,"multiplier":2},"Biomebound Potion — Windy":{"dark":1000,"coins":125000,"success":0.35,"multiplier":1.75},"Biomebound Potion — Snowy":{"dark":1000,"coins":125000,"success":0.35,"multiplier":1.75},"Biomebound Potion — Rainy":{"dark":1000,"coins":125000,"success":0.35,"multiplier":1.75},"Biomebound Potion — Sandstorm":{"dark":1000,"coins":125000,"success":0.35,"multiplier":1.75},"Biomebound Potion — Hell":{"dark":1000,"coins":125000,"success":0.35,"multiplier":1.75},"Biomebound Potion — Heaven":{"dark":1000,"coins":125000,"success":0.35,"multiplier":1.75}};
+const POTION_EFFECTS={
+"Lucky Potion":"+5% Luck for 10 seconds","Speed Potion":"+3% Roll Speed for 10 seconds",
+"Fortune Potion I":"+50% Luck for 5 minutes","Fortune Potion II":"+75% Luck for 5 minutes","Fortune Potion III":"+100% Luck for 5 minutes",
+"Haste Potion I":"+20% Roll Speed for 5 minutes","Haste Potion II":"+25% Roll Speed for 5 minutes","Haste Potion III":"+30% Roll Speed for 5 minutes",
+"Jewelry Potion":"+80% Luck for 3 minutes","Zombie Potion":"+150% Luck for 6 minutes","Rage Potion":"+35% Roll Speed for 10 minutes","Diver Potion":"+40% Roll Speed for 5 minutes",
+"Godly Potion — Zeus":"+200% Luck, +30% Speed for 4 hours","Godly Potion — Poseidon":"-50% Luck, +75% Speed for 4 hours","Godly Potion — Hades":"+300% Luck, -10% Speed for 4 hours",
+"Forbidden Potion I":"+70% Luck, +10% Speed for 30 minutes","Forbidden Potion II":"+325% Luck, +25% Speed for 1 hour","Forbidden Potion III":"+1,350% Luck, +75% Speed for 3 hours",
+"Warp Potion":"+2,000% Roll Speed for 2,500 rolls","Momentum Potion":"+50% Luck and +50% Speed; Speed grows with rolls","Fate Potion":"+150% Luck for 5 minutes; one qualifying roll rerolls once",
+"Gambler's Potion":"+300% Luck for 6 minutes; per-roll double/halve effect","Frenzy Potion":"+1,000% Roll Speed for 10 minutes",
+"Greed Potion I":"+2,000% Luck for 10 minutes; Curse after expiration","Greed Potion II":"+8,000% Luck for 10 minutes; Curse after expiration","Greed Potion III":"+32,000% Luck for 10 minutes; Curse after expiration","Greed Potion IV":"+128,000% Luck for 10 minutes; Curse after expiration",
+"Desperation Potion":"+5,000% Luck below 10% storage capacity, otherwise +500%","Unstable Potion":"+3,000% Luck for 5 minutes; volatile trigger",
+"Berserker Potion":"+500% Luck and +250% Speed for 5 minutes; grows with rolls","Second Chance Potion":"Rerolls the first Auto-Skipped roll once during its active period",
+"Echo Potion":"+750% Luck for 5 minutes; 50% returns after expiration","Chain Potion":"+500% Luck; consecutive non-skipped rolls increase it",
+"Reverse Potion I":"Converts 25% of final Roll Speed into Luck","Reverse Potion II":"Converts 50% of final Roll Speed into Luck","Reverse Potion III":"Converts 100% of final Roll Speed into Luck",
+"Overflow Potion I":"Converts Luck above 1,000% into Speed","Overflow Potion II":"Converts Luck above 5,000% into Speed","Overflow Potion III":"Converts Luck above 25,000% into Speed",
+"Paradox Potion":"+1,000% Luck and +500% Speed; compensating reaction","Fortune's Curse":"+5,000% Luck for 5 minutes; Curse after expiration","Echo of Fortune":"+2,000% Luck for 5 minutes; partial return after expiration",
+"Acceleration Potion":"+300% Speed for 5 minutes; roll interval improves with milestones","Chain Reaction Potion":"+1,500% Luck; rare Aura grants a stronger next roll",
+"Tutorial Potion I":"+100,000% Luck for 1 roll",
+"Tutorial Potion II":"+600,000% Luck for 1 roll",
+"Fortune Potion IV":"+175% Luck for 5 minutes",
+"Fortune Potion V":"+300% Luck for 5 minutes",
+"Fortune Potion VI":"+500% Luck for 5 minutes",
+"Haste Potion IV":"+45% Roll Speed for 5 minutes",
+"Haste Potion V":"+65% Roll Speed for 5 minutes",
+"Haste Potion VI":"+100% Roll Speed for 5 minutes",
+"Fortune-Haste Potion":"+250% Luck; +50% Roll Speed for 8 minutes",
+"Overclock Potion":"+25% Luck; +150% Roll Speed for 3 minutes",
+"Potion of Bound":"+5,000,000% Luck for 1 roll",
+"Heavenly Potion I":"+1,500,000% Luck for 1 roll",
+"Heavenly Potion II":"+20,000,000% Luck for 1 roll",
+"Godlike Potion":"+40,000,000% Luck for 1 roll",
+"Oblivion Potion":"+50,000,000% Luck for 1 roll",
+"Red Moon Potion I":"+10,000,000% Luck for 1 roll",
+"Red Moon Potion II":"+30,000,000% Luck for 1 roll",
+"Biomebound Potion — Windy":"+250% Luck; +50% Roll Speed for 6 minutes; in Windy, both effects are doubled",
+"Biomebound Potion — Snowy":"+300% Luck; +40% Roll Speed for 6 minutes; in Snowy, both effects are doubled",
+"Biomebound Potion — Rainy":"+350% Luck; +60% Roll Speed for 6 minutes; in Rainy, both effects are doubled",
+"Biomebound Potion — Sandstorm":"+400% Luck; +30% Roll Speed for 6 minutes; in Sandstorm, both effects are doubled",
+"Biomebound Potion — Hell":"+500% Luck; +50% Roll Speed for 6 minutes; in Hell, both effects are doubled",
+"Biomebound Potion — Heaven":"+600% Luck; +75% Roll Speed for 6 minutes; in Heaven, both effects are doubled",
+"Biomebound Potion — Corruption":"+700% Luck; +50% Roll Speed for 6 minutes; in Corruption, both effects are doubled",
+"Biomebound Potion — Null":"+800% Luck; +100% Roll Speed for 6 minutes; in Null, both effects are doubled",
+"Biomebound Potion — Dreamspace":"+900% Luck; +75% Roll Speed for 6 minutes; in Dreamspace, both effects are doubled",
+"Biomebound Potion — Crimson Moon":"+1,000% Luck; +100% Roll Speed for 6 minutes; in Crimson Moon, both effects are doubled",
+"Biomebound Potion — Glitched":"+1,250% Luck; +125% Roll Speed for 6 minutes; in Glitched, both effects are doubled"
+};
 function potionRuntimeEffect(name,multiplier){
  const text=String(POTION_EFFECTS[name]||'');
  const luckMatch=/([+-]?[0-9][0-9,]*(?:[.][0-9]+)?)%[ ]*Luck/i.exec(text);
@@ -663,52 +709,7 @@ const WORKSHOP_RECIPES={
 };
 const POTION_RECIPES=Object.fromEntries(Object.entries(WORKSHOP_RECIPES).filter(function(e){return e[1]&&e[1].type==='Potion'}));
 
-const POTION_EFFECTS={
-"Lucky Potion":"+5% Luck for 10 seconds","Speed Potion":"+3% Roll Speed for 10 seconds",
-"Fortune Potion I":"+50% Luck for 5 minutes","Fortune Potion II":"+75% Luck for 5 minutes","Fortune Potion III":"+100% Luck for 5 minutes",
-"Haste Potion I":"+20% Roll Speed for 5 minutes","Haste Potion II":"+25% Roll Speed for 5 minutes","Haste Potion III":"+30% Roll Speed for 5 minutes",
-"Jewelry Potion":"+80% Luck for 3 minutes","Zombie Potion":"+150% Luck for 6 minutes","Rage Potion":"+35% Roll Speed for 10 minutes","Diver Potion":"+40% Roll Speed for 5 minutes",
-"Godly Potion — Zeus":"+200% Luck, +30% Speed for 4 hours","Godly Potion — Poseidon":"-50% Luck, +75% Speed for 4 hours","Godly Potion — Hades":"+300% Luck, -10% Speed for 4 hours",
-"Forbidden Potion I":"+70% Luck, +10% Speed for 30 minutes","Forbidden Potion II":"+325% Luck, +25% Speed for 1 hour","Forbidden Potion III":"+1,350% Luck, +75% Speed for 3 hours",
-"Warp Potion":"+2,000% Roll Speed for 2,500 rolls","Momentum Potion":"+50% Luck and +50% Speed; Speed grows with rolls","Fate Potion":"+150% Luck for 5 minutes; one qualifying roll rerolls once",
-"Gambler's Potion":"+300% Luck for 6 minutes; per-roll double/halve effect","Frenzy Potion":"+1,000% Roll Speed for 10 minutes",
-"Greed Potion I":"+2,000% Luck for 10 minutes; Curse after expiration","Greed Potion II":"+8,000% Luck for 10 minutes; Curse after expiration","Greed Potion III":"+32,000% Luck for 10 minutes; Curse after expiration","Greed Potion IV":"+128,000% Luck for 10 minutes; Curse after expiration",
-"Desperation Potion":"+5,000% Luck below 10% storage capacity, otherwise +500%","Unstable Potion":"+3,000% Luck for 5 minutes; volatile trigger",
-"Berserker Potion":"+500% Luck and +250% Speed for 5 minutes; grows with rolls","Second Chance Potion":"Rerolls the first Auto-Skipped roll once during its active period",
-"Echo Potion":"+750% Luck for 5 minutes; 50% returns after expiration","Chain Potion":"+500% Luck; consecutive non-skipped rolls increase it",
-"Reverse Potion I":"Converts 25% of final Roll Speed into Luck","Reverse Potion II":"Converts 50% of final Roll Speed into Luck","Reverse Potion III":"Converts 100% of final Roll Speed into Luck",
-"Overflow Potion I":"Converts Luck above 1,000% into Speed","Overflow Potion II":"Converts Luck above 5,000% into Speed","Overflow Potion III":"Converts Luck above 25,000% into Speed",
-"Paradox Potion":"+1,000% Luck and +500% Speed; compensating reaction","Fortune's Curse":"+5,000% Luck for 5 minutes; Curse after expiration","Echo of Fortune":"+2,000% Luck for 5 minutes; partial return after expiration",
-"Acceleration Potion":"+300% Speed for 5 minutes; roll interval improves with milestones","Chain Reaction Potion":"+1,500% Luck; rare Aura grants a stronger next roll",
-"Tutorial Potion I":"+100,000% Luck for 1 roll",
-"Tutorial Potion II":"+600,000% Luck for 1 roll",
-"Fortune Potion IV":"+175% Luck for 5 minutes",
-"Fortune Potion V":"+300% Luck for 5 minutes",
-"Fortune Potion VI":"+500% Luck for 5 minutes",
-"Haste Potion IV":"+45% Roll Speed for 5 minutes",
-"Haste Potion V":"+65% Roll Speed for 5 minutes",
-"Haste Potion VI":"+100% Roll Speed for 5 minutes",
-"Fortune-Haste Potion":"+250% Luck; +50% Roll Speed for 8 minutes",
-"Overclock Potion":"+25% Luck; +150% Roll Speed for 3 minutes",
-"Potion of Bound":"+5,000,000% Luck for 1 roll",
-"Heavenly Potion I":"+1,500,000% Luck for 1 roll",
-"Heavenly Potion II":"+20,000,000% Luck for 1 roll",
-"Godlike Potion":"+40,000,000% Luck for 1 roll",
-"Oblivion Potion":"+50,000,000% Luck for 1 roll",
-"Red Moon Potion I":"+10,000,000% Luck for 1 roll",
-"Red Moon Potion II":"+30,000,000% Luck for 1 roll",
-"Biomebound Potion — Windy":"+250% Luck; +50% Roll Speed for 6 minutes; in Windy, both effects are doubled",
-"Biomebound Potion — Snowy":"+300% Luck; +40% Roll Speed for 6 minutes; in Snowy, both effects are doubled",
-"Biomebound Potion — Rainy":"+350% Luck; +60% Roll Speed for 6 minutes; in Rainy, both effects are doubled",
-"Biomebound Potion — Sandstorm":"+400% Luck; +30% Roll Speed for 6 minutes; in Sandstorm, both effects are doubled",
-"Biomebound Potion — Hell":"+500% Luck; +50% Roll Speed for 6 minutes; in Hell, both effects are doubled",
-"Biomebound Potion — Heaven":"+600% Luck; +75% Roll Speed for 6 minutes; in Heaven, both effects are doubled",
-"Biomebound Potion — Corruption":"+700% Luck; +50% Roll Speed for 6 minutes; in Corruption, both effects are doubled",
-"Biomebound Potion — Null":"+800% Luck; +100% Roll Speed for 6 minutes; in Null, both effects are doubled",
-"Biomebound Potion — Dreamspace":"+900% Luck; +75% Roll Speed for 6 minutes; in Dreamspace, both effects are doubled",
-"Biomebound Potion — Crimson Moon":"+1,000% Luck; +100% Roll Speed for 6 minutes; in Crimson Moon, both effects are doubled",
-"Biomebound Potion — Glitched":"+1,250% Luck; +125% Roll Speed for 6 minutes; in Glitched, both effects are doubled"
-};
+
 
 const JESTER_REWARD_TABLE=[["Lucky Potion",180,0.2],["Speed Potion",175,0.2],["Fortune Potion I",120,0.3],["Haste Potion I",120,0.3],["Fortune Potion II",100,0.35],["Haste Potion II",100,0.35],["Fortune Potion III",90,0.4],["Haste Potion III",90,0.4],["Fortune Potion IV",75,0.45],["Haste Potion IV",75,0.45],["Fortune Potion V",60,0.55],["Haste Potion V",60,0.55],["Fortune Potion VI",45,0.7],["Haste Potion VI",45,0.7],["Jewelry Potion",45,0.75],["Zombie Potion",40,0.8],["Rage Potion",60,0.5],["Diver Potion",50,0.55],["Godly Potion — Zeus",32,1],["Godly Potion — Poseidon",32,1],["Godly Potion — Hades",25,1.1],["Forbidden Potion I",22,1.15],["Forbidden Potion II",18,1.35],["Forbidden Potion III",14,1.6],["Warp Potion",12,1.8],["Momentum Potion",18,1.15],["Fate Potion",14,1.35],["Gambler's Potion",12,1.55],["Frenzy Potion",8,1.8],["Greed Potion I",10,1.3],["Greed Potion II",7,1.6],["Greed Potion III",5,1.9],["Greed Potion IV",3.5,2.2],["Desperation Potion",8,1.45],["Unstable Potion",7,1.65],["Berserker Potion",9,1.5],["Second Chance Potion",5,2],["Echo Potion",7,1.55],["Chain Potion",6,1.65],["Reverse Potion I",10,1.4],["Reverse Potion II",7,1.75],["Reverse Potion III",4.5,2.1],["Overflow Potion I",8,1.5],["Overflow Potion II",5,1.9],["Overflow Potion III",3.2,2.3],["Paradox Potion",4,2.2],["Fortune's Curse",5,1.8],["Echo of Fortune",4,2],["Acceleration Potion",8,1.45],["Chain Reaction Potion",2.5,2.5],["Fortune-Haste Potion",20,0.95],["Overclock Potion",13,1.3],["Potion of Bound",0.8,2.8],["Heavenly Potion I",0.4,3.5],["Heavenly Potion II",0.2,4],["Godlike Potion",0.1,4.5],["Oblivion Potion",0.04,5],["Red Moon Potion I",0.03,5.2],["Red Moon Potion II",0.02,5.5],["Biomebound Potion — Windy",5,1.2],["Biomebound Potion — Snowy",4.5,1.25],["Biomebound Potion — Rainy",4.2,1.3],["Biomebound Potion — Sandstorm",3.8,1.4],["Biomebound Potion — Hell",3.4,1.5],["Biomebound Potion — Heaven",3,1.6],["Biomebound Potion — Corruption",2.6,1.75],["Biomebound Potion — Null",2,1.9],["Biomebound Potion — Dreamspace",1.2,2.2],["Biomebound Potion — Crimson Moon",0.6,2.8],["Biomebound Potion — Glitched",0.3,3.2]];
 function hourKey(){return Math.floor(Date.now()/3600000)}
