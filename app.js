@@ -425,6 +425,7 @@ function resolveStorageDecision(action){
    try{save()}catch(err){console.warn('Storage decision save failed:',err)}
    try{render()}catch(err){console.warn('Storage decision render failed:',err)}
    toast('Skipped '+String(result.name||'the Aura')+' — storage unchanged.');
+   if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);
    return true;
  }
  let victim=state.auras.find(function(a){return a.id===p.victimId&&!a.favorite});
@@ -460,10 +461,11 @@ function resolveStorageDecision(action){
  try{save()}catch(err){console.warn('Storage decision save failed:',err)}
  try{render()}catch(err){console.warn('Storage decision render failed:',err)}
  toast('Stored '+String(result.name||'the Aura')+'. '+String(victim?.name||'An Aura')+' was removed.');
+ if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);
  return true;
 }
 
-function resolveRoll(startedAt,rollDuration,rollSpeed){
+function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGearBonus){
  state=normalizeState(state,false);
  window.state=state;
  const previousRolls=Number(state.rolls||0);
@@ -471,8 +473,11 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
  const duration=Number(rollDuration||rollTimeSeconds());
  try{
   try{rollPotionHook()}catch(err){console.warn('Potion roll hook failed',err)}
-  state.rolls=previousRolls+1;   try{questRollHook()}catch(err){console.warn('Quest roll-count hook failed',err)}   const bonus=state.rolls%10===0?2:1;
-  const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
+  state.rolls=previousRolls+1;   try{questRollHook()}catch(err){console.warn('Quest roll-count hook failed',err)}   const bonus=gearBonusMultiplierForRoll(state.rolls,forcedBonusMultiplier);
+  const gearSpecialLuck=gearSpecialLuckForNextRoll();
+  const gearFinalMultiplier=gearRollFinalMultiplier();
+  const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck+gearSpecialLuck)*state.finalMultiplier;
+  const displayedFinalLuck=finalLuck*gearFinalMultiplier;
   let chosen=null,lastEligible=null;
   const biomeBreak=BREAK[state.biome]||1;
   for(let i=0;i<ROLL_AURAS.length;i++){
@@ -488,8 +493,8 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
   const rolledRarity=Number(result.rarity||0)*(chosen.breakthrough?(BREAK[state.biome]||1):1);
   const rollRecord={
    roll:state.rolls,name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',
-   rolledRarity:rolledRarity,breakthrough:!!chosen.breakthrough,bonus:bonus>1,luck:finalLuck,
-   speed:Number(rollSpeed||1),rollTime:duration,biome:state.biome,time:state.dayNight,stored:false,equipped:false,skipped:false,
+   rolledRarity:rolledRarity,breakthrough:!!chosen.breakthrough,bonus:bonus>1,luck:displayedFinalLuck,
+   speed:Number(rollSpeed||1),rollTime:duration,biome:state.biome,time:state.dayNight,stored:false,equipped:false,skipped:false,isGearBonus:!!isGearBonus,
    rolledAt:Date.now(),startedAt:start,completedAt:Date.now()
   };
   state.rollCooldownUntil=0;
@@ -522,7 +527,9 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
    rollRecord.skipped=true;
    try{save()}catch(err){console.warn('Roll save failed:',err)}
    try{render()}catch(err){console.warn('Roll render failed after Auto Skip:',err)}
+   gearPostRollEffects(rollRecord,null);
    toast('Auto Skip: '+result.name);
+   if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);
    return true;
   }
 
@@ -539,17 +546,19 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
      victimId:victim.id,
      victimName:victim.name,
      victimRarity:Number(victim.rarity||0),
-     autoEquip:autoEquip
+     autoEquip:autoEquip,
+     postRollSpecials:true
     };
     window.state=state;
     try{save()}catch(err){console.warn('Roll save failed while waiting for storage decision:',err)}
+    gearPostRollEffects(rollRecord,null);
     try{render()}catch(err){console.warn('Roll render failed while waiting for storage decision:',err)}
     return true;
    }else{
     rollRecord.skipped=true;
     try{save()}catch(err){console.warn('Roll save failed after storage block:',err)}
     try{render()}catch(err){console.warn('Roll render failed after storage block:',err)}
-    toast('All Aura slots are Favorited. '+result.name+' was skipped.');return true;
+    gearPostRollEffects(rollRecord,null);toast('All Aura slots are Favorited. '+result.name+' was skipped.');if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);return true;
    }
   }
 
@@ -561,6 +570,7 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
   state.auras.push(obj);
   rollRecord.stored=true;
   rollRecord.auraId=obj.id;
+  gearPostRollEffects(rollRecord,obj);
   if(autoEquip){
    state.auras.forEach(function(a){a.equipped=false});
    obj.equipped=true;
@@ -572,7 +582,8 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
   window.state=state;
   try{save()}catch(err){console.warn('Roll save failed:',err)}
   try{render()}catch(err){console.warn('Roll render failed after successful roll:',err)}
-  toast(chosen.breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: 2x Luck':'Roll complete'));
+  toast(chosen.breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: '+bonus+'x Luck':'Roll complete'));
+  if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);
   return true;
  }catch(err){
   state.rolls=previousRolls;
