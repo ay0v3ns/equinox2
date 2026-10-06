@@ -984,3 +984,69 @@ input::placeholder,
   .buff-row span{text-align:left;white-space:normal}
   .world-stat{grid-template-columns:minmax(0,1fr) max-content}
 }
+
+
+/* Final World panel layout correction */
+.world-panel .world-stats{display:grid;gap:6px}
+.world-panel .world-stat{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) max-content;
+  align-items:center;
+  min-width:0;
+  gap:12px;
+}
+.world-panel .world-stat span{
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.world-panel .world-stat b{
+  min-width:0;
+  max-width:170px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.world-panel .buff-list{display:grid;gap:6px}
+.world-panel .buff-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(110px,max-content);
+  align-items:center;
+  min-width:0;
+  gap:10px;
+}
+.world-panel .buff-main{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+.world-panel .buff-main b{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.world-panel .buff-main small{
+  color:#68768d;
+  font-size:8px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.world-panel .buff-row>span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.potion-kicker{
+  font-family:var(--font-ui);
+  font-size:8px;
+  font-weight:500;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:#69778d;
+}
+@media(max-width:700px){
+  .world-panel .world-stat{grid-template-columns:minmax(0,1fr) max-content}
+  .world-panel .buff-row{grid-template-columns:1fr}
+  .world-panel .buff-row>span{white-space:normal}
+}
