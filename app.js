@@ -7,7 +7,7 @@ const defaults={
  rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
  dimension:'Isles of Luck',dayNight:'Day',activeTab:'Roll',auraCapacity:20,
  recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
- automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,autoSave:true},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
+ automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
 let state=load(); bankTick();
 
@@ -335,8 +335,15 @@ function resetProgress(){
  localStorage.removeItem(KEY);
  location.reload();
 }
+function setTabPosition(position){
+ if(!['top','bottom','left','right'].includes(position))return;
+ if(!state.settings)state.settings=Object.assign({},defaults.settings);
+ state.settings.tabPosition=position;
+ save();render();
+}
 function settingsView(){
  const s=state.settings||defaults.settings;
+ const tabPosition=s.tabPosition||'left';
  return '<div class="settings-page"><div class="panel settings-hero"><div class="section-title">Game Settings</div><h1>Settings</h1><p class="muted">Gameplay preferences are saved with this browser. Your account and global systems can be connected separately later.</p></div>'+
  '<div class="settings-grid"><section class="panel settings-section"><div class="section-title">Gameplay</div>'+
  '<div class="setting-row"><div><b>Auto-save</b><small>Save progress whenever a setting or system changes.</small></div><button class="setting-toggle '+(s.autoSave?'on':'')+'" onclick="toggleSetting(\'autoSave\')">'+(s.autoSave?'ON':'OFF')+'</button></div>'+
@@ -355,7 +362,19 @@ function inventoryView(){
  if(sort==='recent')rows.sort(function(a,b){return b.rolledAt-a.rolledAt});
  if(sort==='alpha')rows.sort(function(a,b){return a.name.localeCompare(b.name)});
  const auraCards=rows.map(function(a){
-   return '<div class="aura-card '+(a.equipped?'equipped':'')+'"><div class="aura-main"><div><b>'+a.name+'</b><small>1/'+fmt(a.rarity)+' • '+a.tier+(a.equipped?' • EQUIPPED':'')+'</small></div><div class="aura-tags">'+(a.favorite?'★ Favorited':'')+(a.autoSkip?' • Auto Skip':'')+(a.autoEquip?' • Auto Equip':'')+'</div></div><div class="aura-actions"><button onclick="toggleFavorite(\''+a.id+'\')">'+(a.favorite?'Unfavorite':'Favorite')+'</button><button onclick="equipAura(\''+a.id+'\')">Equip</button><button onclick="setAuraAutomation(\''+a.id+'\',\'skip\')">'+(a.autoSkip?'Disable Skip':'Auto Skip')+'</button><button onclick="setAuraAutomation(\''+a.id+'\',\'equip\')">'+(a.autoEquip?'Disable Equip':'Auto Equip')+'</button><button class="danger" onclick="discardAura(\''+a.id+'\')">Remove</button></div></div>';
+   return '<div class="aura-card '+(a.equipped?'equipped':'')+'"><div class="aura-main"><div><b>'+a.name+'</b><small>1/'+fmt(a.rarity)+' • '+a.tier+(a.equipped?' • EQUIPPED':'')+'</small></div><div class="aura-tags">'+(a.favorite?'★ Favorited':'')+(a.autoSkip?' • Auto Skip':'')+(a.autoEquip?' • Auto Equip':'')+'</div></div><div class="setting-row"><div><b>Reduced Motion</b><small>Reduce interface movement and transitions.</small></div><button class="setting-toggle '+(s.reducedMotion?'on':'')+'" onclick="toggleSetting(\'reducedMotion\')">'+(s.reducedMotion?'ON':'OFF')+'</button></div>'+
+ '</section></div><section class="panel settings-section"><div class="section-title">Account</div><div class="setting-row"><div><b>Equinox Account</b><small>Your game is connected to Supabase. Cloud saves and global systems use this account.</small></div><button class="setting-toggle on" onclick="equinoxLogout()">Sign Out</button></div></section><section class="panel settings-danger"><div><div class="section-title">Game Data</div><h2>Reset Progress</h2><p class="muted">Delete this browser\'s Equinox save and start from the beginning.</p></div><button onclick="resetProgress()">Reset All Progress</button></section></div>';
+}
+
+function inventoryView(){
+ const query=(window.equinoxInventorySearch||'').toLowerCase();
+ const sort=window.equinoxInventorySort||'rarity';
+ let rows=state.auras.filter(function(a){return !query||a.name.toLowerCase().includes(query)});
+ if(sort==='rarity')rows.sort(function(a,b){return b.rarity-a.rarity||b.rolledAt-a.rolledAt});
+ if(sort==='recent')rows.sort(function(a,b){return b.rolledAt-a.rolledAt});
+ if(sort==='alpha')rows.sort(function(a,b){return a.name.localeCompare(b.name)});
+ const auraCards=rows.map(function(a){
+   return '<div class="aura-card '+(a.equipped?'equipped':'')+'"><div class="aura-main"><div><b>'+a.name+'</b><small>1/'+fmt(a.rarity)+' • '+a.tier+(a.equipped?' • EQUIPPED':'')+'</small></div><div class="aura-tags">'+(a.favorite?'★ Favorited':'')+(a.autoSkip?' • Auto Skip':'')+(a.autoEquip?' • Auto Equip':'')+'</div></div><div class="setting-row"><div><b>Tab Position</b><small>Choose where the main navigation tabs appear.</small></div><select class="settings-select" onchange="setTabPosition(this.value)"><option value="left" '+(tabPosition==='left'?'selected':'')+'>Left</option><option value="right" '+(tabPosition==='right'?'selected':'')+'>Right</option><option value="top" '+(tabPosition==='top'?'selected':'')+'>Top</option><option value="bottom" '+(tabPosition==='bottom'?'selected':'')+'>Bottom</option></select></div><div class="aura-actions"><button onclick="toggleFavorite(\''+a.id+'\')">'+(a.favorite?'Unfavorite':'Favorite')+'</button><button onclick="equipAura(\''+a.id+'\')">Equip</button><button onclick="setAuraAutomation(\''+a.id+'\',\'skip\')">'+(a.autoSkip?'Disable Skip':'Auto Skip')+'</button><button onclick="setAuraAutomation(\''+a.id+'\',\'equip\')">'+(a.autoEquip?'Disable Equip':'Auto Equip')+'</button><button class="danger" onclick="discardAura(\''+a.id+'\')">Remove</button></div></div>';
  }).join('')||'<div class="empty">No collected Auras match this filter.</div>';
  const potionRows=Object.entries(state.inventory).filter(function(e){return /Potion/.test(e[0])}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Potions yet.</div>';
  const gearRows=Object.entries(state.inventory).filter(function(e){return e[0].endsWith('Glove')||e[0].endsWith('Device')||e[0].endsWith('Gauntlet')||e[0]==='Shining Star'||e[0]==='Hologrammer'||e[0]==='Ragnaröker'}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+' '+((state.gearsEquipped||[]).includes(e[0])?'• EQUIPPED':'')+'</span><button onclick="equipGear('+JSON.stringify(e[0])+')">'+((state.gearsEquipped||[]).includes(e[0])?'Unequip':'Equip')+'</button><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Gears yet.</div>';
@@ -696,7 +715,7 @@ function render(){
         '<div class="logo">☯ EQUINOX</div>'+
         '<div class="topstats">'+topStats+'</div>'+
       '</div>'+
-      '<div class="layout">'+
+      '<div class="layout tab-position-'+(state.settings?.tabPosition||'left')+'">'+
         '<aside class="tabs">'+tabs.map(function(t){
           return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>';
         }).join('')+'</aside>'+
