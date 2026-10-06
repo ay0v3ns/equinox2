@@ -130,14 +130,34 @@ async function equinoxHydrate() {
   }
   const { data: cloudSave, error: cloudSaveError } = await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id', uid).maybeSingle();
   if (cloudSaveError) console.warn('Equinox cloud save load failed; continuing with local save:', cloudSaveError);
-  const hasCloudSave = cloudSave?.save_data && typeof cloudSave.save_data === 'object' && Object.keys(cloudSave.save_data).length;
-  if (hasCloudSave) {
+  const cloudData = cloudSave?.save_data && typeof cloudSave.save_data === 'object' ? cloudSave.save_data : null;
+  const hasCloudSave = !!(cloudData && Object.keys(cloudData).length);
+  let localSave = null;
+  try {
+    const localRaw = localStorage.getItem('equinox-save-v1');
+    localSave = localRaw ? JSON.parse(localRaw) : null;
+  } catch (_) {}
+  const cloudAuras = Array.isArray(cloudData?.auras) ? cloudData.auras : [];
+  const cloudRecent = Array.isArray(cloudData?.recent) ? cloudData.recent : [];
+  const cloudInventory = cloudData?.inventory && typeof cloudData.inventory === 'object' ? cloudData.inventory : {};
+  const localAuras = Array.isArray(localSave?.auras) ? localSave.auras : [];
+  const localRecent = Array.isArray(localSave?.recent) ? localSave.recent : [];
+  const localInventory = localSave?.inventory && typeof localSave.inventory === 'object' ? localSave.inventory : {};
+  const localHasProgress = localAuras.length>0 || localRecent.length>0 || !!localSave?.lastRollResult ||
+    Object.values(localInventory).some(v=>Number(v||0)>0);
+  const cloudLooksBroken = Number(cloudData?.rolls||0)>0 &&
+    cloudAuras.length===0 && cloudRecent.length===0 && !cloudData?.lastRollResult &&
+    !Object.values(cloudInventory).some(v=>Number(v||0)>0);
+  const preserveLocal = !!(cloudLooksBroken && localHasProgress);
+  if (hasCloudSave && !preserveLocal) {
     try {
-      localStorage.setItem('equinox-save-v1', JSON.stringify(cloudSave.save_data));
+      localStorage.setItem('equinox-save-v1', JSON.stringify(cloudData));
       if (typeof window.equinoxReloadLocalState === 'function') window.equinoxReloadLocalState();
     } catch (e) {
       console.warn('Equinox cloud save was invalid; keeping the local save:', e);
     }
+  } else if (preserveLocal) {
+    console.warn('Equinox preserved a healthier local save instead of overwriting it with an incomplete cloud snapshot.');
   }
   const analyticsUser = {id:uid,email:session.user.email,username:profile?.username || session.user.user_metadata?.username || ''};
   localStorage.setItem('equinox-user', JSON.stringify(analyticsUser));
@@ -345,6 +365,7 @@ function eq4CurrentHourIso(){
 
 async function eq4LoadSharedQuestBoard(){
   if(typeof EQUINOX_SUPABASE==='undefined')return;
+  try{await EQUINOX_SUPABASE.rpc('ensure_global_hour')}catch(e){console.warn('Equinox global hour seed failed:',e)}
   const hourIso=eq4CurrentHourIso();
   let {data,error}=await EQUINOX_SUPABASE.from('global_quests')
     .select('quest_id,hour_key,quest_index,quest_data')
@@ -424,6 +445,7 @@ async function eq4SyncSharedQuestProgress(){
 
 async function eq4LoadSharedShop(){
   if(typeof EQUINOX_SUPABASE==='undefined')return;
+  try{await EQUINOX_SUPABASE.rpc('ensure_global_hour')}catch(e){console.warn('Equinox global shop seed failed:',e)}
   const hourIso=eq4CurrentHourIso();
   let {data,error}=await EQUINOX_SUPABASE.from('shop_stock')
     .select('item_id,item_name,rarity,stock,max_stock,hour_key,updated_at')
