@@ -1050,3 +1050,33 @@ input::placeholder,
   .world-panel .buff-row{grid-template-columns:1fr}
   .world-panel .buff-row>span{white-space:normal}
 }
+
+/* Equinox NPC hub redesign */
+.npc-hub{padding:24px;background:linear-gradient(145deg,#101621,#0c1119)}
+.npc-hub-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+.npc-hub-head h1{margin:4px 0 6px;font-size:32px}
+.npc-hub-count{padding:8px 12px;border:1px solid #2d3850;border-radius:999px;background:#0b1018;color:#8e9bb5;font-size:11px;text-transform:uppercase;letter-spacing:.12em}
+.npc-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.npc-card.npc-hub-grid{min-width:0}
+.npc-card.npc-lime,.npc-card.npc-mari,.npc-card.npc-jake,.npc-card.npc-stella,.npc-card.npc-jester,.npc-subgrid .npc-card{
+  width:100%;box-sizing:border-box;display:flex;align-items:center;gap:15px;text-align:left;
+  padding:18px 19px;border:1px solid #263248;border-radius:14px;
+  background:linear-gradient(145deg,#151d2a,#0e141e);color:var(--text);
+  box-shadow:0 8px 24px rgba(0,0,0,.16);transition:transform .14s ease,border-color .14s ease,background .14s ease,box-shadow .14s ease;
+}
+.npc-card.npc-lime:hover,.npc-card.npc-mari:hover,.npc-card.npc-jake:hover,.npc-card.npc-stella:hover,.npc-card.npc-jester:hover,.npc-subgrid .npc-card:hover{
+  transform:translateY(-3px);border-color:#596b8d;background:linear-gradient(145deg,#1a2434,#111926);box-shadow:0 12px 30px rgba(0,0,0,.24)
+}
+.npc-card .npc-icon{
+  flex:0 0 48px;width:48px;height:48px;border-radius:13px;display:grid;place-items:center;
+  border:1px solid #34415a;background:#0a0f17;color:#e7edf8;font-weight:800;font-size:18px;letter-spacing:.03em
+}
+.npc-copy{min-width:0;display:block}
+.npc-copy small{display:block;margin-bottom:5px;color:#7f8daa;font-size:10px;letter-spacing:.12em}
+.npc-copy h2{margin:0 0 5px;font-size:20px}
+.npc-copy p{margin:0;color:#aab5ca;font-size:12px;line-height:1.5}
+.npc-copy strong{display:block;margin-top:10px;color:#d8e1f0;font-size:11px}
+.npc-lime .npc-icon{border-color:#6b7650}.npc-mari .npc-icon{border-color:#806345}.npc-jake .npc-icon{border-color:#536d83}.npc-stella .npc-icon{border-color:#705b82}.npc-jester .npc-icon{border-color:#7b4d5b}
+.npc-subgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.mari-subcard{min-height:150px}
+@media(max-width:900px){.npc-hub-grid,.npc-subgrid{grid-template-columns:1fr}}
