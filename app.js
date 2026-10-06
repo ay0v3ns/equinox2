@@ -915,7 +915,8 @@ function render(){
     const equipped=(state.auras||[]).find(function(a){return a.equipped});
     const worldLuck=typeof totalLuck==='function'?totalLuck():1;
     const worldSpeed=typeof totalSpeed==='function'?totalSpeed():1;
-    const rollTime=typeof rollTimeSeconds==='function'?rollTimeSeconds():11;
+    const computedRollTime=typeof rollTimeSeconds==='function'?rollTimeSeconds():11;
+    const rollTime=state.rolling?Math.max(1,Number(state.rollDuration||computedRollTime)):computedRollTime;
     const cooldownRemaining=Math.max(0,(Number(state.rollCooldownUntil||0)-Date.now())/1000);
     const latestText=latest
       ? '<div class="roll-result"><div class="section-title">LATEST ROLL</div><h2>'+eq4escape(latest.name)+'</h2><p>1/'+fmt(latest.rolledRarity||latest.rarity||0)+(latest.breakthrough?' · BREAKTHROUGH':'')+(latest.bonus?' · BONUS ROLL':'')+'</p></div>'
