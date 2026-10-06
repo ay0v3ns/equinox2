@@ -194,6 +194,7 @@ function tutorialRollHook(){const t=tutorialState();if(t.phase!==1)return;if(!t.
 function tutorialCheck(){const t=tutorialState();if(t.phase===2&&t.part2.glove&&t.part2.haste&&t.part2.quest){t.phase=3;addItem('Tutorial Potion I',2);addItem('Tutorial Potion II',1);state.autoRoll=true;save();toast('Tutorial Part II complete! Auto Roll unlocked.');}}
 function markTutorialQuest(){const t=tutorialState();if(t.phase===2&&!t.part2.quest){t.part2.quest=true;tutorialCheck()}}
 function markTutorialCraft(name){const t=tutorialState();if(t.phase!==2)return;if(name==='Luck Glove')t.part2.glove=true;if(name==='Haste Potion I')t.part2.haste=true;tutorialCheck()}
+const BREWING_STAND={};
 function potionRuntimeEffect(name,multiplier){
  const text=String(POTION_EFFECTS[name]||'');
  const luckMatch=/([+-]?[0-9][0-9,]*(?:[.][0-9]+)?)%[ ]*Luck/i.exec(text);
@@ -574,7 +575,35 @@ const POTION_EFFECTS={
 "Reverse Potion I":"Converts 25% of final Roll Speed into Luck","Reverse Potion II":"Converts 50% of final Roll Speed into Luck","Reverse Potion III":"Converts 100% of final Roll Speed into Luck",
 "Overflow Potion I":"Converts Luck above 1,000% into Speed","Overflow Potion II":"Converts Luck above 5,000% into Speed","Overflow Potion III":"Converts Luck above 25,000% into Speed",
 "Paradox Potion":"+1,000% Luck and +500% Speed; compensating reaction","Fortune's Curse":"+5,000% Luck for 5 minutes; Curse after expiration","Echo of Fortune":"+2,000% Luck for 5 minutes; partial return after expiration",
-"Acceleration Potion":"+300% Speed for 5 minutes; roll interval improves with milestones","Chain Reaction Potion":"+1,500% Luck; rare Aura grants a stronger next roll"
+"Acceleration Potion":"+300% Speed for 5 minutes; roll interval improves with milestones","Chain Reaction Potion":"+1,500% Luck; rare Aura grants a stronger next roll",
+"Tutorial Potion I":"+100,000% Luck for 1 roll",
+"Tutorial Potion II":"+600,000% Luck for 1 roll",
+"Fortune Potion IV":"+175% Luck for 5 minutes",
+"Fortune Potion V":"+300% Luck for 5 minutes",
+"Fortune Potion VI":"+500% Luck for 5 minutes",
+"Haste Potion IV":"+45% Roll Speed for 5 minutes",
+"Haste Potion V":"+65% Roll Speed for 5 minutes",
+"Haste Potion VI":"+100% Roll Speed for 5 minutes",
+"Fortune-Haste Potion":"+250% Luck; +50% Roll Speed for 8 minutes",
+"Overclock Potion":"+25% Luck; +150% Roll Speed for 3 minutes",
+"Potion of Bound":"+5,000,000% Luck for 1 roll",
+"Heavenly Potion I":"+1,500,000% Luck for 1 roll",
+"Heavenly Potion II":"+20,000,000% Luck for 1 roll",
+"Godlike Potion":"+40,000,000% Luck for 1 roll",
+"Oblivion Potion":"+50,000,000% Luck for 1 roll",
+"Red Moon Potion I":"+10,000,000% Luck for 1 roll",
+"Red Moon Potion II":"+30,000,000% Luck for 1 roll",
+"Biomebound Potion — Windy":"+250% Luck; +50% Roll Speed for 6 minutes; in Windy, both effects are doubled",
+"Biomebound Potion — Snowy":"+300% Luck; +40% Roll Speed for 6 minutes; in Snowy, both effects are doubled",
+"Biomebound Potion — Rainy":"+350% Luck; +60% Roll Speed for 6 minutes; in Rainy, both effects are doubled",
+"Biomebound Potion — Sandstorm":"+400% Luck; +30% Roll Speed for 6 minutes; in Sandstorm, both effects are doubled",
+"Biomebound Potion — Hell":"+500% Luck; +50% Roll Speed for 6 minutes; in Hell, both effects are doubled",
+"Biomebound Potion — Heaven":"+600% Luck; +75% Roll Speed for 6 minutes; in Heaven, both effects are doubled",
+"Biomebound Potion — Corruption":"+700% Luck; +50% Roll Speed for 6 minutes; in Corruption, both effects are doubled",
+"Biomebound Potion — Null":"+800% Luck; +100% Roll Speed for 6 minutes; in Null, both effects are doubled",
+"Biomebound Potion — Dreamspace":"+900% Luck; +75% Roll Speed for 6 minutes; in Dreamspace, both effects are doubled",
+"Biomebound Potion — Crimson Moon":"+1,000% Luck; +100% Roll Speed for 6 minutes; in Crimson Moon, both effects are doubled",
+"Biomebound Potion — Glitched":"+1,250% Luck; +125% Roll Speed for 6 minutes; in Glitched, both effects are doubled"
 };
 
 function hourKey(){return Math.floor(Date.now()/3600000)}
