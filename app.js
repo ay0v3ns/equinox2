@@ -1003,10 +1003,23 @@ function shopStock(){
  const h=hourKey(); if(!state.shopState||state.shopState.hour!==h){
    const rng=(n)=>seededRandom(h*31+n); const pick=(type,offset)=>{const pool=SHOP_POOL.filter(x=>x[0]===type);let total=pool.reduce((s,x)=>s+x[2],0),r=rng(offset)*total;for(const x of pool){r-=x[2];if(r<=0)return x}return pool[pool.length-1]};
    const used=new Set();const out=[];[["Potion",1],["Potion",2],["Gear",3],["Gear",4],["Item",5],["Item",6]].forEach(([t,o])=>{let x,guard=0;do{x=pick(t,o+guard++);}while(used.has(x[1])&&guard<50);used.add(x[1]);out.push({type:x[0],name:x[1],stock:x[3]+Math.floor(rng(o+20)*(x[4]-x[3]+1)),initialStock:0,bought:false,weight:x[2]})});out.forEach(x=>x.initialStock=x.stock);state.shopState={hour:h,items:out};save()}return state.shopState}
-function shopPrice(name){const row=SHOP_POOL.find(x=>x[1]===name);if(!row)return 0;return Math.max(1,Math.floor((auraDef(name)?.rarity?2*auraDef(name).rarity:100)* (1-(bankShopReduction()/100))))}
+function coinValueForName(name,seen){
+ name=String(name||'');seen=seen||new Set();if(seen.has(name))return 0;seen.add(name);
+ if(name==='Coins'||name==='Dark Points')return 0;
+ const aura=auraDef(name);if(aura&&Number(aura.rarity)>0)return 2*Number(aura.rarity);
+ const rec=(WORKSHOP_RECIPES&&WORKSHOP_RECIPES[name])||null;
+ if(rec&&rec.recipe){
+   let total=0;for(const [item,n] of Object.entries(rec.recipe))total+=coinValueForName(item,new Set(seen))*Math.max(1,Number(n||0));
+   if(total>0)return total*2;
+ }
+ const groundDenoms={"Wind Essence":500,"Icicle":600,"Rainy Bottle":750,"Hourglass":3000,"Eternal Flame":6666,"Piece of Star":7500,"Feather Vial":7777,"Corruptaine":9000,"NULL?":13333,"Cloudburst":650,"Downpour":1500,"Oceanus":11000,"Cursed Fragments":75000};
+ if(groundDenoms[name])return 2*groundDenoms[name];
+ return 100;
+}
+function shopPrice(name){const row=SHOP_POOL.find(x=>x[1]===name);if(!row)return 0;return Math.max(1,Math.floor(coinValueForName(name)*(1-(bankShopReduction()/100))))}
 function bankShopReduction(){const b=state.bankTier||0;return b>=10?10:b>=7?6:b>=4?3:0}
 function buyShopItem(i){const shop=activeShopStock(),x=shop.items[i];if(!x||x.stock<=0||x.bought)return;const price=shopPrice(x.name);if((state.inventory.Coins||0)<price){toast("Need "+fmt(price)+" Coins.");return}takeItem("Coins",price);x.stock--;x.bought=true;addItem(x.name,1);save();render();toast("Bought "+x.name)}
-function jesterCoinValue(){let total=0;(state.auras||[]).forEach(function(a){const d=auraDef(a.name);if(d&&Number(d.rarity)>0)total+=2*Number(d.rarity)});Object.entries(state.inventory||{}).forEach(function(e){const name=e[0],count=Math.max(0,Number(e[1]||0));if(!count||name==='Coins'||name==='Dark Points')return;const d=auraDef(name);if(d&&Number(d.rarity)>0)total+=2*Number(d.rarity)*count});return Math.max(0,total)}
+function jesterCoinValue(){let total=0;(state.auras||[]).forEach(function(a){total+=coinValueForName(a.name)});Object.entries(state.inventory||{}).forEach(function(e){const name=e[0],count=Math.max(0,Number(e[1]||0));if(!count||name==='Coins'||name==='Dark Points')return;total+=coinValueForName(name)*count});return Math.max(0,total)}
 function jesterDistribution(){
  const luck=Math.max(0,Number(totalLuck()||0)),speed=Math.max(0,Number(totalSpeed()||0)),coinValue=jesterCoinValue();
  const luckScore=luck/(luck+100),speedScore=speed/(speed+100),coinScore=coinValue/(coinValue+1000),influence=(luckScore+speedScore+coinScore)/3;
