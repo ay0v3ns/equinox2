@@ -144,17 +144,6 @@ body{min-height:100dvh}
   background:linear-gradient(90deg,transparent,#dfe6f5,transparent);
   opacity:.5;
 }
-.roll-button::after{
-  content:"CLICK TO ROLL";
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:9px;
-  font-size:8px;
-  font-weight:700;
-  letter-spacing:.28em;
-  color:#aab5c9;
-}
 .roll-button:hover{
   transform:translateY(-2px);
   filter:brightness(1.12);
