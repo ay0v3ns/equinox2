@@ -141,7 +141,11 @@ async function equinoxHydrate() {
   if (window.posthog?.identify) window.posthog.identify(uid, { username: analyticsUser.username });
   if (window.equinoxAnalytics?.capture) window.equinoxAnalytics.capture('equinox_session_started', { has_cloud_save: !!hasCloudSave });
   if (typeof window.render !== 'function') {
-    throw new Error('Equinox renderer failed to load before authentication boot.');
+    const bootError=window.__equinoxBootError;
+    const detail=bootError?.message || 'The renderer script did not finish loading.';
+    console.error('Equinox renderer boot failure:',bootError||detail);
+    showAuthGate('Equinox startup error: '+detail);
+    return;
   }
   window.render();
   hideAuthGate();
