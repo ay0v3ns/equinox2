@@ -492,6 +492,12 @@ async function eq4RefreshSharedSystems(){
   if(state?.activeTab==='NPCs')render();
 }
 
+window.eq4LoadSharedQuestBoard=eq4LoadSharedQuestBoard;
+window.eq4LoadSharedQuestProgress=eq4LoadSharedQuestProgress;
+window.eq4LoadSharedShop=eq4LoadSharedShop;
+window.eq4RefreshSharedSystems=eq4RefreshSharedSystems;
+window.eq4InstallSharedWrappers=eq4InstallSharedWrappers;
+
 async function eq4InstallSharedWrappers(){
   if(typeof EQUINOX_SUPABASE==='undefined')return;
   if(typeof window.completeQuest==='function'&&!window.__eq4CompleteWrapped){
