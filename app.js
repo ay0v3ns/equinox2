@@ -739,4 +739,5 @@ function render(){
   }
 }
 window.render=render;
+try { window.dispatchEvent(new Event('equinox-render-ready')); } catch (_) {}
 render();
