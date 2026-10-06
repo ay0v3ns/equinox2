@@ -383,7 +383,8 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
 
   if(autoSkip){
    rollRecord.skipped=true;
-   save();render();
+   try{save()}catch(err){console.warn('Roll save failed:',err)}
+   try{render()}catch(err){console.warn('Roll render failed after Auto Skip:',err)}
    toast('Auto Skip: '+result.name);
    return true;
   }
@@ -399,11 +400,15 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
     if(replace)state.auras=state.auras.filter(function(a){return a.id!==victim.id});
     else{
      rollRecord.skipped=true;
-     save();render();toast('Skipped '+result.name+' — storage unchanged.');return true;
+     try{save()}catch(err){console.warn('Roll save failed:',err)}
+     try{render()}catch(err){console.warn('Roll render failed after storage skip:',err)}
+     toast('Skipped '+result.name+' — storage unchanged.');return true;
     }
    }else{
     rollRecord.skipped=true;
-    save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return true;
+    try{save()}catch(err){console.warn('Roll save failed:',err)}
+    try{render()}catch(err){console.warn('Roll render failed after storage block:',err)}
+    toast('All Aura slots are Favorited. '+result.name+' was skipped.');return true;
    }
   }
 
@@ -424,7 +429,8 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
   if(state.equippedAuraId&&!state.auras.some(function(a){return a.id===state.equippedAuraId}))state.equippedAuraId=null;
   try{achievementCheck()}catch(err){console.warn('Achievement check failed after roll',err)}
   window.state=state;
-  save();render();
+  try{save()}catch(err){console.warn('Roll save failed:',err)}
+  try{render()}catch(err){console.warn('Roll render failed after successful roll:',err)}
   toast(chosen.breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: 2x Luck':'Roll complete'));
   return true;
  }catch(err){
@@ -438,7 +444,8 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
   if(state.lastRollResult?.roll===previousRolls+1)state.lastRollResult=null;
   window.state=state;
   console.error('Equinox roll failed safely:',err);
-  save();render();
+  try{save()}catch(saveErr){console.warn('Roll rollback save failed:',saveErr)}
+  try{render()}catch(renderErr){console.warn('Roll rollback render failed:',renderErr)}
   toast('Roll failed safely. Your progress was preserved.');
   return false;
  }
