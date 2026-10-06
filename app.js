@@ -413,8 +413,11 @@ function maybeSpawn(){tickPotions();if(state.autoRoll&&state.inventory.Coins>0&&
 
 if(!window.__equinoxGameTick){window.__equinoxGameTick=true;setInterval(function(){const hadPotions=(state.activePotions||[]).length>0;maybeSpawn();if(state.activeTab==='Roll'&&(hadPotions||state.autoRoll))render()},1000)}
 function tab(name){
- if(!['Roll','Inventory','NPCs','Global','Achievements','Settings'].includes(name)){return}
- state.activeTab=name;render();
+ if(!['Roll','Inventory','NPCs','Global','Achievements','Settings'].includes(name))return;
+ state.activeTab=name;
+ render();
+ if(name==='Global'&&typeof window.eq4RefreshGlobal==='function')void window.eq4RefreshGlobal(false);
+ if(name==='NPCs'&&typeof window.eq4RefreshSharedSystems==='function')void window.eq4RefreshSharedSystems();
 }
 function npcTab(name){state.npcTab=name;render()}
 function settingEnabled(key){return state.settings&&state.settings[key]!==false}
@@ -614,40 +617,49 @@ var EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA||{
 function eq4escape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 async function eq4RefreshGlobal(force){
-  if(typeof EQUINOX_SUPABASE==='undefined')return;
-  const now=Date.now();
-  if(!force&&window.EQUINOX_GLOBAL_DATA.loaded&&now-window.EQUINOX_GLOBAL_DATA.lastRefresh<10000)return;
-  const [p,o,ch]=await Promise.all([
-    EQUINOX_SUPABASE.from('profiles').select('id,username,auras_collected,collective_rarity,roll_count,rarest_roll_rarity,global_rank,equipped_aura_id').order('auras_collected',{ascending:false}).limit(10),
-    EQUINOX_SUPABASE.from('online_presence').select('user_id,username,global_rank,equipped_aura_name,equipped_aura_rarity,last_seen').gte('last_seen',new Date(Date.now()-90000).toISOString()).order('last_seen',{ascending:false}).limit(10),
-    EQUINOX_SUPABASE.from('chat_messages').select('id,user_id,username,global_rank,equipped_aura_name,equipped_aura_rarity,message,created_at').order('created_at',{ascending:false}).limit(150)
-  ]);
-  if(p.error||o.error||ch.error){console.warn('Equinox global sync:',p.error||o.error||ch.error);return;}
-  window.EQUINOX_GLOBAL_DATA.profiles=p.data||[];
-  window.EQUINOX_GLOBAL_DATA.presence=o.data||[];
-  window.EQUINOX_GLOBAL_DATA.chat=(ch.data||[]).reverse();
-  window.EQUINOX_GLOBAL_DATA.loaded=true;
-  window.EQUINOX_GLOBAL_DATA.lastRefresh=now;
-  if(state&&state.activeTab==='Global')render();
+ if(typeof EQUINOX_SUPABASE==='undefined')return false;
+ const gd=window.EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA||{profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0,loading:false,errors:[]};
+ const now=Date.now();
+ if(gd.loading)return false;
+ if(!force&&gd.loaded&&now-Number(gd.lastRefresh||0)<10000)return true;
+ gd.loading=true;gd.errors=[];
+ try{
+   const [p,o,ch]=await Promise.all([
+     EQUINOX_SUPABASE.from('profiles').select('id,username,auras_collected,collective_rarity,roll_count,rarest_roll_rarity,global_rank,equipped_aura_id').order('auras_collected',{ascending:false}).limit(10),
+     EQUINOX_SUPABASE.from('online_presence').select('user_id,username,global_rank,equipped_aura_name,equipped_aura_rarity,last_seen').gte('last_seen',new Date(Date.now()-90000).toISOString()).order('last_seen',{ascending:false}).limit(10),
+     EQUINOX_SUPABASE.from('chat_messages').select('id,user_id,username,global_rank,equipped_aura_name,equipped_aura_rarity,message,created_at').order('created_at',{ascending:false}).limit(150)
+   ]);
+   if(p.error){gd.errors.push('Players: '+p.error.message)}else gd.profiles=p.data||[];
+   if(o.error){gd.errors.push('Online: '+o.error.message)}else gd.presence=o.data||[];
+   if(ch.error){gd.errors.push('Chat: '+ch.error.message)}else gd.chat=(ch.data||[]).reverse();
+   gd.loaded=true;gd.lastRefresh=Date.now();
+   if(state&&state.activeTab==='Global')render();
+   return gd.errors.length===0;
+ }catch(err){
+   gd.errors.push(String(err?.message||err));gd.loaded=true;gd.lastRefresh=Date.now();
+   if(state&&state.activeTab==='Global')render();
+   return false;
+ }finally{gd.loading=false}
 }
-
 function eq4Rows(field){
   return window.EQUINOX_GLOBAL_DATA.profiles.slice().sort((a,b)=>Number(b[field]||0)-Number(a[field]||0)).slice(0,10);
 }
 
 function eq4GlobalView(){
-  const g=globalStats();
-  const boards=[['Auras Collected','auras_collected'],['Collective Rarity','collective_rarity'],['Rarest Roll','rarest_roll_rarity'],['Roll Count','roll_count']].map(function(pair){
-    const rows=eq4Rows(pair[1]);
-    return '<div class="global-board panel"><div class="section-title">'+pair[0]+'</div>'+
-      (rows.length?rows.map((x,i)=>'<div class="leader-row"><span>#'+(i+1)+' '+eq4escape(x.username)+'</span><b>'+fmt(Number(x[pair[1]]||0))+'</b></div>').join(''):'<div class="empty">No global players yet.</div>')+
-      '</div>';
-  }).join('');
-  const online=window.EQUINOX_GLOBAL_DATA.presence.map(x=>'<div class="online-row"><b>'+eq4escape(x.username)+'</b><span>Online</span><span>'+eq4escape(x.equipped_aura_name||'None')+'</span></div>').join('')||'<div class="empty">No other players online.</div>';
-  const chat=window.EQUINOX_GLOBAL_DATA.chat.map(m=>'<div class="chat-msg"><b>'+eq4escape(m.username)+'</b><small>'+eq4escape(m.global_rank||'Unranked')+' • '+eq4escape(m.equipped_aura_name||'None')+(m.equipped_aura_rarity?' • 1/'+fmt(m.equipped_aura_rarity):'')+' <button class="chat-flag" onclick="eq4FlagChat('+m.id+')">Flag</button></small><span>'+eq4escape(m.message)+'</span></div>').join('')||'<div class="empty">No messages yet.</div>';
-  return '<div class="global-page"><div class="panel global-profile"><div><div class="section-title">Player Rank</div><h1>'+eq4escape(g.username)+'</h1><p class="muted">Equipped Aura: '+eq4escape(g.equipped)+(g.title?' • Title: ['+eq4escape(g.title)+']':'')+'</p></div><div class="global-metrics"><span>Unique Auras <b>'+fmt(g.aurasCollected)+'</b></span><span>Rarest Roll <b>1/'+fmt(g.rarestRoll||0)+'</b></span><span>Rolls <b>'+fmt(g.rollCount)+'</b></span></div></div><div class="global-boards">'+boards+'</div><div class="panel online-panel"><div class="section-title">Online Players</div>'+online+'</div><div class="panel chat-panel"><div class="section-title">Global Chat · 150 messages max</div><div class="chat-log">'+chat+'</div><div class="chat-compose"><input id="globalChatInput" maxlength="150" placeholder="Message Global Chat…"><button onclick="eq4SendChat()">Send</button></div></div><p class="muted global-note">Live global data • Supabase connected</p></div>';
+ const gd=window.EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA||{profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0,loading:false,errors:[]};
+ const g=globalStats();
+ const status=gd.loading?'SYNCING GLOBAL DATA…':gd.errors?.length?'GLOBAL PARTIAL':'GLOBAL LIVE';
+ const statusDetail=gd.errors?.length?gd.errors.join(' • '):'Supabase connected';
+ const boards=[['Auras Collected','auras_collected'],['Collective Rarity','collective_rarity'],['Rarest Roll','rarest_roll_rarity'],['Roll Count','roll_count']].map(function(pair){
+   const rows=eq4Rows(pair[1]);
+   return '<div class="global-board panel"><div class="section-title">'+pair[0]+'</div>'+
+     (rows.length?rows.map(function(x,i){return '<div class="leader-row"><span>#'+(i+1)+' '+eq4escape(x.username)+'</span><b>'+fmt(Number(x[pair[1]]||0))+'</b></div>'}).join(''):'<div class="empty">No global players yet.</div>')+
+     '</div>';
+ }).join('');
+ const online=gd.presence.map(function(x){return '<div class="online-row"><b>'+eq4escape(x.username)+'</b><span class="online-state">ONLINE</span><span>'+eq4escape(x.equipped_aura_name||'None')+(x.equipped_aura_rarity?' • 1/'+fmt(x.equipped_aura_rarity):'')+'</span></div>'}).join('')||'<div class="empty">No other players online.</div>';
+ const chat=gd.chat.map(function(m){return '<div class="chat-msg"><b>'+eq4escape(m.username)+'</b><small>'+eq4escape(m.global_rank||'Unranked')+' • '+eq4escape(m.equipped_aura_name||'None')+(m.equipped_aura_rarity?' • 1/'+fmt(m.equipped_aura_rarity):'')+' <button class="chat-flag" onclick="eq4FlagChat('+m.id+')">Flag</button></small><span>'+eq4escape(m.message)+'</span></div>'}).join('')||'<div class="empty">No messages yet.</div>';
+ return '<div class="global-page"><div class="panel global-profile"><div><div class="section-title">Player Rank</div><h1>'+eq4escape(g.username)+'</h1><p class="muted">Equipped Aura: '+eq4escape(g.equipped)+(g.title?' • Title: ['+eq4escape(g.title)+']':'')+'</p></div><div class="global-metrics"><span>Unique Auras <b>'+fmt(g.aurasCollected)+'</b></span><span>Rarest Roll <b>1/'+fmt(g.rarestRoll||0)+'</b></span><span>Rolls <b>'+fmt(g.rollCount)+'</b></span></div></div><div class="global-status"><b>'+status+'</b><span>'+eq4escape(statusDetail)+'</span></div><div class="global-boards">'+boards+'</div><div class="panel online-panel"><div class="section-title">Online Players</div>'+online+'</div><div class="panel chat-panel"><div class="section-title">Global Chat <span class="section-meta">150 messages max</span></div><div class="chat-log">'+chat+'</div><div class="chat-compose"><input id="globalChatInput" maxlength="150" placeholder="Message Global Chat…"><button onclick="eq4SendChat()">Send</button></div></div></div>';
 }
-
 async function eq4SendChat(){
   if(typeof EQUINOX_SUPABASE==='undefined')return;
   const input=document.getElementById('globalChatInput');
@@ -768,13 +780,12 @@ function render(){
       else main='<div class="panel"><div class="section-title">NPC SYSTEMS</div><h1>Equinox NPCs</h1><p class="muted">Choose a system to interact with the world.</p><div class="npc-grid"><button onclick="npcTab(\'quests\')">Lime · Quests</button><button onclick="npcTab(\'shop\')">Mari · Shop</button><button onclick="npcTab(\'bank\')">Mari · Bank</button><button onclick="npcTab(\'workshop\')">Jake · Workshop</button><button onclick="npcTab(\'cauldron\')">Stella · Cauldron</button></div></div>';
     }else if(state.activeTab==='Global'){
       try{
-        if(!window.EQUINOX_GLOBAL_DATA)window.EQUINOX_GLOBAL_DATA={profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0};
-        const gd=window.EQUINOX_GLOBAL_DATA;
+        const gd=window.EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA||{profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0,loading:false,errors:[]};
         if(typeof window.eq4RefreshGlobal==='function' && (!gd.loaded || Date.now()-Number(gd.lastRefresh||0)>10000))void window.eq4RefreshGlobal(true);
-        main=typeof window.globalView==='function'?window.globalView():eq4GlobalView();
+        main=eq4GlobalView();
       }catch(e){
         console.warn('Global view fallback:',e);
-        main='<div class="panel"><div class="section-title">GLOBAL</div><h1>Global systems are connecting…</h1><p class="muted">Your local game remains available. Global leaderboards, presence, chat, quests, and shop data will appear when the connection is ready.</p></div>';
+        main='<div class="panel"><div class="section-title">GLOBAL</div><h1>Global systems are connecting…</h1><p class="muted">Your local game remains available while the shared global services reconnect.</p></div>';
       }
     }else if(state.activeTab==='Achievements')main=achievementsView();
     else if(state.activeTab==='Settings')main=settingsView();
@@ -806,7 +817,7 @@ window.shopStock=shopStock;
 window.equipAura=equipAura;
 window.equipGear=equipGear;
 window.equinoxReloadLocalState=function(){
-  state=load();
+  state=normalizeState(load());
   window.state=state;
   bankTick();
   if(typeof render==='function')render();
