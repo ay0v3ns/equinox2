@@ -1138,3 +1138,28 @@ button{
 .recipe-requirement.insufficient strong{color:#f0b1b1}
 .recipe-blocked{opacity:.96}
 .jester-gamble-panel{min-height:280px}
+
+
+/* Full Aura Storage decision prompt: explicit choices, no ambiguous native Cancel. */
+.storage-overlay{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:24px;background:rgba(2,4,8,.82);backdrop-filter:blur(5px)}
+.storage-card{width:min(620px,calc(100vw - 32px));padding:28px;background:var(--panel);border:1px solid #44516a;box-shadow:0 24px 90px rgba(0,0,0,.65);text-align:center}
+.storage-card h1{margin:6px 0 4px;font-size:30px;overflow-wrap:anywhere}
+.storage-rarity{font-size:14px;font-weight:800;letter-spacing:.08em;color:#d8e1f2}
+.storage-card p{margin:10px 0;color:#bac5d8}
+.storage-warning{margin:18px 0;padding:12px;border:1px solid #5b4c32;background:#17140e;color:#efd39a;font-size:12px;font-weight:800;letter-spacing:.06em}
+.storage-choice-grid{display:grid;gap:10px;margin-top:14px;text-align:left}
+.storage-choice{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px;border:1px solid #303b52;background:#0f151f}
+.storage-choice>div{display:grid;gap:4px;min-width:0}
+.storage-choice b{font-size:13px}
+.storage-choice small{color:#8f9bb1;line-height:1.4}
+.storage-choice button{flex:0 0 auto;font-weight:800;white-space:nowrap}
+.storage-keep{border-color:#456a50!important}
+.storage-skip{border-color:#6d4444!important}
+.topstats{flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:700px){
+ .topbar{align-items:flex-start;gap:10px;padding:10px 14px}
+ .topstats{gap:8px 12px}
+ .storage-card{padding:22px}
+ .storage-choice{align-items:stretch;flex-direction:column}
+ .storage-choice button{width:100%}
+}
