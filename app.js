@@ -362,7 +362,8 @@ function settingsView(){
  '</section><section class="panel settings-section"><div class="section-title">Interface</div>'+
  '<div class="setting-row"><div><b>Notifications</b><small>Show gameplay notifications in the bottom-left.</small></div><button class="setting-toggle '+(s.notifications?'on':'')+'" onclick="toggleSetting(\'notifications\')">'+(s.notifications?'ON':'OFF')+'</button></div>'+
  '<div class="setting-row"><div><b>Reduced Motion</b><small>Reduce interface movement and transitions.</small></div><button class="setting-toggle '+(s.reducedMotion?'on':'')+'" onclick="toggleSetting(\'reducedMotion\')">'+(s.reducedMotion?'ON':'OFF')+'</button></div>'+
- '<div class="setting-row"><div><b>Performance Mode</b><small>Prioritize low CPU/GPU usage for older Chromebooks and weak devices.</small></div><button class="setting-toggle '+(s.performanceMode!==false?'on':'')+'" onclick="toggleSetting('performanceMode')">'+(s.performanceMode!==false?'ON':'OFF')+'</button></div>'+\n  '</section></div><section class="panel settings-section"><div class="section-title">Account</div><div class="setting-row"><div><b>Equinox Account</b><small>Your game is connected to Supabase. Cloud saves and global systems use this account.</small></div><button class="setting-toggle on" onclick="equinoxLogout()">Sign Out</button></div></section><section class="panel settings-danger"><div><div class="section-title">Game Data</div><h2>Reset Progress</h2><p class="muted">Delete this browser\'s Equinox save and start from the beginning.</p></div><button onclick="resetProgress()">Reset All Progress</button></section></div>';
+ '<div class="setting-row"><div><b>Performance Mode</b><small>Prioritize low CPU/GPU usage for older Chromebooks and weak devices.</small></div><button class="setting-toggle '+(s.performanceMode!==false?'on':'')+'" onclick="toggleSetting('performanceMode')">'+(s.performanceMode!==false?'ON':'OFF')+'</button></div>'+
+ '</section></div><section class="panel settings-section"><div class="section-title">Account</div><div class="setting-row"><div><b>Equinox Account</b><small>Your game is connected to Supabase. Cloud saves and global systems use this account.</small></div><button class="setting-toggle on" onclick="equinoxLogout()">Sign Out</button></div></section><section class="panel settings-danger"><div><div class="section-title">Game Data</div><h2>Reset Progress</h2><p class="muted">Delete this browser\'s Equinox save and start from the beginning.</p></div><button onclick="resetProgress()">Reset All Progress</button></section></div>';
 }
 
 function inventoryView(){
@@ -656,8 +657,8 @@ setTimeout(installEquinoxPhase4,0);
  */
 function render(){
   const root=document.getElementById('app');
-  root.className=(state.settings?.performanceMode!==false?'performance-mode ':'')+(state.settings?.reducedMotion?'reduced-motion':'');
   if(!root)return;
+  root.className=(state.settings?.performanceMode!==false?'performance-mode ':'')+(state.settings?.reducedMotion?'reduced-motion':'');
   try{
     const tabs=[
       ['Roll','Roll'],
