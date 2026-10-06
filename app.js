@@ -700,6 +700,8 @@ function render(){
     }else if(state.activeTab==='Global'){
       try{
         if(!window.EQUINOX_GLOBAL_DATA)window.EQUINOX_GLOBAL_DATA={profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0};
+        const gd=window.EQUINOX_GLOBAL_DATA;
+        if(typeof window.eq4RefreshGlobal==='function' && (!gd.loaded || Date.now()-Number(gd.lastRefresh||0)>10000))void window.eq4RefreshGlobal(true);
         main=typeof window.globalView==='function'?window.globalView():eq4GlobalView();
       }catch(e){
         console.warn('Global view fallback:',e);
