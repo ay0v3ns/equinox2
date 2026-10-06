@@ -44,7 +44,7 @@ function renderAuthGate(message='') {
   const signup = AUTH_UI.mode === 'signup';
   AUTH_UI.root.innerHTML = '<div class="auth-card">' +
     '<div class="auth-brand"><span class="auth-orb">☯</span><div><div class="section-title">EQUINOX</div><h1>' + (signup?'Create Account':'Welcome Back') + '</h1></div></div>' +
-    '<p class="muted">' + (signup?'Create your Equinox account to save your progress and join the global world.':'Welcome back to Equinox.') + '</p>' +
+    '<p class="muted">' + (signup?'Create your account to join the others.':'Welcome back to Equinox.') + '</p>' +
     (message?'<div class="auth-message">'+authEscape(message)+'</div>':'') +
     (signup?'<label>Username<input id="auth-username" maxlength="20" autocomplete="username" placeholder="3–20 letters, numbers, _"></label>':'') +
     '<label>Email<input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com"></label>' +
