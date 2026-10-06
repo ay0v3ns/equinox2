@@ -182,23 +182,58 @@ function tutorialRollHook(){const t=tutorialState();if(t.phase!==1)return;if(!t.
 function tutorialCheck(){const t=tutorialState();if(t.phase===2&&t.part2.glove&&t.part2.haste&&t.part2.quest){t.phase=3;addItem('Tutorial Potion I',2);addItem('Tutorial Potion II',1);state.autoRoll=true;save();toast('Tutorial Part II complete! Auto Roll unlocked.');}}
 function markTutorialQuest(){const t=tutorialState();if(t.phase===2&&!t.part2.quest){t.part2.quest=true;tutorialCheck()}}
 function markTutorialCraft(name){const t=tutorialState();if(t.phase!==2)return;if(name==='Luck Glove')t.part2.glove=true;if(name==='Haste Potion I')t.part2.haste=true;tutorialCheck()}
+function potionRuntimeEffect(name,multiplier){
+ const text=String(POTION_EFFECTS[name]||'');
+ const luckMatch=text.match(/([+-]?[0-9][0-9,]*(?:\\.[0-9]+)?)%\\s*Luck/i);
+ const speedMatch=text.match(/([+-]?[0-9][0-9,]*(?:\\.[0-9]+)?)%\\s*(?:Roll\\s*Speed|Speed)/i);
+ const rollMatch=text.match(/for\\s+([0-9][0-9,]*)\\s+rolls?/i);
+ const durationMatch=text.match(/for\\s+([0-9][0-9,]*(?:\\.[0-9]+)?)\\s+(seconds?|minutes?|hours?)/i);
+ const luck=luckMatch?Number(luckMatch[1].replace(/,/g,''))/100:0;
+ const speed=speedMatch?Number(speedMatch[1].replace(/,/g,''))/100:0;
+ const rolls=rollMatch?Math.max(1,Number(rollMatch[1].replace(/,/g,''))):0;
+ let ms=0;
+ if(durationMatch){
+   const n=Number(durationMatch[1].replace(/,/g,''));const u=durationMatch[2].toLowerCase();
+   ms=n*(u.startsWith('hour')?3600000:u.startsWith('minute')?60000:1000);
+ }
+ const special=/(converts|rerolls|grows|increases|volatile|compensating|returns|qualifying|reaction|milestones|double|halve)/i.test(text);
+ return {luck:luck*(multiplier||1),speed:speed*(multiplier||1),rolls,ms,special,description:text};
+}
+
 function usePotion(name){
- if(!Array.isArray(state.activePotions))state.activePotions=[];
- const enhanced=name.indexOf('Enhanced ')===0;
- const baseName=enhanced?name.slice(9):name;
- const multiplier=enhanced&&BREWING_STAND[baseName]?BREWING_STAND[baseName].multiplier:1;
- if(baseName==='Tutorial Potion I'||baseName==='Tutorial Potion II'){achievementPotionUsed(baseName);if(!hasItem(name,1))return;takeItem(name,1);state.activePotions.push({name:name,luck:(baseName==='Tutorial Potion I'?1000:6000),rolls:1,started:Date.now()});toast(baseName+' active for 1 roll.');save();render();return}
- if(!hasItem(name,1))return;
- const effects={"Lucky Potion":{luck:.05,ms:10000},"Speed Potion":{speed:.03,ms:10000},"Fortune Potion I":{luck:.50,ms:300000},"Fortune Potion II":{luck:.75,ms:300000},"Fortune Potion III":{luck:1,ms:300000},"Haste Potion I":{speed:.20,ms:300000},"Haste Potion II":{speed:.25,ms:300000},"Haste Potion III":{speed:.30,ms:300000},"Jewelry Potion":{luck:.80,ms:180000},"Zombie Potion":{luck:1.50,ms:360000},"Rage Potion":{speed:.35,ms:600000},"Diver Potion":{speed:.40,ms:300000},"Frenzy Potion":{speed:10,ms:600000}};
- const e=effects[baseName];
- if(!e){toast('This Potion is not yet wired into active effects.');return}
- takeItem(name,1);achievementPotionUsed(baseName);
- const active=state.activePotions.find(function(p){return p.name===name});
- if(active&&!active.rolls&&active.expires){active.expires+=e.ms||0;toast('Extended '+name+'.');save();render();return}
- const luck=(e.luck||0)*multiplier,speed=(e.speed||0)*multiplier,expires=Date.now()+(e.ms||0);
- state.activePotions.push({name:name,luck:luck,speed:speed,expires:expires,curseName:potionCurseStrength(baseName)?baseName:null,curseMultiplier:multiplier});
+ state=normalizeState(state);
+ const potionName=String(name);
+ const enhanced=potionName.indexOf('Enhanced ')===0;
+ const baseName=enhanced?potionName.slice(9):potionName;
+ const multiplier=enhanced&&BREWING_STAND[baseName]?Number(BREWING_STAND[baseName].multiplier||1):1;
+ if(!hasItem(potionName,1)){toast('You do not have '+potionName+'.');return}
+ const effect=potionRuntimeEffect(baseName,multiplier);
+ if(!effect.luck&&!effect.speed&&!effect.rolls&&!effect.ms&&!effect.special){
+   toast(baseName+' has no usable runtime effect yet.');return;
+ }
+ takeItem(potionName,1);
+ achievementPotionUsed(baseName);
+
+ const active=state.activePotions.find(function(p){return p.name===potionName});
+ if(active){
+   if(effect.ms){
+     active.expires=Math.max(Number(active.expires||0),Date.now())+effect.ms;
+   }
+   if(effect.rolls)active.rolls=Number(active.rolls||0)+effect.rolls;
+   active.luck=Number(active.luck||0)+effect.luck;
+   active.speed=Number(active.speed||0)+effect.speed;
+   active.copies=Number(active.copies||1)+1;
+   save();render();toast('Extended '+potionName+' • '+active.copies+' copies');return;
+ }
+ const expires=effect.ms?Date.now()+effect.ms:0;
+ state.activePotions.push({
+   name:potionName,luck:effect.luck,speed:effect.speed,rolls:effect.rolls||0,
+   expires:expires,started:Date.now(),copies:1,special:effect.special,
+   curseName:potionCurseStrength(baseName)?baseName:null,
+   curseMultiplier:multiplier,description:effect.description
+ });
  if(baseName==='Haste Potion I')markTutorialCraft(baseName);
- achievementCheck();save();render();toast('Used '+name);
+ achievementCheck();save();render();toast('Used '+potionName);
 }
 function tickPotions(){let changed=false;state.activePotions=(state.activePotions||[]).filter(function(p){if(p.rolls){if(p.rolls<=0)return false;return true}if(p.expires&&Date.now()>=p.expires){if(p.curseName)activateCurse(p.curseName,p.curseMultiplier,1);changed=true;toast(p.name+' expired.');return false}return true});if(changed)save()}
 
