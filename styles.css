@@ -1080,3 +1080,42 @@ input::placeholder,
 .npc-subgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .mari-subcard{min-height:150px}
 @media(max-width:900px){.npc-hub-grid,.npc-subgrid{grid-template-columns:1fr}}
+
+/* Global button polish: remove browser-default white blocks from remaining actions. */
+button:not(.tab):not(.roll-button):not(.npc-card):not(.setting-toggle){
+  appearance:none;
+  -webkit-appearance:none;
+  border:1px solid #34415a;
+  background:linear-gradient(180deg,#1c2535 0%,#121925 100%);
+  color:#e8eef9;
+  border-radius:8px!important;
+  padding:9px 13px;
+  cursor:pointer;
+  box-shadow:0 3px 10px rgba(0,0,0,.16);
+  transition:transform .1s ease,filter .1s ease,border-color .1s ease,background .1s ease;
+}
+button:not(.tab):not(.roll-button):not(.npc-card):not(.setting-toggle):hover:not(:disabled){
+  border-color:#65779a;
+  background:linear-gradient(180deg,#253148 0%,#182131 100%);
+  transform:translateY(-1px);
+  filter:brightness(1.05);
+}
+button:not(.tab):not(.roll-button):not(.npc-card):not(.setting-toggle):active:not(:disabled){
+  transform:translateY(1px);
+}
+button:not(.tab):not(.roll-button):not(.npc-card):not(.setting-toggle):disabled{
+  opacity:.42;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+button.roll-button:disabled{
+  opacity:.58;
+  cursor:not-allowed;
+  transform:none;
+  filter:none;
+}
+/* Keep compact action controls from becoming oversized under the global button rule. */
+.aura-actions button,.inventory-toolbar button,.quest-preview button,.history-search button{
+  padding:7px 10px;
+}
+.gamble-btn{font-size:18px!important;padding:13px 16px!important}
