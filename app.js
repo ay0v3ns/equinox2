@@ -30,6 +30,16 @@ function normalizeState(s){
  s.recent=Array.isArray(s.recent)?s.recent.slice(0,100):[];
  s.activePotions=Array.isArray(s.activePotions)?s.activePotions:[];
  s.pendingRollPotions=Array.isArray(s.pendingRollPotions)?s.pendingRollPotions:[];
+ const interruptedRoll=!!s.rolling;
+ if(interruptedRoll){
+   if(s.rollAutoPaid) s.inventory.Coins=(Number(s.inventory.Coins)||0)+1;
+   s.rolling=false;
+   s.rollAutoPaid=false;
+   s.rollStartedAt=0;
+   s.rollDuration=0;
+   s.rollCooldownUntil=0;
+   s.recoveredInterruptedRoll=true;
+ }
  s.gearsEquipped=Array.isArray(s.gearsEquipped)?s.gearsEquipped:[];
  s.settings=Object.assign({},defaults.settings,s.settings||{});
  s.achievements=Object.assign({},defaults.achievements,s.achievements||{});
@@ -313,20 +323,15 @@ if(!window.__equinoxTutorialKeyHandler){
    tutorialContinue();
  },true);
 }
-function roll(){
+function resolveRoll(startedAt,rollDuration,rollSpeed){
  state=normalizeState(state);
  window.state=state;
- const now=Date.now();
- if(now<Number(state.rollCooldownUntil||0))return false;
- const rollSpeed=totalSpeed();
- const rollDuration=10/Math.max(0.01,rollSpeed)+1;
  const previousRolls=Number(state.rolls||0);
+ const start=Number(startedAt||Date.now());
+ const duration=Number(rollDuration||rollTimeSeconds());
  try{
   try{rollPotionHook()}catch(err){console.warn('Potion roll hook failed',err)}
   state.rolls=previousRolls+1;
-  window.state=state;
-  try{tutorialRollHook()}catch(err){console.warn('Tutorial roll hook failed',err)}
-  try{questRollHook()}catch(err){console.warn('Quest roll hook failed',err)}
   const bonus=state.rolls%10===0?2:1;
   const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
   let chosen=null,lastEligible=null;
@@ -345,14 +350,18 @@ function roll(){
   const rollRecord={
    roll:state.rolls,name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',
    rolledRarity:rolledRarity,breakthrough:!!chosen.breakthrough,bonus:bonus>1,luck:finalLuck,
-   speed:rollSpeed,rollTime:rollDuration,biome:state.biome,time:state.dayNight,stored:false,equipped:false,skipped:false,
-   rolledAt:Date.now()
+   speed:Number(rollSpeed||1),rollTime:duration,biome:state.biome,time:state.dayNight,stored:false,equipped:false,skipped:false,
+   rolledAt:Date.now(),startedAt:start,completedAt:Date.now()
   };
-  state.rollCooldownUntil=now+Math.round(rollDuration*1000);
+  state.rollCooldownUntil=0;
   state.lastRollResult=rollRecord;
   state.rarestRoll=Math.max(Number(state.rarestRoll||0),Number(rolledRarity||0));
   state.recent.unshift(rollRecord);
   state.recent=state.recent.slice(0,100);
+  state.rolling=false;
+  state.rollStartedAt=0;
+  state.rollDuration=0;
+  state.rollAutoPaid=false;
   window.state=state;
 
   try{
@@ -418,6 +427,10 @@ function roll(){
   return true;
  }catch(err){
   state.rolls=previousRolls;
+  state.rolling=false;
+  state.rollAutoPaid=false;
+  state.rollStartedAt=0;
+  state.rollDuration=0;
   state.rollCooldownUntil=0;
   if(state.recent&&state.recent[0]?.roll===previousRolls+1)state.recent.shift();
   if(state.lastRollResult?.roll===previousRolls+1)state.lastRollResult=null;
@@ -427,6 +440,29 @@ function roll(){
   toast('Roll failed safely. Your progress was preserved.');
   return false;
  }
+}
+function roll(isAuto){
+ state=normalizeState(state);
+ window.state=state;
+ if(state.rolling)return false;
+ const now=Date.now();
+ if(now<Number(state.rollCooldownUntil||0))return false;
+ const rollSpeed=totalSpeed();
+ const rollDuration=10/Math.max(0.01,rollSpeed)+1;
+ state.rolling=true;
+ state.rollAutoPaid=!!isAuto;
+ state.rollStartedAt=now;
+ state.rollDuration=rollDuration;
+ state.rollCooldownUntil=now+Math.round(rollDuration*1000);
+ window.state=state;
+ save();
+ render();
+ const token=now;
+ setTimeout(function(){
+  if(!state.rolling||Number(state.rollStartedAt)!==token)return;
+  resolveRoll(token,rollDuration,rollSpeed);
+ },Math.max(1,Math.round(rollDuration*1000)));
+ return true;
 }
 function toggleFavorite(id){
  const a=state.auras.find(function(x){return x.id===id});if(!a)return;
@@ -475,12 +511,12 @@ function maybeSpawn(){
  tickPotions();
  const now=Date.now();
  if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){
-  if(now>=Number(state.rollCooldownUntil||0)){
+  if(!state.rolling&&now>=Number(state.rollCooldownUntil||0)){
    takeItem('Coins',1);
    const ok=roll(true);
    if(ok===false){addItem('Coins',1);save();render();}
   }
- }else if(state.autoRoll&&!(state.inventory.Coins>0)){
+ }else if(state.autoRoll&&!(state.inventory.Coins>0)&&!state.rolling){
   state.autoRoll=false;
   state.nextAutoRollAt=0;
   save();
@@ -490,7 +526,7 @@ function maybeSpawn(){
  if(Date.now()-state.lastSpawn>=60000)spawnItems()
 }
 
-if(!window.__equinoxGameTick){window.__equinoxGameTick=true;setInterval(function(){const hadPotions=(state.activePotions||[]).length>0;const cooling=Number(state.rollCooldownUntil||0)>Date.now();maybeSpawn();if(state.activeTab==='Roll'&&(hadPotions||state.autoRoll||cooling))render()},1000)}
+if(!window.__equinoxGameTick){window.__equinoxGameTick=true;setInterval(function(){const hadPotions=(state.activePotions||[]).length>0;const cooling=Number(state.rollCooldownUntil||0)>Date.now()||!!state.rolling;maybeSpawn();if(state.activeTab==='Roll'&&(hadPotions||state.autoRoll||cooling))render()},1000)}
 function tab(name){
  if(!['Roll','Inventory','NPCs','Global','Achievements','Settings'].includes(name))return;
  state.activeTab=name;
@@ -919,13 +955,13 @@ function render(){
     else if(state.activeTab==='Settings')main=settingsView();
     else{
       const cooldownHint=rollTime.toFixed(2)+'s';
-      const cooldownStatus=cooldownRemaining>0.01?'NEXT ROLL IN '+cooldownRemaining.toFixed(1)+'s':'READY';
+      const cooldownStatus=state.rolling?'ROLLING · '+cooldownRemaining.toFixed(1)+'s':cooldownRemaining>0.01?'NEXT ROLL IN '+cooldownRemaining.toFixed(1)+'s':'READY';
       main='<div class="roll-grid"><div class="panel hero"><div class="section-title">THE ROLL</div><h1>Equinox</h1><p class="muted">'+eq4escape(String(state.biome||'Normal'))+' · '+eq4escape(String(state.dayNight||'Day'))+'</p>'+latestText+'<button class="roll-button" onclick="roll()">ROLL</button><div class="roll-time"><span>ROLL TIME</span><b>'+cooldownHint+'</b><small>'+cooldownStatus+'</small></div><p class="muted">Coins: '+fmt(state.inventory?.Coins||0)+' · Aura Storage: '+fmt(auraSlots())+'/'+fmt(state.auraCapacity||20)+'</p></div><div class="panel"><div class="section-title">RECENT ROLLS</div>'+(recentRows||'<div class="empty">No rolls yet.</div>')+'</div></div>';
     }
     const worldPanel='<aside class="world-panel"><div class="world-kicker">CURRENT WORLD</div><div class="world-name">'+eq4escape(String(state.biome||'Normal'))+'</div><div class="world-dimension">'+eq4escape(String(state.dimension||'Isles of Luck'))+'</div><div class="world-stats"><div class="world-stat"><span>Day / Night</span><b>'+eq4escape(String(state.dayNight||'Day'))+'</b></div><div class="world-stat"><span>Total Luck</span><b>'+Number(worldLuck||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Speed</span><b>'+Number(worldSpeed||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Time</span><b>'+rollTime.toFixed(2)+'s</b></div><div class="world-stat"><span>Equipped Aura</span><b>'+eq4escape(equipped?.name||'None')+'</b></div></div><div class="world-block"><div class="section-title">ACTIVE EFFECTS</div><div class="buff-list">'+activeBuffs+'</div></div></aside>';
     root.innerHTML='<div id="notices" aria-live="polite"></div><div class="topbar"><div class="logo">☯ EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls||0)+'</b></span><span>Luck <b>'+Number(worldLuck||1).toFixed(2)+'×</b></span><span>Speed <b>'+Number(worldSpeed||1).toFixed(2)+'×</b></span><span>Biome <b>'+eq4escape(String(state.biome||'Normal'))+'</b></span></div></div><div class="layout tab-position-'+(state.settings?.tabPosition||'left')+'"><aside class="tabs">'+tabs.map(function(t){return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</aside><main>'+main+'</main>'+worldPanel+'</div>'+ (typeof tutorialView==='function'?tutorialView():'');
     const rollButton=root.querySelector('.roll-button');
-    if(rollButton){const ready=cooldownRemaining<=0.01;rollButton.disabled=!ready;rollButton.textContent=ready?'ROLL':'WAIT '+cooldownRemaining.toFixed(1)+'s';}
+    if(rollButton){const ready=cooldownRemaining<=0.01;rollButton.disabled=!ready||!!state.rolling;rollButton.textContent=state.rolling?'ROLLING '+cooldownRemaining.toFixed(1)+'s':ready?'ROLL':'WAIT '+cooldownRemaining.toFixed(1)+'s';}
     wireInventory();
   }catch(e){
     console.error('Equinox render failed',e);
