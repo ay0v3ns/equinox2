@@ -170,6 +170,7 @@ async function equinoxHydrate() {
     console.warn('Equinox kept the healthier local save instead of replacing it with an incomplete or older cloud snapshot.');
   }
   const analyticsUser = {id:uid,email:session.user.email,username:profile?.username || session.user.user_metadata?.username || ''};
+  if (typeof window.state === 'object' && window.state) window.state.username = analyticsUser.username || window.state.username || 'Player';
   localStorage.setItem('equinox-user', JSON.stringify(analyticsUser));
   if (window.posthog?.identify) window.posthog.identify(uid, { username: analyticsUser.username });
   if (window.equinoxAnalytics?.capture) window.equinoxAnalytics.capture('equinox_session_started', { has_cloud_save: !!hasCloudSave });
