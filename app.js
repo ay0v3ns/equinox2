@@ -316,106 +316,117 @@ if(!window.__equinoxTutorialKeyHandler){
 function roll(){
  state=normalizeState(state);
  window.state=state;
- try{rollPotionHook()}catch(err){console.warn('Potion roll hook failed',err)}
- state.rolls++;
- window.state=state;
- try{tutorialRollHook()}catch(err){console.warn('Tutorial roll hook failed',err)}
- try{questRollHook()}catch(err){console.warn('Quest roll hook failed',err)}
- const bonus=state.rolls%10===0?2:1;
- const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
- let chosen=null,lastEligible=null;
- const biomeBreak=BREAK[state.biome]||1;
- for(let i=0;i<ROLL_AURAS.length;i++){
+ const now=Date.now();
+ if(now<Number(state.rollCooldownUntil||0))return false;
+ const rollSpeed=totalSpeed();
+ const rollDuration=10/Math.max(0.01,rollSpeed)+1;
+ const previousRolls=Number(state.rolls||0);
+ try{
+  try{rollPotionHook()}catch(err){console.warn('Potion roll hook failed',err)}
+  state.rolls=previousRolls+1;
+  window.state=state;
+  try{tutorialRollHook()}catch(err){console.warn('Tutorial roll hook failed',err)}
+  try{questRollHook()}catch(err){console.warn('Quest roll hook failed',err)}
+  const bonus=state.rolls%10===0?2:1;
+  const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
+  let chosen=null,lastEligible=null;
+  const biomeBreak=BREAK[state.biome]||1;
+  for(let i=0;i<ROLL_AURAS.length;i++){
    const a=ROLL_AURAS[i];
    const breakthrough=!!(a.nativeBiome&&a.nativeBiome!==state.biome&&biomeBreak>1);
    const listValue=Math.max(1,Math.floor((a.rarity*(breakthrough?biomeBreak:1))/Math.max(0.000001,finalLuck)));
    if(listValue<=1)continue;
    lastEligible={a:a,breakthrough:breakthrough,listValue:listValue};
    if(Math.floor(Math.random()*listValue)+1===1){chosen=lastEligible;break}
- }
- if(!chosen)chosen=lastEligible||{a:ROLL_AURAS[0]||AURAS[0],breakthrough:false,listValue:1};
- const result=chosen.a||AURAS[0];
- const rolledRarity=Number(result.rarity||0)*(chosen.breakthrough?(BREAK[state.biome]||1):1);
- const rollRecord={
+  }
+  if(!chosen)chosen=lastEligible||{a:ROLL_AURAS[0]||AURAS[0],breakthrough:false,listValue:1};
+  const result=chosen.a||AURAS[0];
+  const rolledRarity=Number(result.rarity||0)*(chosen.breakthrough?(BREAK[state.biome]||1):1);
+  const rollRecord={
    roll:state.rolls,name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',
    rolledRarity:rolledRarity,breakthrough:!!chosen.breakthrough,bonus:bonus>1,luck:finalLuck,
-   speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false,equipped:false,skipped:false,
+   speed:rollSpeed,rollTime:rollDuration,biome:state.biome,time:state.dayNight,stored:false,equipped:false,skipped:false,
    rolledAt:Date.now()
- };
- state.lastRollResult=rollRecord;
- state.rarestRoll=Math.max(Number(state.rarestRoll||0),Number(rolledRarity||0));
- state.recent.unshift(rollRecord);
- state.recent=state.recent.slice(0,100);
- window.state=state;
+  };
+  state.rollCooldownUntil=now+Math.round(rollDuration*1000);
+  state.lastRollResult=rollRecord;
+  state.rarestRoll=Math.max(Number(state.rarestRoll||0),Number(rolledRarity||0));
+  state.recent.unshift(rollRecord);
+  state.recent=state.recent.slice(0,100);
+  window.state=state;
 
- try{
+  try{
    const ast=achievementState().stats;
    if(chosen.breakthrough){
-     ast.breakthrough=true;
-     ast.breakthroughBiomes=ast.breakthroughBiomes||[];
-     if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);
-     if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;
+    ast.breakthrough=true;
+    ast.breakthroughBiomes=ast.breakthroughBiomes||[];
+    if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);
+    if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;
    }
- }catch(err){console.warn('Achievement roll setup failed',err)}
+  }catch(err){console.warn('Achievement roll setup failed',err)}
+  try{questAuraHook(result,chosen.breakthrough)}catch(err){console.warn('Quest roll hook failed',err)}
 
- try{questAuraHook(result,chosen.breakthrough)}catch(err){console.warn('Quest roll hook failed',err)}
+  const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
+  const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
+  if(state.pendingRollPotions&&state.pendingRollPotions.length)state.pendingRollPotions.shift();
 
- const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
- const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
-
- // A one-roll Potion applies to this roll and is consumed even if the Aura is skipped.
- if(state.pendingRollPotions&&state.pendingRollPotions.length){
-   state.pendingRollPotions.shift();
- }
-
- if(autoSkip){
+  if(autoSkip){
    rollRecord.skipped=true;
    save();render();
    toast('Auto Skip: '+result.name);
-   setTimeout(roll,0);
-   return;
- }
+   return true;
+  }
 
- if(auraSlots()>=state.auraCapacity){
+  if(auraSlots()>=state.auraCapacity){
    const candidates=state.auras.filter(function(a){return !a.favorite}).sort(function(a,b){
-     if(a.rarity!==b.rarity)return a.rarity-b.rarity;
-     return b.rolledAt-a.rolledAt;
+    if(a.rarity!==b.rarity)return a.rarity-b.rarity;
+    return b.rolledAt-a.rolledAt;
    });
    if(candidates.length){
-     const victim=candidates[0];
-     const replace=!settingEnabled('confirmAuraRemoval')||confirm('Aura Storage is full. Remove '+victim.name+' (1/'+fmt(victim.rarity)+') and keep '+result.name+'?');
-     if(replace)state.auras=state.auras.filter(function(a){return a.id!==victim.id});
-     else{
-       rollRecord.skipped=true;
-       save();render();toast('Skipped '+result.name+' — storage unchanged.');return;
-     }
-   }else{
+    const victim=candidates[0];
+    const replace=!settingEnabled('confirmAuraRemoval')||confirm('Aura Storage is full. Remove '+victim.name+' (1/'+fmt(victim.rarity)+') and keep '+result.name+'?');
+    if(replace)state.auras=state.auras.filter(function(a){return a.id!==victim.id});
+    else{
      rollRecord.skipped=true;
-     save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return;
+     save();render();toast('Skipped '+result.name+' — storage unchanged.');return true;
+    }
+   }else{
+    rollRecord.skipped=true;
+    save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return true;
    }
- }
+  }
 
- const obj={
+  const obj={
    id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
    name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',rolledAt:Date.now(),
    favorite:false,autoSkip:false,autoEquip:false,equipped:false
- };
- state.auras.push(obj);
- rollRecord.stored=true;
- rollRecord.auraId=obj.id;
- if(autoEquip){
+  };
+  state.auras.push(obj);
+  rollRecord.stored=true;
+  rollRecord.auraId=obj.id;
+  if(autoEquip){
    state.auras.forEach(function(a){a.equipped=false});
    obj.equipped=true;
    rollRecord.equipped=true;
    state.equippedAuraId=obj.id;
+  }
+  if(state.equippedAuraId&&!state.auras.some(function(a){return a.id===state.equippedAuraId}))state.equippedAuraId=null;
+  try{achievementCheck()}catch(err){console.warn('Achievement check failed after roll',err)}
+  window.state=state;
+  save();render();
+  toast(chosen.breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: 2x Luck':'Roll complete'));
+  return true;
+ }catch(err){
+  state.rolls=previousRolls;
+  state.rollCooldownUntil=0;
+  if(state.recent&&state.recent[0]?.roll===previousRolls+1)state.recent.shift();
+  if(state.lastRollResult?.roll===previousRolls+1)state.lastRollResult=null;
+  window.state=state;
+  console.error('Equinox roll failed safely:',err);
+  save();render();
+  toast('Roll failed safely. Your progress was preserved.');
+  return false;
  }
- if(state.equippedAuraId&&!state.auras.some(function(a){return a.id===state.equippedAuraId})){
-   state.equippedAuraId=null;
- }
- try{achievementCheck()}catch(err){console.warn('Achievement check failed after roll',err)}
- window.state=state;
- save();render();
- toast(chosen.breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: 2x Luck':'Roll complete'));
 }
 function toggleFavorite(id){
  const a=state.auras.find(function(x){return x.id===id});if(!a)return;
@@ -460,7 +471,24 @@ function questItemHook(itemName){const qs=questState();activeQuestBoard().forEac
 function questRollHook(){const qs=questState();activeQuestBoard().forEach(function(q){if(q.type==='Rolling')qs.progress[q.id]=Math.min(q.target||Infinity,state.rolls);})}
 function questAuraHook(result,breakthrough){const qs=questState();activeQuestBoard().forEach(function(q){if(q.type==='Aura')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Breakthrough'&&breakthrough)qs.progress[q.id]=(qs.progress[q.id]||0)+1})}
 
-function maybeSpawn(){tickPotions();if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){const now=Date.now();if(!state.nextAutoRollAt||now>=state.nextAutoRollAt){takeItem('Coins',1);state.nextAutoRollAt=now+Math.round(rollTimeSeconds()*1000);roll()}}else if(state.autoRoll&&!(state.inventory.Coins>0)){state.autoRoll=false;state.nextAutoRollAt=0;save();toast('Auto Roll stopped: no Coins remaining.')}if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
+function maybeSpawn(){
+ tickPotions();
+ const now=Date.now();
+ if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){
+  if(now>=Number(state.rollCooldownUntil||0)){
+   takeItem('Coins',1);
+   const ok=roll(true);
+   if(ok===false){addItem('Coins',1);save();render();}
+  }
+ }else if(state.autoRoll&&!(state.inventory.Coins>0)){
+  state.autoRoll=false;
+  state.nextAutoRollAt=0;
+  save();
+  toast('Auto Roll stopped: no Coins remaining.');
+ }
+ if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}
+ if(Date.now()-state.lastSpawn>=60000)spawnItems()
+}
 
 if(!window.__equinoxGameTick){window.__equinoxGameTick=true;setInterval(function(){const hadPotions=(state.activePotions||[]).length>0;maybeSpawn();if(state.activeTab==='Roll'&&(hadPotions||state.autoRoll))render()},1000)}
 function tab(name){
