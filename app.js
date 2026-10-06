@@ -53,8 +53,10 @@ function save(){
 }
 function bankTick(){if(!state)return;const now=hourKey();if(!state.bankLastTick){state.bankLastTick=now;return}const elapsed=Math.max(0,now-state.bankLastTick);if(elapsed<1)return;const b=BANK_TIERS[(state.bankTier||1)-1]||BANK_TIERS[0];if((state.bankBalance||0)>0)state.bankBalance=Math.min(b[2],state.bankBalance*Math.pow(b[1],elapsed));state.bankLastTick=now;save()}
 function fmt(n){return new Intl.NumberFormat('en-US').format(n)}
-function gearLuck(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+({"Luck Glove":0.25,"Desire Glove":0.40,"Solar Device":0.50,"Gemstone Gauntlet":0.55,"Frozen Gauntlet":1.50,"Eclipse Device":0.50,"Dark Matter Device":0.60,"Aqua Device":0.50,"Shining Star":0.70,"Jackpot Gauntlet":0.77,"Exo Gauntlet":1.00}[n]||0)},0)}
-function gearSpeed(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+({"Lunar Device":0.15,"Eclipse Device":0.15,"Dark Matter Device":0.15,"Aqua Device":0.10,"Shining Star":0.20,"Jackpot Gauntlet":0.07,"Exo Gauntlet":0.25}[n]||0)},0)}
+function gearLuckForName(n){return {"Luck Glove":0.25,"Desire Glove":0.40,"Solar Device":0.50,"Gemstone Gauntlet":0.55,"Frozen Gauntlet":1.50,"Eclipse Device":0.50,"Dark Matter Device":0.60,"Aqua Device":0.50,"Shining Star":0.70,"Jackpot Gauntlet":0.77,"Exo Gauntlet":1.00}[n]||0}
+function gearSpeedForName(n){return {"Lunar Device":0.15,"Eclipse Device":0.15,"Dark Matter Device":0.15,"Aqua Device":0.10,"Shining Star":0.20,"Jackpot Gauntlet":0.07,"Exo Gauntlet":0.25}[n]||0}
+function gearLuck(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+gearLuckForName(n)},0)}
+function gearSpeed(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+gearSpeedForName(n)},0)}
 function potionLuck(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.luck||0)},0)}
 function potionSpeed(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0)}
 function totalLuck(){return ((1+state.basicLuck+gearLuck()+potionLuck())+state.specialLuck)*state.finalMultiplier}
@@ -658,97 +660,62 @@ function render(){
   if(!root)return;
   root.className=(state.settings?.performanceMode!==false?'performance-mode ':'')+(state.settings?.reducedMotion?'reduced-motion':'');
   try{
-    const tabs=[
-      ['Roll','Roll'],
-      ['Inventory','Inventory'],
-      ['NPCs','NPCs'],
-      ['Global','Global'],
-      ['Achievements','Achievements'],
-      ['Settings','Settings']
-    ];
+    const tabs=[['Roll','Roll'],['Inventory','Inventory'],['NPCs','NPCs'],['Global','Global'],['Achievements','Achievements'],['Settings','Settings']];
     const recent=(state.recent||[]).slice(0,8);
-    const equipped=(state.auras||[]).find(a=>a.equipped);
+    const latest=state.lastRollResult||recent[0];
+    const equipped=(state.auras||[]).find(function(a){return a.equipped});
     const worldLuck=typeof totalLuck==='function'?totalLuck():1;
     const worldSpeed=typeof totalSpeed==='function'?totalSpeed():1;
-    const topStats=
-      '<span>Rolls <b>'+fmt(state.rolls||0)+'</b></span>'+
-      '<span>Luck <b>'+Number(worldLuck||1).toFixed(2)+'×</b></span>'+
-      '<span>Speed <b>'+Number(worldSpeed||1).toFixed(2)+'×</b></span>'+
-      '<span>Biome <b>'+String(state.biome||'Normal')+'</b></span>';
-
+    const rollTime=typeof rollTimeSeconds==='function'?rollTimeSeconds():11;
+    const latestText=latest
+      ? '<div class="roll-result"><div class="section-title">LATEST ROLL</div><h2>'+eq4escape(latest.name)+'</h2><p>1/'+fmt(latest.rolledRarity||latest.rarity||0)+(latest.breakthrough?' · BREAKTHROUGH':'')+(latest.bonus?' · BONUS ROLL':'')+'</p></div>'
+      : '<div class="roll-result"><div class="section-title">LATEST ROLL</div><h2>Nothing yet</h2><p class="muted">Your first Aura is waiting.</p></div>';
+    const recentRows=recent.map(function(a){
+      return '<div class="recent-row"><b>'+eq4escape(a.name)+'</b><span>1/'+fmt(a.rolledRarity||a.rarity||0)+'</span><small>#'+fmt(a.roll||0)+'</small></div>';
+    }).join('');
+    const potionRows=(state.activePotions||[]).map(function(p){
+      const remaining=p.rolls?String(p.rolls)+' roll'+(p.rolls===1?'':'s'):(p.expires?Math.max(0,(p.expires-Date.now())/1000).toFixed(0)+'s':'Active');
+      return '<div class="buff-row"><b>'+eq4escape(p.name)+'</b><span>'+(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')+' · '+remaining+'</span></div>';
+    }).join('');
+    const gearRows=(state.gearsEquipped||[]).map(function(name){
+      const l=gearLuckForName(name),s=gearSpeedForName(name);
+      return '<div class="buff-row"><b>'+eq4escape(name)+'</b><span>'+(l?'+'+percentText(l)+' Luck':'')+(l&&s?' · ':'')+(s?'+'+percentText(s)+' Speed':'')+'</span></div>';
+    }).join('');
+    const activeBuffs=(gearRows+potionRows)||'<div class="empty">No active buffs.</div>';
     let main='';
-    if(state.activeTab==='Inventory') main=inventoryView();
-    else if(state.activeTab==='NPCs') {
-      if(state.npcTab==='quests') main=questView();
-      else if(state.npcTab==='shop') main=shopView();
-      else if(state.npcTab==='bank') main=bankView();
-      else if(state.npcTab==='workshop') main=workshopView();
-      else if(state.npcTab==='cauldron') main=cauldronView();
-      else main=
-        '<div class="panel"><div class="section-title">NPC Systems</div><h1>Equinox NPCs</h1>'+
-        '<p class="muted">Choose a system to interact with the world.</p>'+
-        '<div class="npc-grid">'+
-        '<button onclick="npcTab(\'quests\')">Lime · Quests</button>'+
-        '<button onclick="npcTab(\'shop\')">Mari · Shop</button>'+
-        '<button onclick="npcTab(\'bank\')">Mari · Bank</button>'+
-        '<button onclick="npcTab(\'workshop\')">Jake · Workshop</button>'+
-        '<button onclick="npcTab(\'cauldron\')">Stella · Cauldron</button>'+
-        '</div></div>';
-    } else if(state.activeTab==='Global') main=typeof globalView==='function'?globalView():eq4GlobalView();
-    else if(state.activeTab==='Achievements') main=achievementsView();
-    else if(state.activeTab==='Settings') main=settingsView();
-    else {
-      const latest=recent[0];
-      const latestText=latest
-        ? '<div class="roll-result"><div class="section-title">Latest Roll</div><h2>'+latest.name+'</h2><p>1/'+fmt(latest.rolledRarity||latest.rarity||0)+(latest.breakthrough?' · BREAKTHROUGH':'')+(latest.bonus?' · BONUS ROLL':'')+'</p></div>'
-        : '<div class="roll-result"><div class="section-title">Latest Roll</div><h2>Nothing yet</h2><p class="muted">Your first Aura is waiting.</p></div>';
-      const recentRows=recent.map(function(a){
-        return '<div class="recent-row"><b>'+a.name+'</b><span>1/'+fmt(a.rolledRarity||a.rarity||0)+'</span><small>#'+fmt(a.roll||0)+'</small></div>';
-      }).join('');
-      main='<div class="roll-grid">'+
-        '<div class="panel hero">'+
-          '<div class="section-title">THE ROLL</div>'+
-          '<h1>Equinox</h1>'+
-          '<p class="muted">'+String(state.biome||'Normal')+' · '+String(state.dayNight||'Day')+'</p>'+
-          latestText+
-          '<button class="roll-button" onclick="roll()">ROLL</button>'+
-          '<p class="muted">Coins: '+fmt(state.inventory?.Coins||0)+' · Aura Storage: '+fmt(auraSlots())+'/'+fmt(state.auraCapacity||20)+'</p>'+
-        '</div>'+
-        '<div class="panel"><div class="section-title">Recent Rolls</div>'+
-          (recentRows||'<div class="empty">No rolls yet.</div>')+
-        '</div>'+
-      '</div>';
+    if(state.activeTab==='Inventory')main=inventoryView();
+    else if(state.activeTab==='NPCs'){
+      if(state.npcTab==='quests')main=questView();
+      else if(state.npcTab==='shop')main=shopView();
+      else if(state.npcTab==='bank')main=bankView();
+      else if(state.npcTab==='workshop')main=workshopView();
+      else if(state.npcTab==='cauldron')main=cauldronView();
+      else main='<div class="panel"><div class="section-title">NPC SYSTEMS</div><h1>Equinox NPCs</h1><p class="muted">Choose a system to interact with the world.</p><div class="npc-grid"><button onclick="npcTab(\'quests\')">Lime · Quests</button><button onclick="npcTab(\'shop\')">Mari · Shop</button><button onclick="npcTab(\'bank\')">Mari · Bank</button><button onclick="npcTab(\'workshop\')">Jake · Workshop</button><button onclick="npcTab(\'cauldron\')">Stella · Cauldron</button></div></div>';
+    }else if(state.activeTab==='Global'){
+      try{
+        if(!window.EQUINOX_GLOBAL_DATA)window.EQUINOX_GLOBAL_DATA={profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0};
+        main=typeof window.globalView==='function'?window.globalView():eq4GlobalView();
+      }catch(e){
+        console.warn('Global view fallback:',e);
+        main='<div class="panel"><div class="section-title">GLOBAL</div><h1>Global systems are connecting…</h1><p class="muted">Your local game remains available. Global leaderboards, presence, chat, quests, and shop data will appear when the connection is ready.</p></div>';
+      }
+    }else if(state.activeTab==='Achievements')main=achievementsView();
+    else if(state.activeTab==='Settings')main=settingsView();
+    else{
+      const cooldownHint=rollTime.toFixed(2)+'s';
+      main='<div class="roll-grid"><div class="panel hero"><div class="section-title">THE ROLL</div><h1>Equinox</h1><p class="muted">'+eq4escape(String(state.biome||'Normal'))+' · '+eq4escape(String(state.dayNight||'Day'))+'</p>'+latestText+'<button class="roll-button" onclick="roll()">ROLL</button><div class="roll-time"><span>ROLL TIME</span><b>'+cooldownHint+'</b><small>Based on current Roll Speed</small></div><p class="muted">Coins: '+fmt(state.inventory?.Coins||0)+' · Aura Storage: '+fmt(auraSlots())+'/'+fmt(state.auraCapacity||20)+'</p></div><div class="panel"><div class="section-title">RECENT ROLLS</div>'+(recentRows||'<div class="empty">No rolls yet.</div>')+'</div></div>';
     }
-
-    const tutorial=typeof tutorialView==='function'?tutorialView():'';
-    root.innerHTML=
-      '<div class="topbar">'+
-        '<div class="logo">☯ EQUINOX</div>'+
-        '<div class="topstats">'+topStats+'</div>'+
-      '</div>'+
-      '<div class="layout tab-position-'+(state.settings?.tabPosition||'left')+'">'+
-        '<aside class="tabs">'+tabs.map(function(t){
-          return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>';
-        }).join('')+'</aside>'+
-        '<main>'+main+'</main>'+
-        '<aside class="world-panel">'+
-          '<div class="section-title">WORLD</div>'+
-          '<h2>'+String(state.biome||'Normal')+'</h2>'+
-          '<p class="muted">'+String(state.dimension||'Isles of Luck')+'</p>'+
-          '<div class="world-stat"><span>Day / Night</span><b>'+String(state.dayNight||'Day')+'</b></div>'+
-          '<div class="world-stat"><span>Luck</span><b>'+Number(worldLuck||1).toFixed(2)+'×</b></div>'+
-          '<div class="world-stat"><span>Roll Speed</span><b>'+Number(worldSpeed||1).toFixed(2)+'×</b></div>'+
-          '<div class="world-stat"><span>Equipped</span><b>'+String(equipped?.name||'None')+'</b></div>'+
-        '</aside>'+
-      '</div>'+tutorial;
+    const worldPanel='<aside class="world-panel"><div class="section-title">WORLD</div><div class="world-name">'+eq4escape(String(state.biome||'Normal'))+'</div><div class="world-dimension">'+eq4escape(String(state.dimension||'Isles of Luck'))+'</div><div class="world-stats"><div class="world-stat"><span>Day / Night</span><b>'+eq4escape(String(state.dayNight||'Day'))+'</b></div><div class="world-stat"><span>Luck</span><b>'+Number(worldLuck||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Speed</span><b>'+Number(worldSpeed||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Time</span><b>'+rollTime.toFixed(2)+'s</b></div><div class="world-stat"><span>Equipped</span><b>'+eq4escape(equipped?.name||'None')+'</b></div></div><div class="world-block"><div class="section-title">BUFFS & EFFECTS</div>'+activeBuffs+'</div></aside>';
+    root.innerHTML='<div id="notices" aria-live="polite"></div><div class="topbar"><div class="logo">☯ EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls||0)+'</b></span><span>Luck <b>'+Number(worldLuck||1).toFixed(2)+'×</b></span><span>Speed <b>'+Number(worldSpeed||1).toFixed(2)+'×</b></span><span>Biome <b>'+eq4escape(String(state.biome||'Normal'))+'</b></span></div></div><div class="layout tab-position-'+(state.settings?.tabPosition||'left')+'"><aside class="tabs">'+tabs.map(function(t){return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</aside><main>'+main+'</main>'+worldPanel+'</div>'+ (typeof tutorialView==='function'?tutorialView():'');
     wireInventory();
   }catch(e){
     console.error('Equinox render failed',e);
-    const root=document.getElementById('app');
-    if(root)root.innerHTML='<div class="panel" style="margin:24px"><div class="section-title">EQUINOX ERROR</div><h1>The game could not render.</h1><p class="muted">'+String(e?.message||e)+'</p><button onclick="location.reload()">Reload Equinox</button></div>';
-    throw e;
+    const box=document.getElementById('app');
+    if(box)box.innerHTML='<div class="panel\" style="margin:24px\"><div class="section-title">EQUINOX ERROR</div><h1>The game could not render.</h1><p class="muted">'+eq4escape(String(e?.message||e))+'</p><button onclick="location.reload()">Reload Equinox</button></div>';
   }
 }
 window.render=render;
-try { window.dispatchEvent(new Event('equinox-render-ready')); } catch (_) {}
+window.state=state;
+window.eq4GlobalView=typeof eq4GlobalView==='function'?eq4GlobalView:null;
+try{window.dispatchEvent(new Event('equinox-render-ready'))}catch(_){}
 render();
