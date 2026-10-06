@@ -34,6 +34,7 @@ function equinoxReloadLocalState(){
   try {
     if (typeof state === 'undefined' || typeof load !== 'function') return;
     state = load();
+    window.state = state;
   } catch (e) {
     console.warn('Equinox local state reload failed:', e);
   }
