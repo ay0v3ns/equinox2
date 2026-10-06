@@ -866,3 +866,56 @@ input::placeholder,
     text-align:left;
   }
 }
+
+
+/* Final active-effects cleanup */
+.world-block{margin-top:14px;padding-top:12px;border-top:1px solid #222b3c}
+.buff-list{display:grid;gap:5px}
+.buff-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(86px,auto);
+  align-items:center;
+  gap:9px;
+  min-height:36px;
+  padding:7px 8px;
+  border:1px solid #202a3a;
+  border-left:3px solid #56647f;
+  background:#0b1018;
+}
+.buff-row b{
+  min-width:0;
+  font-family:var(--font-body);
+  font-size:10px;
+  font-weight:500;
+  line-height:1.2;
+  color:#e9eef7;
+  overflow-wrap:anywhere;
+}
+.buff-row span{
+  font-family:var(--font-ui);
+  font-size:9px;
+  line-height:1.2;
+  font-weight:300;
+  color:#9aa6bb;
+  text-align:right;
+  white-space:normal;
+}
+.buff-row em{
+  display:inline-block;
+  margin-left:5px;
+  font-style:normal;
+  font-weight:500;
+  color:#e5eaf3;
+  white-space:nowrap;
+}
+.pending-buff{
+  border-left-color:#8a96ad;
+  background:#101622;
+}
+.roll-button:disabled{
+  cursor:not-allowed;
+  opacity:.7;
+  transform:none!important;
+  filter:none!important;
+}
+.roll-time small{font-family:var(--font-ui);font-weight:300}
