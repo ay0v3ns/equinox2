@@ -13,6 +13,121 @@
   function hourIso(){
     const d=new Date(); d.setMinutes(0,0,0); return d.toISOString();
   }
+
+  window.EQUINOX_SHARED_DATA=window.EQUINOX_SHARED_DATA||{
+    hour:'',
+    quests:[],
+    shop:[],
+    questProgress:[],
+    loaded:false,
+    loading:false,
+    errors:[]
+  };
+  function eq4SharedHour(){return hourIso();}
+  async function eq4RefreshSharedSystems(force){
+    if(typeof EQUINOX_SUPABASE==='undefined')return false;
+    const sd=window.EQUINOX_SHARED_DATA;
+    const hour=eq4SharedHour();
+    if(sd.loading)return false;
+    if(!force&&sd.loaded&&sd.hour===hour)return true;
+    sd.loading=true;sd.errors=[];
+    try{
+      const results=await Promise.all([
+        EQUINOX_SUPABASE.from('global_quests').select('quest_id,hour_key,quest_index,quest_data').eq('hour_key',hour).order('quest_index',{ascending:true}),
+        EQUINOX_SUPABASE.from('shop_stock').select('item_id,item_name,rarity,stock,max_stock,hour_key').eq('hour_key',hour).order('item_id',{ascending:true})
+      ]);
+      const q=results[0],s=results[1];
+      if(q.error)sd.errors.push('Quests: '+q.error.message);
+      else sd.quests=(q.data||[]).map(function(row){
+        return Object.assign({},row.quest_data||{},{serverId:row.quest_id});
+      });
+      if(s.error)sd.errors.push('Shop: '+s.error.message);
+      else sd.shop=s.data||[];
+      sd.questProgress=[];
+      try{
+        const session=await EQUINOX_SUPABASE.auth.getSession();
+        const uid=session?.data?.session?.user?.id;
+        if(uid&&sd.quests.length){
+          const ids=sd.quests.map(function(q){return q.serverId});
+          const qp=await EQUINOX_SUPABASE.from('quest_progress').select('quest_id,progress,completed,completed_at').eq('user_id',uid).in('quest_id',ids);
+          if(qp.error)sd.errors.push('Quest Progress: '+qp.error.message);
+          else sd.questProgress=qp.data||[];
+        }
+      }catch(err){sd.errors.push('Quest Progress: '+String(err?.message||err))}
+      sd.hour=hour;sd.loaded=true;
+      if(typeof state!=='undefined'&&state){
+        const localHour=Math.floor(Date.now()/3600000);
+        if(state.questState&&state.questState.hour===localHour){
+          const qpMap=new Map(sd.questProgress.map(function(p){return [p.quest_id,p]}));
+          sd.quests.forEach(function(q){
+            const p=qpMap.get(q.serverId);
+            if(!p)return;
+            state.questState.progress=state.questState.progress||{};
+            state.questState.progress[q.id]=Math.max(Number(state.questState.progress[q.id]||0),Number(p.progress||0));
+            if(p.completed&&!state.questState.completed.includes(q.id))state.questState.completed.push(q.id);
+          });
+        }
+      }
+      return sd.errors.length===0;
+    }catch(err){
+      sd.errors.push(String(err?.message||err));
+      sd.loaded=true;
+      sd.hour=hour;
+      return false;
+    }finally{
+      sd.loading=false;
+      if(typeof render==='function'&&typeof state!=='undefined'&&state.activeTab==='NPCs')render();
+    }
+  }
+  window.eq4RefreshSharedSystems=eq4RefreshSharedSystems;
+  window.eq4LoadSharedShop=function(){return eq4RefreshSharedSystems(true);};
+  window.eq4RecordQuestProgress=async function(q,progress,completed){
+    if(typeof EQUINOX_SUPABASE==='undefined'||!q?.serverId)return false;
+    const session=await EQUINOX_SUPABASE.auth.getSession();
+    const uid=session?.data?.session?.user?.id;
+    if(!uid)return false;
+    const payload={
+      user_id:uid,
+      quest_id:String(q.serverId),
+      progress:Math.max(0,Math.floor(Number(progress||0))),
+      completed:!!completed,
+      completed_at:completed?new Date().toISOString():null
+    };
+    const {error}=await EQUINOX_SUPABASE.from('quest_progress').upsert(payload,{onConflict:'user_id,quest_id'});
+    if(error){console.warn('Shared quest progress write failed:',error);return false;}
+    return true;
+  };
+
+  const localQuestBoard=questBoard;
+  window.questBoard=function(){
+    const sd=window.EQUINOX_SHARED_DATA;
+    if(sd&&sd.loaded&&sd.hour===eq4SharedHour()&&sd.quests.length){
+      return sd.quests.map(function(q){return Object.assign({},q)});
+    }
+    return localQuestBoard();
+  };
+  const localShopStock=shopStock;
+  window.shopStock=function(){
+    const sd=window.EQUINOX_SHARED_DATA;
+    if(sd&&sd.loaded&&sd.hour===eq4SharedHour()&&sd.shop.length){
+      return {
+        hour:Math.floor(Date.now()/3600000),
+        items:sd.shop.map(function(row){
+          const parts=String(row.item_id||'Item::'+row.item_name).split('::');
+          return {
+            type:parts[0]||'Item',
+            name:row.item_name,
+            stock:Number(row.stock||0),
+            initialStock:Number(row.max_stock||row.stock||0),
+            bought:false,
+            weight:0,
+            itemId:String(row.item_id||'')
+          };
+        })
+      };
+    }
+    return localShopStock();
+  };
   function targetingLanguage(text){
     const s=String(text||'').toLowerCase();
     return /(^|\\s)(you|u|ur|your|youre|you're)\\s+(are|r|is)|@\\w+|kill\\s+(yourself|urself)|go\\s+die|nobody\\s+wants\\s+you|hate\\s+you|shut\\s+up/i.test(s);
@@ -85,7 +200,7 @@
     if(error){ toast(error.message); return; }
     takeItem('Coins',price);
     addItem(item.name,1);
-    await eq4LoadSharedShop();
+    if(typeof window.eq4LoadSharedShop==='function')await window.eq4LoadSharedShop();
     save(); render();
     toast('Bought '+item.name+' • shared stock: '+Number(data.stock||0));
   };
