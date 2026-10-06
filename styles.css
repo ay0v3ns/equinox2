@@ -81,3 +81,30 @@ body{min-height:100dvh}
  #app>.layout.tab-position-top>.tabs,#app>.layout.tab-position-bottom>.tabs{scrollbar-width:none}
  #app>.layout.tab-position-top>.tabs::-webkit-scrollbar,#app>.layout.tab-position-bottom>.tabs::-webkit-scrollbar{display:none}
 }
+
+/* Low-power mode: avoid expensive compositing/paint effects on weak devices. */
+.performance-mode *,
+.performance-mode *::before,
+.performance-mode *::after{
+  animation:none!important;
+  transition:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+.performance-mode .panel,
+.performance-mode .auth-card,
+.performance-mode .rare-card,
+.performance-mode .tutorial-card,
+.performance-mode .npc-card,
+.performance-mode .achievement-card,
+.performance-mode .quest-card,
+.performance-mode .shop-card,
+.performance-mode .recipe-card,
+.performance-mode .potion-card{
+  box-shadow:none!important;
+}
+.performance-mode .rare-overlay,
+.performance-mode .tutorial-overlay{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
