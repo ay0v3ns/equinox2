@@ -10,7 +10,7 @@ const defaults={
  recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
  automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,performanceMode:true,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
-let state=load(); bankTick();
+let state=load(); window.state=state; bankTick();
 
 function load(){
  try{
@@ -19,6 +19,12 @@ function load(){
   next.settings=Object.assign({},defaults.settings,raw.settings||{});
   next.craftingSelection=raw.craftingSelection||{};
   next.dailyQuota=Number(raw.dailyQuota)||1;
+  if(!Array.isArray(next.recent))next.recent=[];
+  if(!Array.isArray(next.auras))next.auras=[];
+  if(!next.inventory||typeof next.inventory!=='object'||Array.isArray(next.inventory))next.inventory={};
+  if(!Array.isArray(next.activePotions))next.activePotions=[];
+  if(!Array.isArray(next.gearsEquipped))next.gearsEquipped=[];
+  if(!Number.isFinite(Number(next.nextAutoRollAt)))next.nextAutoRollAt=0;
   // Migrate the original grouped Aura object into individual Aura inventory objects.
   if(!Array.isArray(next.auras)){
    const grouped=next.auras||{};
@@ -53,7 +59,9 @@ function potionLuck(){return (state.activePotions||[]).reduce(function(sum,p){re
 function potionSpeed(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0)}
 function totalLuck(){return ((1+state.basicLuck+gearLuck()+potionLuck())+state.specialLuck)*state.finalMultiplier}
 function totalSpeed(){return Math.max(0.01,state.speed*(1+gearSpeed()+potionSpeed()))}
-function toast(msg){ if(!settingEnabled('notifications'))return;const e=document.createElement('div');e.className='notice';e.textContent=msg;document.getElementById('notices').appendChild(e);setTimeout(function(){e.remove()},3200)}
+function rollTimeSeconds(){return 10/Math.max(0.01,totalSpeed())+1}
+function percentText(value){const n=Number(value||0)*100;return Math.abs(n-Math.round(n))<0.01?Math.round(n)+'%':n.toFixed(1)+'%'}
+function toast(msg){ if(!settingEnabled('notifications'))return;let host=document.getElementById('notices');if(!host){host=document.createElement('div');host.id='notices';document.body.appendChild(host)}const e=document.createElement('div');e.className='notice';e.textContent=msg;host.appendChild(e);setTimeout(function(){e.remove()},3200)}
 function auraDef(name){return AURAS.find(function(a){return a.name===name})}
 function auraSlots(){return state.auras.length}
 function hasItem(name,n){return (state.inventory[name]||0)>=n}
@@ -150,6 +158,7 @@ function tutorialCheck(){const t=tutorialState();if(t.phase===2&&t.part2.glove&&
 function markTutorialQuest(){const t=tutorialState();if(t.phase===2&&!t.part2.quest){t.part2.quest=true;tutorialCheck()}}
 function markTutorialCraft(name){const t=tutorialState();if(t.phase!==2)return;if(name==='Luck Glove')t.part2.glove=true;if(name==='Haste Potion I')t.part2.haste=true;tutorialCheck()}
 function usePotion(name){
+ if(!Array.isArray(state.activePotions))state.activePotions=[];
  const enhanced=name.indexOf('Enhanced ')===0;
  const baseName=enhanced?name.slice(9):name;
  const multiplier=enhanced&&BREWING_STAND[baseName]?BREWING_STAND[baseName].multiplier:1;
@@ -242,7 +251,7 @@ function roll(){
  questAuraHook(result,chosen.breakthrough);
  const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
  const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
- const rolledRarity=result.rarity*(chosen.breakthrough?BREAK[state.biome]:1); state.rarestRoll=Math.max(state.rarestRoll||0,rolledRarity); state.recent.unshift({roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:rolledRarity,breakthrough:chosen.breakthrough,bonus:bonus>1,luck:finalLuck,speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false});
+ const rolledRarity=result.rarity*(chosen.breakthrough?BREAK[state.biome]:1); state.rarestRoll=Math.max(state.rarestRoll||0,rolledRarity); const rollRecord={roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:rolledRarity,breakthrough:chosen.breakthrough,bonus:bonus>1,luck:finalLuck,speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false}; state.lastRollResult=rollRecord; state.recent.unshift(rollRecord);
  state.recent=state.recent.slice(0,100);
 
  if(autoSkip){
