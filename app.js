@@ -519,6 +519,7 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
  state=normalizeState(state,false);
  window.state=state;
  const previousRolls=Number(state.rolls||0);
+ const previousGearSpecials=JSON.parse(JSON.stringify(state.gearSpecials||{}));
  const start=Number(startedAt||Date.now());
  const duration=Number(rollDuration||rollTimeSeconds());
  try{
@@ -575,9 +576,9 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
 
   if(autoSkip){
    rollRecord.skipped=true;
+   gearPostRollEffects(rollRecord,null);
    try{save()}catch(err){console.warn('Roll save failed:',err)}
    try{render()}catch(err){console.warn('Roll render failed after Auto Skip:',err)}
-   gearPostRollEffects(rollRecord,null);
    toast('Auto Skip: '+result.name);
    if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);
    return true;
@@ -599,16 +600,17 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
      autoEquip:autoEquip,
      postRollSpecials:true
     };
+    gearPostRollEffects(rollRecord,null);
     window.state=state;
     try{save()}catch(err){console.warn('Roll save failed while waiting for storage decision:',err)}
-    gearPostRollEffects(rollRecord,null);
     try{render()}catch(err){console.warn('Roll render failed while waiting for storage decision:',err)}
     return true;
    }else{
     rollRecord.skipped=true;
+    gearPostRollEffects(rollRecord,null);
     try{save()}catch(err){console.warn('Roll save failed after storage block:',err)}
     try{render()}catch(err){console.warn('Roll render failed after storage block:',err)}
-    gearPostRollEffects(rollRecord,null);toast('All Aura slots are Favorited. '+result.name+' was skipped.');if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);return true;
+    toast('All Aura slots are Favorited. '+result.name+' was skipped.');if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);return true;
    }
   }
 
@@ -637,6 +639,7 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
   return true;
  }catch(err){
   state.rolls=previousRolls;
+  state.gearSpecials=previousGearSpecials;
   state.rolling=false;
   state.rollAutoPaid=false;
   state.rollStartedAt=0;
