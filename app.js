@@ -232,9 +232,9 @@ if(!window.__equinoxTutorialKeyHandler){
  },true);
 }
 function roll(){
- rollPotionHook();
+ try{rollPotionHook()}catch(e){console.warn('Potion roll hook failed',e)}
  state.rolls++;
- tutorialRollHook();
+ try{tutorialRollHook()}catch(e){console.warn('Tutorial roll hook failed',e)}
  const bonus=state.rolls%10===0?2:1;
  const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
  let chosen=null,lastEligible=null;
