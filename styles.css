@@ -183,3 +183,48 @@ body{min-height:100dvh}
     padding:0 20px;
   }
 }
+
+
+/* Equinox typography system */
+:root{
+  --font-title:"Equity Rock",Georgia,serif;
+  --font-body:"Lora",Georgia,serif;
+  --font-ui:"Figtree",system-ui,sans-serif;
+}
+body,
+input,
+textarea,
+select{
+  font-family:var(--font-body);
+  font-weight:500;
+}
+h1,h2,h3,.section-title,.logo,.tab,.roll-button,
+.npc-card h1,.npc-card h2,.achievement-card h1,.achievement-card h2,
+.recipe-card h2,.potion-card h2,.shop-card h2,.quest-card h2,
+.aura-name,.roll-result h2{
+  font-family:var(--font-title);
+  font-weight:900;
+}
+button{
+  font-family:var(--font-body);
+  font-weight:500;
+}
+.topstats,
+.muted,
+small,
+.stat,
+.world-stat,
+.recent-row span,
+.recent-row small,
+.rarity,
+.aura-tags,
+input::placeholder,
+.settings-section small,
+.global-note{
+  font-family:var(--font-ui);
+  font-weight:300;
+}
+.roll-button{
+  font-family:var(--font-title);
+  font-weight:900;
+}
