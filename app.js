@@ -339,8 +339,9 @@ function questItemHook(itemName){const qs=questState();questBoard().forEach(func
 function questRollHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Rolling')qs.progress[q.id]=Math.min(q.target||Infinity,state.rolls);});save()}
 function questAuraHook(result,breakthrough){const qs=questState();questBoard().forEach(function(q){if(q.type==='Aura')qs.progress[q.id]=(qs.progress[q.id]||0)+1;if(q.type==='Breakthrough'&&breakthrough)qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
 
-function maybeSpawn(){tickPotions();if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){takeItem('Coins',1);roll()}else if(state.autoRoll&&!(state.inventory.Coins>0)){state.autoRoll=false;save();toast('Auto Roll stopped: no Coins remaining.')}if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
+function maybeSpawn(){tickPotions();if(state.autoRoll&&state.inventory.Coins>0&&tutorialState().phase>=3){const now=Date.now();if(!state.nextAutoRollAt||now>=state.nextAutoRollAt){takeItem('Coins',1);state.nextAutoRollAt=now+Math.round(rollTimeSeconds()*1000);roll()}}else if(state.autoRoll&&!(state.inventory.Coins>0)){state.autoRoll=false;state.nextAutoRollAt=0;save();toast('Auto Roll stopped: no Coins remaining.')}if(!state.lastSpawn){state.lastSpawn=Date.now();save();return}if(Date.now()-state.lastSpawn>=60000)spawnItems()}
 
+if(!window.__equinoxGameTick){window.__equinoxGameTick=true;setInterval(function(){const hadPotions=(state.activePotions||[]).length>0;maybeSpawn();if(state.activeTab==='Roll'&&(hadPotions||state.autoRoll))render()},1000)}
 function tab(name){
  if(!['Roll','Inventory','NPCs','Global','Achievements','Settings'].includes(name)){return}
  state.activeTab=name;render();
@@ -388,7 +389,7 @@ function inventoryView(){
  const auraCards=rows.map(function(a){
    return '<div class="aura-card '+(a.equipped?'equipped':'')+'"><div class="aura-main"><div><b>'+a.name+'</b><small>1/'+fmt(a.rarity)+' • '+a.tier+(a.equipped?' • EQUIPPED':'')+'</small></div><div class="aura-tags">'+(a.favorite?'★ Favorited':'')+(a.autoSkip?' • Auto Skip':'')+(a.autoEquip?' • Auto Equip':'')+'</div></div><div class="aura-actions"><button onclick="toggleFavorite(\''+a.id+'\')">'+(a.favorite?'Unfavorite':'Favorite')+'</button><button onclick="equipAura(\''+a.id+'\')">Equip</button><button onclick="setAuraAutomation(\''+a.id+'\',\'skip\')">'+(a.autoSkip?'Disable Skip':'Auto Skip')+'</button><button onclick="setAuraAutomation(\''+a.id+'\',\'equip\')">'+(a.autoEquip?'Disable Equip':'Auto Equip')+'</button><button class="danger" onclick="discardAura(\''+a.id+'\')">Remove</button></div></div>';
  }).join('')||'<div class="empty">No collected Auras match this filter.</div>';
- const potionRows=Object.entries(state.inventory).filter(function(e){return /Potion/.test(e[0])}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Potions yet.</div>';
+ const potionRows=Object.entries(state.inventory).filter(function(e){return /Potion/.test(e[0])&&Number(e[1])>0}).map(function(e){const active=(state.activePotions||[]).some(function(p){return p.name===e[0]});return '<div class="inventory-row"><span>'+eq4escape(e[0])+(active?' <small>• ACTIVE</small>':'')+'</span><div class="inventory-item-actions"><button onclick="usePotion('+JSON.stringify(e[0])+')">Use</button><b>x'+e[1]+'</b></div></div>'}).join('')||'<div class="empty">No Potions yet.</div>';
  const gearRows=Object.entries(state.inventory).filter(function(e){return e[0].endsWith('Glove')||e[0].endsWith('Device')||e[0].endsWith('Gauntlet')||e[0]==='Shining Star'||e[0]==='Hologrammer'||e[0]==='Ragnaröker'}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+' '+((state.gearsEquipped||[]).includes(e[0])?'• EQUIPPED':'')+'</span><button onclick="equipGear('+JSON.stringify(e[0])+')">'+((state.gearsEquipped||[]).includes(e[0])?'Unequip':'Equip')+'</button><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Gears yet.</div>';
  const miscRows=Object.entries(state.inventory).filter(function(e){return e[0]==='Coins'||(!/Potion/.test(e[0])&&!/^Gear /.test(e[0]))}).map(function(e){return '<div class="inventory-row"><span>'+e[0]+'</span><b>x'+e[1]+'</b></div>'}).join('')||'<div class="empty">No Miscellaneous items yet.</div>';
  return '<div class="panel inventory-panel"><div class="inventory-head"><div><div class="section-title">Aura Storage</div><h2>'+auraSlots()+' / '+state.auraCapacity+' Aura Slots</h2><p class="muted">Every Aura copy occupies its own slot. Favorites are protected from automatic removal.</p></div><div class="inventory-controls"><input id="invSearch" placeholder="Search Auras..." value="'+(window.equinoxInventorySearch||'')+'"><select id="invSort"><option value="rarity"'+(sort==='rarity'?' selected':'')+'>Highest Rarity at Top</option><option value="recent"'+(sort==='recent'?' selected':'')+'>Most Recently Rolled at Top</option><option value="alpha"'+(sort==='alpha'?' selected':'')+'>Alphabetical</option></select></div></div><div class="inventory-toolbar"><span>Automation: <b>'+({none:'None',skip:'Auto Skip',equip:'Auto Equip'}[state.automation])+'</b></span><button onclick="upgradeStorage()">Upgrade Storage (+3)</button></div><div class="aura-grid">'+auraCards+'</div></div><div class="inventory-columns"><div class="panel"><div class="section-title">Potions</div>'+potionRows+'</div><div class="panel"><div class="section-title">Gears</div>'+gearRows+'</div><div class="panel"><div class="section-title">Miscellaneous</div>'+miscRows+'</div></div>';
@@ -535,7 +536,7 @@ function activateCurse(name,brewingMultiplier,copies){const strength=potionCurse
  * supabase.js owns Auth/client creation; this module connects the existing UI
  * to the already-secured Phase 4 tables without exposing privileged keys.
  */
-window.window.EQUINOX_GLOBAL_DATA=window.window.EQUINOX_GLOBAL_DATA||{profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0};
+var EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA||{profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0};
 function eq4escape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 async function eq4RefreshGlobal(force){
@@ -716,6 +717,8 @@ function render(){
 }
 window.render=render;
 window.state=state;
+window.roll=roll;
+window.usePotion=usePotion;
 window.eq4GlobalView=typeof eq4GlobalView==='function'?eq4GlobalView:null;
 try{window.dispatchEvent(new Event('equinox-render-ready'))}catch(_){}
 render();
