@@ -46,7 +46,7 @@
   window.phase5OpenHistory=function(){window.__phase5HistoryOpen=true;render();};
   window.phase5HistoryClear=function(){window.phase5HistorySearch="";render();};
   function history(){
-    return db().then(function(x){return new Promise(function(ok){var a=[],tx=x.transaction("rolls","readonly"),q=tx.objectStore("rolls").openCursor(null,"prev");q.onsuccess=function(){var c=q.result;if(!c||a.length>=500){ok(a);return;}a.push(c.value);c.continue();};});}).catch(function(){return [];});
+    return db().then(function(x){return new Promise(function(ok){var a=[],tx=x.transaction("rolls","readonly"),q=tx.objectStore("rolls").openCursor(null,"prev");q.onsuccess=function(){var c=q.result;if(!c||a.length>=1000000){ok(a);return;}a.push(c.value);c.continue();};});}).catch(function(){return [];});
   }
   function historyView(){
     return history().then(function(rows){
@@ -60,8 +60,28 @@
     var o=document.createElement("div");o.className="rare-overlay "+String(m).toLowerCase();o.innerHTML='<div class="rare-card"><div class="section-title">RARE ROLL</div><h1>'+esc(e.aura)+'</h1><div>1/'+fmt(e.rarity)+'</div><small>Roll #'+fmt(e.roll)+(e.breakthrough?" • BREAKTHROUGH":"")+(e.bonus?" • BONUS ROLL":"")+'</small><button>Continue</button></div>';o.querySelector("button").onclick=function(){o.remove();};document.body.appendChild(o);
   }
   function wrapRoll(){
-    if(window.__eq5wrapped||typeof window.roll!=="function")return;window.__eq5wrapped=true;var old=window.roll;
-    window.roll=function(){var before=Number(state.rolls||0),out=old.apply(this,arguments),after=Number(state.rolls||0),a=(state.recent&&state.recent[0])||{},d=auraDef(a.name),e={key:String(after),roll:after,aura:a.name||"Nothing",rarity:Number(a.rolledRarity||a.rarity||(d?d.rarity:0)),luck:Number(a.luck||totalLuck()),speed:Number(a.speed||totalSpeed()),biome:a.biome||state.biome,time:a.time||state.dayNight,breakthrough:!!a.breakthrough,bonus:!!a.bonus};if(after>before)record(e);if(e.rarity>=1000000)rare(e);return out;};
+    if(window.__eq5ResolveWrapped||typeof window.resolveRoll!=="function")return;
+    window.__eq5ResolveWrapped=true;
+    var oldResolve=window.resolveRoll;
+    window.resolveRoll=function(){
+      var out=oldResolve.apply(this,arguments);
+      try{
+        var a=(window.state&&window.state.recent&&window.state.recent[0])||{};
+        if(a&&Number(a.roll||0)>0){
+          var d=auraDef(a.name);
+          var e={
+            key:String(a.roll),roll:Number(a.roll),aura:a.name||"Nothing",
+            rarity:Number(a.rolledRarity||a.rarity||(d?d.rarity:0)),
+            luck:Number(a.luck||totalLuck()),speed:Number(a.speed||totalSpeed()),
+            biome:a.biome||window.state.biome,time:a.time||window.state.dayNight,
+            breakthrough:!!a.breakthrough,bonus:!!a.bonus
+          };
+          record(e);
+          if(e.rarity>=1000000)rare(e);
+        }
+      }catch(err){console.warn("Equinox roll history/rare display failed:",err)}
+      return out;
+    };
   }
   function patchRender(){
     if(window.__eq5render||typeof window.render!=="function")return;window.__eq5render=true;var old=window.render;
