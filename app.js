@@ -63,7 +63,7 @@ const ROLL_AURAS=AURAS.filter(function(a){return !a.crafted&&!isPotionExclusiveA
 const defaults={
  rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
  dimension:'Isles of Luck',dayNight:'Day',activeTab:'Roll',auraCapacity:20,
- recent:[],lastRollResult:null,auras:[],inventory:{},spawns:[],lastSpawn:0,pendingRollPotions:[],rollCooldownUntil:0,
+ recent:[],lastRollResult:null,auras:[],inventory:{},spawns:[],lastSpawn:0,pendingRollPotions:[],rollCooldownUntil:0,pendingStorageDecision:null,
  automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,performanceMode:true,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
 let state=normalizeState(load()); window.state=state; bankTick();
@@ -86,7 +86,7 @@ function normalizeState(s,recoverInterrupted=true){
  s.auras=Array.isArray(s.auras)?s.auras:[];
  s.recent=Array.isArray(s.recent)?s.recent.slice(0,100):[];
  s.activePotions=Array.isArray(s.activePotions)?s.activePotions:[];
- s.pendingRollPotions=Array.isArray(s.pendingRollPotions)?s.pendingRollPotions:[];
+ s.pendingRollPotions=Array.isArray(s.pendingRollPotions)?s.pendingRollPotions:[]; s.pendingStorageDecision=(s.pendingStorageDecision&&typeof s.pendingStorageDecision==='object')?s.pendingStorageDecision:null;
  const interruptedRoll=!!s.rolling;
  if(recoverInterrupted&&interruptedRoll){
    if(s.rollAutoPaid) s.inventory.Coins=(Number(s.inventory.Coins)||0)+1;
@@ -388,6 +388,69 @@ if(!window.__equinoxTutorialKeyHandler){
    tutorialContinue();
  },true);
 }
+
+function storageDecisionView(){
+ const p=state.pendingStorageDecision;
+ if(!p)return '';
+ const result=p.result||{};
+ const victim=state.auras.find(function(a){return a.id===p.victimId});
+ const victimName=victim?.name||p.victimName||'an Aura';
+ const victimRarity=Number(victim?.rarity||p.victimRarity||0);
+ const currentSlots=auraSlots();
+ const capacity=Number(state.auraCapacity||0);
+ return '<div class="storage-overlay" role="dialog" aria-modal="true"><div class="storage-card"><div class="section-title">AURA STORAGE FULL</div><h1>'+eq4escape(String(result.name||'Unknown Aura'))+'</h1><div class="storage-rarity">1/'+fmt(result.rarity||0)+(result.breakthrough?' · BREAKTHROUGH':'')+'</div><p>Your Aura Storage is full: <b>'+fmt(currentSlots)+' / '+fmt(capacity)+'</b>.</p><p class="muted">This Aura is being held for you right now. <b>Nothing has been removed yet.</b></p><div class="storage-warning">Choose exactly what happens to this roll. There is no generic Cancel button.</div><div class="storage-choice-grid"><div class="storage-choice"><div><b>KEEP NEW AURA</b><small>Remove the lowest-rarity unfavorited Aura: '+eq4escape(victimName)+' · 1/'+fmt(victimRarity)+'</small></div><button class="storage-keep" onclick="resolveStorageDecision(\'keep\')">KEEP NEW AURA</button></div><div class="storage-choice"><div><b>SKIP NEW AURA</b><small>Discard '+eq4escape(String(result.name||'this Aura'))+'. Your current Aura Storage stays unchanged.</small></div><button class="storage-skip" onclick="resolveStorageDecision(\'skip\')">SKIP NEW AURA</button></div></div></div></div>';
+}
+
+function resolveStorageDecision(action){
+ const p=state.pendingStorageDecision;
+ if(!p||!['keep','skip'].includes(action))return false;
+ const rec=p.rollRecord||null;
+ const result=p.result||{};
+ if(action==='skip'){
+   if(rec)rec.skipped=true;
+   state.pendingStorageDecision=null;
+   window.state=state;
+   try{save()}catch(err){console.warn('Storage decision save failed:',err)}
+   try{render()}catch(err){console.warn('Storage decision render failed:',err)}
+   toast('Skipped '+String(result.name||'the Aura')+' — storage unchanged.');
+   return true;
+ }
+ let victim=state.auras.find(function(a){return a.id===p.victimId&&!a.favorite});
+ if(!victim){
+   const candidates=state.auras.filter(function(a){return !a.favorite}).sort(function(a,b){
+    if(a.rarity!==b.rarity)return a.rarity-b.rarity;
+    return b.rolledAt-a.rolledAt;
+   });
+   victim=candidates[0]||null;
+ }
+ if(auraSlots()>=state.auraCapacity&&!victim){
+   toast('All Aura slots are Favorited. The new Aura is still waiting for your decision.');
+   return false;
+ }
+ if(victim)state.auras=state.auras.filter(function(a){return a.id!==victim.id});
+ const obj={
+  id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
+  name:result.name,rarity:Number(result.rarity||0),tier:result.tier||'Unknown',rolledAt:Date.now(),
+  favorite:false,autoSkip:false,autoEquip:false,equipped:false
+ };
+ state.auras.push(obj);
+ if(rec){rec.stored=true;rec.auraId=obj.id;rec.equipped=false;}
+ if(p.autoEquip){
+   state.auras.forEach(function(a){a.equipped=false});
+   obj.equipped=true;
+   if(rec)rec.equipped=true;
+   state.equippedAuraId=obj.id;
+ }
+ if(state.equippedAuraId&&!state.auras.some(function(a){return a.id===state.equippedAuraId}))state.equippedAuraId=null;
+ state.pendingStorageDecision=null;
+ try{achievementCheck()}catch(err){console.warn('Achievement check failed after storage decision:',err)}
+ window.state=state;
+ try{save()}catch(err){console.warn('Storage decision save failed:',err)}
+ try{render()}catch(err){console.warn('Storage decision render failed:',err)}
+ toast('Stored '+String(result.name||'the Aura')+'. '+String(victim?.name||'An Aura')+' was removed.');
+ return true;
+}
+
 function resolveRoll(startedAt,rollDuration,rollSpeed){
  state=normalizeState(state,false);
  window.state=state;
@@ -458,17 +521,21 @@ function resolveRoll(startedAt,rollDuration,rollSpeed){
    });
    if(candidates.length){
     const victim=candidates[0];
-    const replace=!settingEnabled('confirmAuraRemoval')||confirm('Aura Storage is full. Remove '+victim.name+' (1/'+fmt(victim.rarity)+') and keep '+result.name+'?');
-    if(replace)state.auras=state.auras.filter(function(a){return a.id!==victim.id});
-    else{
-     rollRecord.skipped=true;
-     try{save()}catch(err){console.warn('Roll save failed:',err)}
-     try{render()}catch(err){console.warn('Roll render failed after storage skip:',err)}
-     toast('Skipped '+result.name+' — storage unchanged.');return true;
-    }
+    state.pendingStorageDecision={
+     rollRecord:rollRecord,
+     result:{name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',breakthrough:!!chosen.breakthrough},
+     victimId:victim.id,
+     victimName:victim.name,
+     victimRarity:Number(victim.rarity||0),
+     autoEquip:autoEquip
+    };
+    window.state=state;
+    try{save()}catch(err){console.warn('Roll save failed while waiting for storage decision:',err)}
+    try{render()}catch(err){console.warn('Roll render failed while waiting for storage decision:',err)}
+    return true;
    }else{
     rollRecord.skipped=true;
-    try{save()}catch(err){console.warn('Roll save failed:',err)}
+    try{save()}catch(err){console.warn('Roll save failed after storage block:',err)}
     try{render()}catch(err){console.warn('Roll render failed after storage block:',err)}
     toast('All Aura slots are Favorited. '+result.name+' was skipped.');return true;
    }
@@ -516,6 +583,7 @@ function roll(isAuto){
  state=normalizeState(state);
  window.state=state;
  if(state.rolling)return false;
+ if(state.pendingStorageDecision)return false;
  const now=Date.now();
  if(now<Number(state.rollCooldownUntil||0))return false;
  const rollSpeed=totalSpeed();
@@ -986,7 +1054,7 @@ function render(){
       main='<div class="roll-grid"><div class="panel hero"><div class="section-title">THE ROLL</div><h1>Equinox</h1><p class="muted">'+eq4escape(String(state.biome||'Normal'))+' · '+eq4escape(String(state.dayNight||'Day'))+'</p>'+latestText+'<button class="roll-button" onclick="roll()">ROLL</button><div class="roll-time"><span>TIME UNTIL ROLL</span><b>'+cooldownHint+'</b><small>'+cooldownStatus+'</small></div><p class="muted">Coins: '+fmt(state.inventory?.Coins||0)+' · Aura Storage: '+fmt(auraSlots())+'/'+fmt(state.auraCapacity||20)+'</p></div><div class="panel"><div class="section-title">RECENT ROLLS</div>'+(recentRows||'<div class="empty">No rolls yet.</div>')+'</div></div>'+groundPanel;
     }
     const worldPanel='<aside class="world-panel"><div class="world-kicker">CURRENT WORLD</div><div class="world-name">'+eq4escape(String(state.biome||'Normal'))+'</div><div class="world-dimension">'+eq4escape(String(state.dimension||'Isles of Luck'))+'</div><div class="world-stats"><div class="world-stat"><span>Day / Night</span><b>'+eq4escape(String(state.dayNight||'Day'))+'</b></div><div class="world-stat"><span>Total Luck</span><b>'+Number(worldLuck||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Speed</span><b>'+Number(worldSpeed||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Time</span><b>'+rollTime.toFixed(2)+'s</b></div><div class="world-stat"><span>Equipped Aura</span><b>'+eq4escape(equipped?.name||'None')+'</b></div></div><div class="world-block"><div class="section-title">ACTIVE EFFECTS</div><div class="buff-list">'+activeBuffs+'</div></div></aside>';
-    root.innerHTML='<div id="notices" aria-live="polite"></div><div class="topbar"><div class="logo">☯ EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls||0)+'</b></span><span>Luck <b>'+Number(worldLuck||1).toFixed(2)+'×</b></span><span>Speed <b>'+Number(worldSpeed||1).toFixed(2)+'×</b></span><span>Biome <b>'+eq4escape(String(state.biome||'Normal'))+'</b></span></div></div><div class="layout tab-position-'+(state.settings?.tabPosition||'left')+'"><aside class="tabs">'+tabs.map(function(t){return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</aside><main>'+main+'</main>'+worldPanel+'</div>'+ (typeof tutorialView==='function'?tutorialView():'');
+    root.innerHTML='<div id="notices" aria-live="polite"></div><div class="topbar"><div class="logo">☯ EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls||0)+'</b></span><span>Coins <b>'+fmt(state.inventory?.Coins||0)+'</b></span><span>Luck <b>'+Number(worldLuck||1).toFixed(2)+'×</b></span><span>Speed <b>'+Number(worldSpeed||1).toFixed(2)+'×</b></span><span>Biome <b>'+eq4escape(String(state.biome||'Normal'))+'</b></span></div></div><div class="layout tab-position-'+(state.settings?.tabPosition||'left')+'"><aside class="tabs">'+tabs.map(function(t){return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</aside><main>'+main+'</main>'+worldPanel+'</div>'+ (typeof storageDecisionView==='function'?storageDecisionView():'') + (typeof tutorialView==='function'?tutorialView():'');
     const rollButton=root.querySelector('.roll-button');
     if(rollButton){const ready=cooldownRemaining<=0.01;rollButton.disabled=!ready||!!state.rolling;rollButton.textContent=state.rolling?'ROLLING '+cooldownRemaining.toFixed(1)+'s':ready?'ROLL':'WAIT '+cooldownRemaining.toFixed(1)+'s';}
     wireInventory();
