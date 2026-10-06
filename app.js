@@ -715,7 +715,7 @@ function roll(isAuto){
  const now=Date.now();
  if(now<Number(state.rollCooldownUntil||0))return false;
  const rollSpeed=totalSpeed();
- const rollDuration=10/Math.max(0.01,rollSpeed)+1;
+ const rollDuration=rollTimeSeconds();
  state.rolling=true;
  state.rollAutoPaid=!!isAuto;
  state.rollStartedAt=now;
