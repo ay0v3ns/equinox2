@@ -20,24 +20,27 @@ function load(){
   next.craftingSelection=raw.craftingSelection||{};
   next.dailyQuota=Number(raw.dailyQuota)||1;
   if(!Array.isArray(next.recent))next.recent=[];
-  if(!Array.isArray(next.auras))next.auras=[];
+  const rawAuras=raw.auras;
+  if(Array.isArray(rawAuras)){
+    next.auras=rawAuras;
+  }else{
+    const grouped=rawAuras&&typeof rawAuras==='object'?rawAuras:{};
+    next.auras=[];
+    Object.keys(grouped).forEach(function(name){
+      const data=AURAS.find(function(a){return a.name===name});
+      for(let i=0;i<(Number(grouped[name])||0);i++) next.auras.push({
+        id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
+        name:name,rarity:data?data.rarity:0,tier:data?data.computedTier||data.tier:'Unknown',
+        rolledAt:Date.now()+i,favorite:false,autoSkip:false,autoEquip:false,equipped:false
+      });
+    });
+  }
+  if(!next.lastRollResult&&next.recent.length)next.lastRollResult=next.recent[0];
   if(!next.inventory||typeof next.inventory!=='object'||Array.isArray(next.inventory))next.inventory={};
   if(!Array.isArray(next.activePotions))next.activePotions=[];
   if(!Array.isArray(next.gearsEquipped))next.gearsEquipped=[];
   if(!Number.isFinite(Number(next.nextAutoRollAt)))next.nextAutoRollAt=0;
-  // Migrate the original grouped Aura object into individual Aura inventory objects.
-  if(!Array.isArray(next.auras)){
-   const grouped=next.auras||{};
-   next.auras=[];
-   Object.keys(grouped).forEach(function(name){
-    const data=AURAS.find(function(a){return a.name===name});
-    for(let i=0;i<(grouped[name]||0);i++) next.auras.push({
-     id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
-     name:name,rarity:data?data.rarity:0,tier:data?data.tier:'Unknown',
-     rolledAt:Date.now()+i,favorite:false,autoSkip:false,autoEquip:false,equipped:false
-    });
-   });
-  }
+  if(!Number.isFinite(Number(next.rollCooldownUntil)))next.rollCooldownUntil=0;
   return next;
  }catch(e){return Object.assign({},defaults)}
 }
@@ -250,7 +253,7 @@ function roll(){
  if(!chosen)chosen=lastEligible||{a:AURAS[0],breakthrough:false};
  const result=chosen.a;
  const ast=achievementState().stats;if(chosen.breakthrough){ast.breakthrough=true;ast.breakthroughBiomes=ast.breakthroughBiomes||[];if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;}
- questAuraHook(result,chosen.breakthrough);
+ try{questAuraHook(result,chosen.breakthrough)}catch(e){console.warn('Quest roll hook failed',e)}
  const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
  const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
  const rolledRarity=result.rarity*(chosen.breakthrough?BREAK[state.biome]:1); state.rarestRoll=Math.max(state.rarestRoll||0,rolledRarity); const rollRecord={roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:rolledRarity,breakthrough:chosen.breakthrough,bonus:bonus>1,luck:finalLuck,speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false}; state.lastRollResult=rollRecord; state.recent.unshift(rollRecord);
@@ -287,7 +290,7 @@ function roll(){
  };
  state.auras.push(obj);
  state.recent[0].stored=true;
- achievementCheck();
+ try{achievementCheck()}catch(e){console.warn('Achievement check failed after roll',e)}
  if(autoEquip){
    state.auras.forEach(function(a){a.equipped=false});
    obj.equipped=true;state.equippedAuraId=obj.id;
@@ -472,6 +475,7 @@ const WORKSHOP_RECIPES={
 "Singularity Catalyst":{"type":"Item","buff":"2 hour cooldown; directly enters Singularity","recipe":{"Gargantua":1,"Sirius":2,"Orion":5,"Galaxy":5,"Comet":30}},
 "Item Collector":{"type":"Item","buff":"Automatically collects ground items; 1/20 duplicate chance except Coins","recipe":{"BOUNDED":1,"Aether":1,"Nautilus":2,"Magnetic":50,"Precious":100}}
 };
+const POTION_RECIPES=Object.fromEntries(Object.entries(WORKSHOP_RECIPES).filter(function(e){return e[1]&&e[1].type==='Potion'}));
 
 const POTION_EFFECTS={
 "Lucky Potion":"+5% Luck for 10 seconds","Speed Potion":"+3% Roll Speed for 10 seconds",
@@ -521,6 +525,7 @@ function bankDeposit(amount){amount=Math.floor(Number(amount));const b=bankTierD
 function bankWithdraw(){const b=bankTierData();if((state.bankBalance||0)<=0)return;if((state.bankBalance||0)<b[2]&&b[0]<12){toast("Withdrawal unlocks at Bank capacity.");return}addItem("Coins",Math.floor(state.bankBalance||0));state.bankBalance=0;save();render();toast("Bank withdrawn.")}
 function bankView(){const b=bankTierData();return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Mari · Personal Bank</div><h1>Bank '+b[0]+'</h1><p class="muted">'+b[4]+' • '+b[1].toFixed(2)+'× hourly interest</p></div><button onclick="bankUpgrade()">Upgrade</button></div><div class="bank-grid"><div class="bank-stat"><span>Stored</span><b>'+fmt(Math.floor(state.bankBalance||0))+' / '+fmt(b[2])+'</b></div><div class="bank-stat"><span>Deposit / hour</span><b>'+fmt(state.bankDeposited||0)+' / '+fmt(b[3])+'</b></div><div class="bank-stat"><span>Multiplier</span><b>'+b[1].toFixed(2)+'×</b></div></div><div class="bank-actions"><input id="depositAmount" type="number" min="1" placeholder="Coins to deposit"><button onclick="bankDeposit(document.getElementById(\'depositAmount\').value)">Deposit</button><button onclick="bankWithdraw()">Withdraw</button></div></div>'}
 function craftRecipe(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return;if(settingEnabled('confirmCrafting')&&!confirm('Craft '+name+'? The listed ingredients will be permanently consumed.'))return;const ast=achievementState().stats;for(const [item,n] of Object.entries(rec.recipe)){const aura=state.auras.filter(x=>x.name===item&&!x.favorite&&!x.equipped);const inv=state.inventory[item]||0;if(aura.length+inv<n){toast("Missing "+item+" × "+n);return}}for(const [item,n] of Object.entries(rec.recipe)){let left=n;state.auras=state.auras.filter(x=>{if(left<=0)return true;if(x.name===item&&!x.favorite&&!x.equipped){left--;return false}return true});if(left)takeItem(item,left)}if(rec.type==="Aura"){const d=auraDef(name);state.auras.push({id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),name,rarity:d?d.rarity:0,tier:d?d.computedTier:rec.buff,rolledAt:Date.now(),favorite:false,autoSkip:false,autoEquip:false,equipped:false})}else addItem(name,1);if(rec.type==='Gear'){ast.gearCrafted=(ast.gearCrafted||0)+1;ast.gearNames=ast.gearNames||[];if(!ast.gearNames.includes(name))ast.gearNames.push(name);const adv=(rec.buff||'').match(/Advance (X{0,3}(?:IX|IV|V|VI{0,3})|XXV?)/);if(adv){const roman=adv[1];const vals={I:1,V:5,X:10};const value=[...roman].reduce((t,c,i)=>t+(vals[c]<(vals[roman[i+1]]||0)?-vals[c]:vals[c]),0);if(value>=5)ast.advanceV=true;if(value===10)ast.advanceX=true;if(value>15)ast.advanceGTXV=true;}const adv2=(rec.buff||'').match(/Advance (\w+)/);if(adv2&&['XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI','XXII','XXIII','XXIV','XXV'].includes(adv2[1]))ast.advanceGTXV=true;}if(rec.type==='Potion'){ast.potionsCrafted=(ast.potionsCrafted||0)+1;ast.potionNames=ast.potionNames||[];if(!ast.potionNames.includes(name))ast.potionNames.push(name);}markTutorialCraft(name);questCraftHook();achievementCheck();save();render();toast("Crafted "+name)}
+function craftPotion(name){if(!POTION_RECIPES[name]){toast('No recipe exists for '+name+'.');return}craftRecipe(name)}
 function questCraftHook(){const qs=questState();questBoard().forEach(function(q){if(q.type==='Crafting')qs.progress[q.id]=(qs.progress[q.id]||0)+1});save()}
 function recipeAvailable(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return false;return Object.entries(rec.recipe).every(function(e){const item=e[0],n=e[1];return state.auras.filter(function(a){return a.name===item&&!a.favorite&&!a.equipped}).length+(state.inventory[item]||0)>=n})}
 function autoAddRecipe(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return;state.craftingSelection=state.craftingSelection||{};state.craftingSelection[name]={};Object.entries(rec.recipe).forEach(function(e){const item=e[0],n=e[1];const aura=state.auras.filter(function(a){return a.name===item&&!a.favorite&&!a.equipped}).slice(0,n).map(function(a){return a.id});const left=n-aura.length;state.craftingSelection[name][item]={auras:aura,items:Math.min(left,state.inventory[item]||0)};});save();toast('Auto Add filled '+name+'.');render()}
@@ -717,8 +722,23 @@ function render(){
 }
 window.render=render;
 window.state=state;
+window.save=save;
 window.roll=roll;
 window.usePotion=usePotion;
+window.craftPotion=craftPotion;
 window.eq4GlobalView=typeof eq4GlobalView==='function'?eq4GlobalView:null;
+window.eq4RefreshGlobal=eq4RefreshGlobal;
+window.eq4Presence=eq4Presence;
+window.questBoard=questBoard;
+window.questState=questState;
+window.shopStock=shopStock;
+window.equipAura=equipAura;
+window.equipGear=equipGear;
+window.equinoxReloadLocalState=function(){
+  state=load();
+  window.state=state;
+  bankTick();
+  if(typeof render==='function')render();
+};
 try{window.dispatchEvent(new Event('equinox-render-ready'))}catch(_){}
 render();
