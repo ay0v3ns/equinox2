@@ -181,8 +181,28 @@ function globalView(){
 function tutorialView(){
  const t=tutorialState();
  if(t.phase>=3)return '';
- if(t.phase===1)return '<div class="tutorial-overlay"><div class="tutorial-card"><div class="section-title">Tutorial · Part I</div><h1>Welcome to Equinox</h1><p>Roll exactly 10 times to learn the core loop.</p><div class="tutorial-progress">'+t.rolls+' / 10 Rolls</div><p class="muted">Your normal Roll… button remains the way forward. Auto Skip does not bypass the ten-roll requirement.</p><button onclick="tutorialSkip()">Skip Tutorial → Auto Roll</button></div></div>';
- return '<div class="tutorial-overlay"><div class="tutorial-card"><div class="section-title">Tutorial · Part II</div><h1>Meet the NPCs</h1><p>Use the NPC systems to craft a Luck Glove, craft and use a Haste Potion I, and complete one Lime quest.</p><div class="tutorial-tasks"><span class="'+(t.part2.glove?'done':'')+'">🔨 Luck Glove</span><span class="'+(t.part2.haste?'done':'')+'">✦ Haste Potion I</span><span class="'+(t.part2.quest?'done':'')+'">◆ 1 Lime Quest</span></div><p class="muted">Completion grants 2 Tutorial Potion I, 1 Tutorial Potion II, and Auto Roll.</p></div></div>';
+ if(t.continued)return '';
+ if(t.phase===1)return '<div class="tutorial-overlay"><div class="tutorial-card"><div class="section-title">Tutorial · Part I</div><h1>Welcome to Equinox</h1><p>Roll exactly 10 times to learn the core loop.</p><div class="tutorial-progress">'+t.rolls+' / 10 Rolls</div><p class="muted">Your normal Roll… button remains the way forward. Auto Skip does not bypass the ten-roll requirement.</p><div class="tutorial-continue">Press any key to continue</div><button onclick="tutorialSkip()">Skip Tutorial → Auto Roll</button></div></div>';
+ return '<div class="tutorial-overlay"><div class="tutorial-card"><div class="section-title">Tutorial · Part II</div><h1>Meet the NPCs</h1><p>Use the NPC systems to craft a Luck Glove, craft and use a Haste Potion I, and complete one Lime quest.</p><div class="tutorial-tasks"><span class="'+(t.part2.glove?'done':'')+'">🔨 Luck Glove</span><span class="'+(t.part2.haste?'done':'')+'">✦ Haste Potion I</span><span class="'+(t.part2.quest?'done':'')+'">◆ 1 Lime Quest</span></div><p class="muted">Completion grants 2 Tutorial Potion I, 1 Tutorial Potion II, and Auto Roll.</p><div class="tutorial-continue">Press any key to continue</div></div></div>';
+}
+
+function tutorialContinue(){
+ const t=tutorialState();
+ if(t.phase>=3)return;
+ t.continued=true;
+ save();
+ render();
+}
+
+if(!window.__equinoxTutorialKeyHandler){
+ window.__equinoxTutorialKeyHandler=true;
+ document.addEventListener('keydown',function(e){
+   const t=typeof tutorialState==='function'?tutorialState():null;
+   if(!t||t.phase>=3||t.continued)return;
+   const tag=(e.target&&e.target.tagName)||'';
+   if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;
+   tutorialContinue();
+ });
 }
 function roll(){
  rollPotionHook();
