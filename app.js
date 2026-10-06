@@ -721,15 +721,32 @@ function eq4GlobalView(){
  const g=globalStats();
  const status=gd.loading?'SYNCING GLOBAL DATA…':gd.errors?.length?'GLOBAL PARTIAL':'GLOBAL LIVE';
  const statusDetail=gd.errors?.length?gd.errors.join(' • '):'Supabase connected';
- const boards=[['Auras Collected','auras_collected'],['Collective Rarity','collective_rarity'],['Rarest Roll','rarest_roll_rarity'],['Roll Count','roll_count']].map(function(pair){
-   const rows=eq4Rows(pair[1]);
-   return '<div class="global-board panel"><div class="section-title">'+pair[0]+'</div>'+
-     (rows.length?rows.map(function(x,i){return '<div class="leader-row"><span>#'+(i+1)+' '+eq4escape(x.username)+'</span><b>'+fmt(Number(x[pair[1]]||0))+'</b></div>'}).join(''):'<div class="empty">No global players yet.</div>')+
-     '</div>';
- }).join('');
- const online=gd.presence.map(function(x){return '<div class="online-row"><b>'+eq4escape(x.username)+'</b><span class="online-state">ONLINE</span><span>'+eq4escape(x.equipped_aura_name||'None')+(x.equipped_aura_rarity?' • 1/'+fmt(x.equipped_aura_rarity):'')+'</span></div>'}).join('')||'<div class="empty">No other players online.</div>';
- const chat=gd.chat.map(function(m){return '<div class="chat-msg"><b>'+eq4escape(m.username)+'</b><small>'+eq4escape(m.global_rank||'Unranked')+' • '+eq4escape(m.equipped_aura_name||'None')+(m.equipped_aura_rarity?' • 1/'+fmt(m.equipped_aura_rarity):'')+' <button class="chat-flag" onclick="eq4FlagChat('+m.id+')">Flag</button></small><span>'+eq4escape(m.message)+'</span></div>'}).join('')||'<div class="empty">No messages yet.</div>';
- return '<div class="global-page"><div class="panel global-profile"><div><div class="section-title">Player Rank</div><h1>'+eq4escape(g.username)+'</h1><p class="muted">Equipped Aura: '+eq4escape(g.equipped)+(g.title?' • Title: ['+eq4escape(g.title)+']':'')+'</p></div><div class="global-metrics"><span>Unique Auras <b>'+fmt(g.aurasCollected)+'</b></span><span>Rarest Roll <b>1/'+fmt(g.rarestRoll||0)+'</b></span><span>Rolls <b>'+fmt(g.rollCount)+'</b></span></div></div><div class="global-status"><b>'+status+'</b><span>'+eq4escape(statusDetail)+'</span></div><div class="global-boards">'+boards+'</div><div class="panel online-panel"><div class="section-title">Online Players</div>'+online+'</div><div class="panel chat-panel"><div class="section-title">Global Chat <span class="section-meta">150 messages max</span></div><div class="chat-log">'+chat+'</div><div class="chat-compose"><input id="globalChatInput" maxlength="150" placeholder="Message Global Chat…"><button onclick="eq4SendChat()">Send</button></div></div></div>';
+ const makeBoard=function(title,field,rows){
+   const sorted=(rows||[]).slice().sort(function(a,b){return Number(b[field]||0)-Number(a[field]||0)}).slice(0,10);
+   return '<section class="global-board panel"><div class="global-board-head"><div class="section-title">'+title+'</div><span>TOP 10</span></div>'+
+     (sorted.length?sorted.map(function(x,i){return '<div class="leader-row"><span><b>#'+(i+1)+'</b> '+eq4escape(x.username||'Player')+'</span><strong>'+fmt(Number(x[field]||0))+'</strong></div>'}).join(''):'<div class="empty">No players recorded yet.</div>')+
+     '</section>';
+ };
+ const globalBoards=[['Auras Collected','auras_collected'],['Collective Rarity','collective_rarity'],['Rarest Roll','rarest_roll_rarity'],['Roll Count','roll_count']]
+   .map(function(p){return makeBoard(p[0],p[1],gd.profiles)}).join('');
+ const onlineBoards=[['Auras Collected','auras_collected'],['Collective Rarity','collective_rarity'],['Rarest Roll','rarest_roll_rarity'],['Roll Count','roll_count']]
+   .map(function(p){return makeBoard(p[0],p[1],gd.presence)}).join('');
+ const online=gd.presence.map(function(x){
+   return '<div class="online-row"><div><b>'+eq4escape(x.username||'Player')+'</b><small>'+eq4escape(x.global_rank||'Unranked')+'</small></div><span class="online-state">ONLINE</span><span>'+eq4escape(x.equipped_aura_name||'None')+(x.equipped_aura_rarity?' • 1/'+fmt(x.equipped_aura_rarity):'')+'</span></div>';
+ }).join('')||'<div class="empty">No players currently online.</div>';
+ const chat=gd.chat.map(function(m){
+   const msg=String(m.message||'');
+   const flaggable=/(^|\\s)(you|u|ur|your|youre|you're)\\s+(are|r|is)|@\\w+|kill\\s+(yourself|urself)|go\\s+die|nobody\\s+wants\\s+you|hate\\s+you|shut\\s+up/i.test(msg);
+   return '<div class="chat-msg"><div class="chat-author"><b>'+eq4escape(m.username||'Player')+'</b><small>'+eq4escape(m.global_rank||'Unranked')+' • '+eq4escape(m.equipped_aura_name||'None')+(m.equipped_aura_rarity?' • 1/'+fmt(m.equipped_aura_rarity):'')+'</small></div><span>'+eq4escape(msg)+'</span>'+(flaggable?' <button class="chat-flag" onclick="eq4FlagChat('+m.id+')">Flag</button>':'')+'</div>';
+ }).join('')||'<div class="empty">No messages yet.</div>';
+ return '<div class="global-page">'+
+   '<div class="panel global-profile"><div><div class="section-title">GLOBAL PROFILE</div><h1>'+eq4escape(g.username||'Player')+'</h1><p class="muted">Equipped Aura: '+eq4escape(g.equipped||'None')+(g.title?' • Title: ['+eq4escape(g.title)+']':'')+'</p></div><div class="global-metrics"><span>Unique Auras <b>'+fmt(g.aurasCollected||0)+'</b></span><span>Rarest Roll <b>1/'+fmt(g.rarestRoll||0)+'</b></span><span>Rolls <b>'+fmt(g.rollCount||0)+'</b></span></div></div>'+
+   '<div class="global-status"><b>'+status+'</b><span>'+eq4escape(statusDetail)+'</span></div>'+
+   '<section class="global-group"><div class="global-group-title"><h2>GLOBAL LEADERBOARDS</h2><span>UPDATED HOURLY</span></div><div class="global-boards">'+globalBoards+'</div></section>'+
+   '<section class="global-group"><div class="global-group-title"><h2>ONLINE LEADERBOARDS</h2><span>TOP 10 ONLINE</span></div><div class="global-boards">'+onlineBoards+'</div></section>'+
+   '<div class="panel online-panel"><div class="section-title">ONLINE PLAYERS</div>'+online+'</div>'+
+   '<div class="panel chat-panel"><div class="section-title">GLOBAL CHAT <span class="section-meta">150 messages max · 150 characters</span></div><div class="chat-log">'+chat+'</div><div class="chat-compose"><input id="globalChatInput" maxlength="150" placeholder="Message Global Chat…"><button onclick="eq4SendChat()">Send</button></div></div>'+
+   '</div>';
 }
 async function eq4SendChat(){
   if(typeof EQUINOX_SUPABASE==='undefined')return;
