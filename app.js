@@ -527,7 +527,15 @@ const NATURAL_BIOME_RATES=[['Windy',500],['Snowy',600],['Rainy',750],['Sandstorm
  if(name==='Global'&&typeof window.eq4RefreshGlobal==='function')void window.eq4RefreshGlobal(false);
  if(name==='NPCs'&&typeof window.eq4RefreshSharedSystems==='function')void window.eq4RefreshSharedSystems();
 }
-function npcTab(name){if(!['home','quests','shop','bank','workshop','cauldron','jester'].includes(name))return;state.npcTab=name;try{save();render()}catch(err){console.error('NPC tab render failed:',err);state.npcTab='home';try{render()}catch(fallbackErr){console.error('NPC home render failed:',fallbackErr)}}}
+function npcTab(name){if(!['home','mari','quests','shop','bank','workshop','cauldron','jester'].includes(name))return;state.npcTab=name;try{save();render()}catch(err){console.error('NPC tab render failed:',err);state.npcTab='home';try{render()}catch(fallbackErr){console.error('NPC home render failed:',fallbackErr)}}}
+function npcHubView(){return `<div class="panel npc-hub"><div class="npc-hub-head"><div><div class="section-title">THE ISLES</div><h1>NPCs</h1><p class="muted">Choose who you want to visit.</p></div><div class="npc-hub-count">5 NPCs</div></div><div class="npc-grid npc-hub-grid">
+<button class="npc-card npc-lime" onclick="npcTab('quests')"><span class="npc-icon">L</span><span class="npc-copy"><small>LIME · QUESTS</small><h2>Lime</h2><p>Take on the hourly quest board and earn QP.</p><strong>Visit Lime →</strong></span></button>
+<button class="npc-card npc-mari" onclick="npcTab('mari')"><span class="npc-icon">M</span><span class="npc-copy"><small>MARI · ECONOMY</small><h2>Mari</h2><p>Manage Coins through the Shop and Bank.</p><strong>Visit Mari →</strong></span></button>
+<button class="npc-card npc-jake" onclick="npcTab('workshop')"><span class="npc-icon">J</span><span class="npc-copy"><small>JAKE · WORKSHOP</small><h2>Jake</h2><p>Craft Gears, biome changers, and workshop creations.</p><strong>Visit Jake →</strong></span></button>
+<button class="npc-card npc-stella" onclick="npcTab('cauldron')"><span class="npc-icon">S</span><span class="npc-copy"><small>STELLA · CAULDRON</small><h2>Stella</h2><p>Craft, use, and enhance your Potions.</p><strong>Visit Stella →</strong></span></button>
+<button class="npc-card npc-jester" onclick="npcTab('jester')"><span class="npc-icon">J</span><span class="npc-copy"><small>JESTER · GAMBLE</small><h2>Jester</h2><p>Risk Dark Points for a dynamically weighted Potion reward.</p><strong>Visit Jester →</strong></span></button>
+</div></div>`}
+function mariView(){return `<div class="npc-system"><div class="system-head"><button onclick="npcTab('home')">← NPCs</button><div><div class="section-title">Mari · Economy</div><h1>Mari</h1><p class="muted">Choose between the shared Shop and your personal Bank.</p></div></div><div class="npc-grid npc-subgrid"><button class="npc-card mari-subcard" onclick="npcTab('shop')"><span class="npc-icon">SHOP</span><span class="npc-copy"><small>SHARED MARKET</small><h2>Shop</h2><p>Browse the six globally synchronized items available this hour.</p><strong>Open Shop →</strong></span></button><button class="npc-card mari-subcard" onclick="npcTab('bank')"><span class="npc-icon">BANK</span><span class="npc-copy"><small>PERSONAL STORAGE</small><h2>Bank</h2><p>Store Coins, earn interest, and progress through Bank I–XII.</p><strong>Open Bank →</strong></span></button></div></div>`}
 function settingEnabled(key){return state.settings&&state.settings[key]!==false}
 function toggleSetting(key){
  if(!state.settings)state.settings=Object.assign({},defaults.settings);
@@ -947,12 +955,13 @@ function render(){
     if(state.activeTab==='Inventory')main=inventoryView();
     else if(state.activeTab==='NPCs'){
       if(state.npcTab==='quests')main=questView();
+      else if(state.npcTab==='mari')main=mariView();
       else if(state.npcTab==='shop')main=shopView();
       else if(state.npcTab==='bank')main=bankView();
       else if(state.npcTab==='workshop')main=workshopView();
       else if(state.npcTab==='cauldron')main=cauldronView();
       else if(state.npcTab==='jester')main=jesterView();
-      else main='<div class="panel"><div class="section-title">NPC SYSTEMS</div><h1>Equinox NPCs</h1><p class="muted">Choose a system to interact with the world.</p><div class="npc-grid"><button onclick="npcTab(\'quests\')">Lime · Quests</button><button onclick="npcTab(\'shop\')">Mari · Shop</button><button onclick="npcTab(\'bank\')">Mari · Bank</button><button onclick="npcTab(\'workshop\')">Jake · Workshop</button><button onclick="npcTab(\'cauldron\')">Stella · Cauldron</button><button onclick="npcTab(\'jester\')">Jester · Gamble</button></div></div>';
+      else main=npcHubView();
     }else if(state.activeTab==='Global'){
       try{
         const gd=window.EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA||{profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0,loading:false,errors:[]};
