@@ -919,3 +919,68 @@ input::placeholder,
   filter:none!important;
 }
 .roll-time small{font-family:var(--font-ui);font-weight:300}
+
+/* Refined world panel: readable stats and compact active effects. */
+.world-panel{
+  min-width:0;
+  overflow:auto;
+}
+.world-stats{gap:0}
+.world-stat{
+  grid-template-columns:minmax(0,1fr) max-content;
+  min-width:0;
+  gap:12px;
+}
+.world-stat span{
+  min-width:0;
+  white-space:nowrap;
+}
+.world-stat b{
+  min-width:0;
+  max-width:170px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.buff-row{
+  grid-template-columns:minmax(0,1fr) minmax(110px,max-content);
+}
+.buff-row span{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.roll-time{
+  border:1px solid #202a3b;
+  background:#0b1018;
+  text-align:center;
+}
+.roll-time span,
+.roll-time b,
+.roll-time small{
+  display:block;
+}
+.roll-time span{
+  font-family:var(--font-ui);
+  font-size:8px;
+  font-weight:500;
+  letter-spacing:.18em;
+  color:#66748d;
+}
+.roll-time b{
+  margin-top:3px;
+  font-family:var(--font-title);
+  font-size:15px;
+  font-weight:900;
+  color:#eaf0fa;
+}
+.roll-time small{
+  margin-top:3px;
+  font-size:8px;
+  color:#7f8da5;
+}
+@media(max-width:700px){
+  .buff-row{grid-template-columns:1fr}
+  .buff-row span{text-align:left;white-space:normal}
+  .world-stat{grid-template-columns:minmax(0,1fr) max-content}
+}
