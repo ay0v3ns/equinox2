@@ -149,7 +149,15 @@ async function equinoxHydrate() {
   }
   const { data: cloudSave, error: cloudSaveError } = await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id', uid).maybeSingle();
   if (cloudSaveError) console.warn('Equinox cloud save load failed; continuing with local save:', cloudSaveError);
-  const cloudData = cloudSave?.save_data && typeof cloudSave.save_data === 'object' ? cloudSave.save_data : null;
+  let cloudData = cloudSave?.save_data && typeof cloudSave.save_data === 'object' ? cloudSave.save_data : null;
+  const cloudWasIncomplete=equinoxSaveIsIncomplete(cloudData);
+  if(cloudWasIncomplete){
+    cloudData=Object.assign({},cloudData,{rolls:0,recent:[],lastRollResult:null,rarestRoll:0});
+    try{
+      await EQUINOX_SUPABASE.from('game_saves').upsert({user_id:uid,save_data:cloudData,updated_at:new Date().toISOString()});
+      console.warn('Equinox repaired an incomplete cloud save by clearing unsynced roll counters while preserving inventory.');
+    }catch(e){console.warn('Equinox could not repair incomplete cloud save:',e)}
+  }
   const hasCloudSave = !!(cloudData && Object.keys(cloudData).length);
   let localSave = null;
   try {
