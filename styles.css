@@ -1195,3 +1195,11 @@ button{
   .recipe-actions{display:grid;grid-template-columns:1fr 1fr}
   .recipe-actions button{width:100%}
 }
+
+
+/* Canonical Potion registry presentation. */
+.potion-special{border-color:#46536f;background:#101622}
+.potion-curse{border-color:#6d4444;background:#171010}
+.potion-brewing{border-color:#4e4530;background:#15130e}
+.potion-special b,.potion-curse b,.potion-brewing b{font-size:9px;letter-spacing:.12em}
+.potion-special span,.potion-curse span,.potion-brewing span{font-size:10px;line-height:1.4}
