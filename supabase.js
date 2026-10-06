@@ -100,6 +100,25 @@ async function equinoxAuthSubmit() {
   }
 }
 
+function equinoxSaveScore(data){
+  if(!data||typeof data!=='object')return -1;
+  const auras=Array.isArray(data.auras)?data.auras:[];
+  const recent=Array.isArray(data.recent)?data.recent:[];
+  const inventory=data.inventory&&typeof data.inventory==='object'&&!Array.isArray(data.inventory)?data.inventory:{};
+  const itemCount=Object.values(inventory).reduce((sum,v)=>sum+(Number(v)||0),0);
+  return Math.max(0,Number(data.rolls)||0)+auras.length*1000+recent.length*25+
+    (data.lastRollResult?5000:0)+(itemCount>0?500:0)+
+    (Array.isArray(data.activePotions)&&data.activePotions.length?250:0);
+}
+function equinoxSaveIsIncomplete(data){
+  if(!data||typeof data!=='object')return false;
+  const auras=Array.isArray(data.auras)?data.auras:[];
+  const recent=Array.isArray(data.recent)?data.recent:[];
+  const inventory=data.inventory&&typeof data.inventory==='object'&&!Array.isArray(data.inventory)?data.inventory:{};
+  const hasInventory=Object.values(inventory).some(v=>Number(v||0)>0);
+  return Number(data.rolls||0)>0&&auras.length===0&&recent.length===0&&!data.lastRollResult&&!hasInventory;
+}
+
 async function equinoxHydrate() {
   if (AUTH_UI.hydrating) return;
   AUTH_UI.hydrating = true;
@@ -137,27 +156,18 @@ async function equinoxHydrate() {
     const localRaw = localStorage.getItem('equinox-save-v1');
     localSave = localRaw ? JSON.parse(localRaw) : null;
   } catch (_) {}
-  const cloudAuras = Array.isArray(cloudData?.auras) ? cloudData.auras : [];
-  const cloudRecent = Array.isArray(cloudData?.recent) ? cloudData.recent : [];
-  const cloudInventory = cloudData?.inventory && typeof cloudData.inventory === 'object' ? cloudData.inventory : {};
-  const localAuras = Array.isArray(localSave?.auras) ? localSave.auras : [];
-  const localRecent = Array.isArray(localSave?.recent) ? localSave.recent : [];
-  const localInventory = localSave?.inventory && typeof localSave.inventory === 'object' ? localSave.inventory : {};
-  const localHasProgress = localAuras.length>0 || localRecent.length>0 || !!localSave?.lastRollResult ||
-    Object.values(localInventory).some(v=>Number(v||0)>0);
-  const cloudLooksBroken = Number(cloudData?.rolls||0)>0 &&
-    cloudAuras.length===0 && cloudRecent.length===0 && !cloudData?.lastRollResult &&
-    !Object.values(cloudInventory).some(v=>Number(v||0)>0);
-  const preserveLocal = !!(cloudLooksBroken && localHasProgress);
-  if (hasCloudSave && !preserveLocal) {
-    try {
-      localStorage.setItem('equinox-save-v1', JSON.stringify(cloudData));
-      if (typeof window.equinoxReloadLocalState === 'function') window.equinoxReloadLocalState();
-    } catch (e) {
-      console.warn('Equinox cloud save was invalid; keeping the local save:', e);
-    }
-  } else if (preserveLocal) {
-    console.warn('Equinox preserved a healthier local save instead of overwriting it with an incomplete cloud snapshot.');
+  const cloudScore=equinoxSaveScore(cloudData);
+  const localScore=equinoxSaveScore(localSave);
+  const cloudIncomplete=equinoxSaveIsIncomplete(cloudData);
+  const localIncomplete=equinoxSaveIsIncomplete(localSave);
+  const preserveLocal=!!(localSave&&(!cloudData||(cloudIncomplete&&!localIncomplete)||localScore>cloudScore));
+  if(hasCloudSave&&!preserveLocal){
+    try{
+      localStorage.setItem('equinox-save-v1',JSON.stringify(cloudData));
+      if(typeof window.equinoxReloadLocalState==='function')window.equinoxReloadLocalState();
+    }catch(e){console.warn('Equinox cloud save was invalid; keeping the local save:',e);}
+  }else if(preserveLocal&&hasCloudSave){
+    console.warn('Equinox kept the healthier local save instead of replacing it with an incomplete or older cloud snapshot.');
   }
   const analyticsUser = {id:uid,email:session.user.email,username:profile?.username || session.user.user_metadata?.username || ''};
   localStorage.setItem('equinox-user', JSON.stringify(analyticsUser));
@@ -298,17 +308,19 @@ async function equinoxCloudSave(){
     const raw=localStorage.getItem('equinox-save-v1');
     if(!raw)return;
     const saveData=JSON.parse(raw);
-    await EQUINOX_SUPABASE.from('game_saves').upsert({
-      user_id:user.id,
-      save_data:saveData,
-      updated_at:new Date().toISOString()
-    });
+    const {data:existing}=await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id',user.id).maybeSingle();
+    const localScore=equinoxSaveScore(saveData);
+    const existingScore=equinoxSaveScore(existing?.save_data);
+    const localIncomplete=equinoxSaveIsIncomplete(saveData);
+    const existingIncomplete=equinoxSaveIsIncomplete(existing?.save_data);
+    if(existing?.save_data&&existingScore>localScore&&!(localIncomplete&&!existingIncomplete)){
+      console.warn('Equinox skipped cloud save because the server already has a healthier snapshot.');
+      return;
+    }
+    await EQUINOX_SUPABASE.from('game_saves').upsert({user_id:user.id,save_data:saveData,updated_at:new Date().toISOString()});
     await equinoxSyncProfile();
-  }catch(e){
-    console.warn('Equinox cloud save failed',e);
-  }finally{
-    equinoxCloudSaveRunning=false;
-  }
+  }catch(e){console.warn('Equinox cloud save failed',e)}
+  finally{equinoxCloudSaveRunning=false}
 }
 function scheduleEquinoxCloudSave(immediate=false){
   if(immediate){
