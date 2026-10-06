@@ -110,8 +110,9 @@ async function equinoxHydrate() {
   const uid = session.user.id;
   let { data: profile, error: profileError } = await EQUINOX_SUPABASE.from('profiles').select('*').eq('id', uid).maybeSingle();
   if (profileError) {
-    showAuthGate(profileError.message || 'Unable to load your profile.');
-    return;
+    console.warn('Equinox profile load failed; continuing with account metadata:', profileError);
+    const fallbackUsername = session.user.user_metadata?.username || (session.user.email || 'Player').split('@')[0].replace(/[^A-Za-z0-9_]/g,'').slice(0,20) || 'Player';
+    profile = { id: uid, username: fallbackUsername };
   }
   if (!profile) {
     const fallbackUsername = session.user.user_metadata?.username || (session.user.email || 'Player').split('@')[0].replace(/[^A-Za-z0-9_]/g,'').slice(0,20) || 'Player';
