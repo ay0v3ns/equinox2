@@ -184,12 +184,15 @@
 
   const localBuyShopItem=window.buyShopItem;
   window.buyShopItem = async function(i){
-    if(!window.EQ4_SHARED?.shopServerBacked){
+    const shared=window.EQUINOX_SHARED_DATA;
+    if(!shared?.loaded||!shared?.shop?.length){
+      if(typeof window.eq4RefreshSharedSystems==='function')await window.eq4RefreshSharedSystems(true);
+    }
+    if(typeof EQUINOX_SUPABASE==='undefined'){
       if(typeof localBuyShopItem==='function')return localBuyShopItem(i);
       toast('Global Shop is unavailable.'); return;
     }
-    if(typeof EQUINOX_SUPABASE==='undefined'){ toast('Global Shop is unavailable.'); return; }
-    const local=typeof window.activeShopStock==='function'?window.activeShopStock():(typeof window.shopStock==='function'?window.shopStock():null);
+    const local=typeof window.shopStock==='function'?window.shopStock():null;
     const item=local?.items?.[i];
     if(!item) return;
     if(settingEnabled && settingEnabled('confirmShopPurchase') && !confirm('Buy '+item.name+' for '+fmt(shopPrice(item.name))+' Coins?')) return;
