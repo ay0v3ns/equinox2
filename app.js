@@ -595,3 +595,106 @@ function installEquinoxPhase4(){
   render();
 }
 setTimeout(installEquinoxPhase4,0);
+
+
+/* ===== Equinox application renderer =====
+ * Mounts the existing game systems into #app. Kept in the base app so
+ * authentication, Phase 4/5/6, and every game action share one renderer.
+ */
+function render(){
+  const root=document.getElementById('app');
+  if(!root)return;
+  try{
+    const tabs=[
+      ['Roll','Roll'],
+      ['Inventory','Inventory'],
+      ['NPCs','NPCs'],
+      ['Global','Global'],
+      ['Achievements','Achievements'],
+      ['Settings','Settings']
+    ];
+    const recent=(state.recent||[]).slice(0,8);
+    const equipped=(state.auras||[]).find(a=>a.equipped);
+    const worldLuck=typeof totalLuck==='function'?totalLuck():1;
+    const worldSpeed=typeof totalSpeed==='function'?totalSpeed():1;
+    const topStats=
+      '<span>Rolls <b>'+fmt(state.rolls||0)+'</b></span>'+
+      '<span>Luck <b>'+Number(worldLuck||1).toFixed(2)+'×</b></span>'+
+      '<span>Speed <b>'+Number(worldSpeed||1).toFixed(2)+'×</b></span>'+
+      '<span>Biome <b>'+String(state.biome||'Normal')+'</b></span>';
+
+    let main='';
+    if(state.activeTab==='Inventory') main=inventoryView();
+    else if(state.activeTab==='NPCs') {
+      if(state.npcTab==='quests') main=questView();
+      else if(state.npcTab==='shop') main=shopView();
+      else if(state.npcTab==='bank') main=bankView();
+      else if(state.npcTab==='workshop') main=workshopView();
+      else if(state.npcTab==='cauldron') main=cauldronView();
+      else main=
+        '<div class="panel"><div class="section-title">NPC Systems</div><h1>Equinox NPCs</h1>'+
+        '<p class="muted">Choose a system to interact with the world.</p>'+
+        '<div class="npc-grid">'+
+        '<button onclick="npcTab(\'quests\')">Lime · Quests</button>'+
+        '<button onclick="npcTab(\'shop\')">Mari · Shop</button>'+
+        '<button onclick="npcTab(\'bank\')">Mari · Bank</button>'+
+        '<button onclick="npcTab(\'workshop\')">Jake · Workshop</button>'+
+        '<button onclick="npcTab(\'cauldron\')">Stella · Cauldron</button>'+
+        '</div></div>';
+    } else if(state.activeTab==='Global') main=typeof globalView==='function'?globalView():eq4GlobalView();
+    else if(state.activeTab==='Achievements') main=achievementsView();
+    else if(state.activeTab==='Settings') main=settingsView();
+    else {
+      const latest=recent[0];
+      const latestText=latest
+        ? '<div class="roll-result"><div class="section-title">Latest Roll</div><h2>'+latest.name+'</h2><p>1/'+fmt(latest.rolledRarity||latest.rarity||0)+(latest.breakthrough?' · BREAKTHROUGH':'')+(latest.bonus?' · BONUS ROLL':'')+'</p></div>'
+        : '<div class="roll-result"><div class="section-title">Latest Roll</div><h2>Nothing yet</h2><p class="muted">Your first Aura is waiting.</p></div>';
+      const recentRows=recent.map(function(a){
+        return '<div class="recent-row"><b>'+a.name+'</b><span>1/'+fmt(a.rolledRarity||a.rarity||0)+'</span><small>#'+fmt(a.roll||0)+'</small></div>';
+      }).join('');
+      main='<div class="roll-grid">'+
+        '<div class="panel hero">'+
+          '<div class="section-title">THE ROLL</div>'+
+          '<h1>Equinox</h1>'+
+          '<p class="muted">'+String(state.biome||'Normal')+' · '+String(state.dayNight||'Day')+'</p>'+
+          latestText+
+          '<button class="roll-button" onclick="roll()">ROLL</button>'+
+          '<p class="muted">Coins: '+fmt(state.inventory?.Coins||0)+' · Aura Storage: '+fmt(auraSlots())+'/'+fmt(state.auraCapacity||20)+'</p>'+
+        '</div>'+
+        '<div class="panel"><div class="section-title">Recent Rolls</div>'+
+          (recentRows||'<div class="empty">No rolls yet.</div>')+
+        '</div>'+
+      '</div>';
+    }
+
+    const tutorial=typeof tutorialView==='function'?tutorialView():'';
+    root.innerHTML=
+      '<div class="topbar">'+
+        '<div class="logo">☯ EQUINOX</div>'+
+        '<div class="topstats">'+topStats+'</div>'+
+      '</div>'+
+      '<div class="layout">'+
+        '<aside class="tabs">'+tabs.map(function(t){
+          return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>';
+        }).join('')+'</aside>'+
+        '<main>'+main+'</main>'+
+        '<aside class="world-panel">'+
+          '<div class="section-title">WORLD</div>'+
+          '<h2>'+String(state.biome||'Normal')+'</h2>'+
+          '<p class="muted">'+String(state.dimension||'Isles of Luck')+'</p>'+
+          '<div class="world-stat"><span>Day / Night</span><b>'+String(state.dayNight||'Day')+'</b></div>'+
+          '<div class="world-stat"><span>Luck</span><b>'+Number(worldLuck||1).toFixed(2)+'×</b></div>'+
+          '<div class="world-stat"><span>Roll Speed</span><b>'+Number(worldSpeed||1).toFixed(2)+'×</b></div>'+
+          '<div class="world-stat"><span>Equipped</span><b>'+String(equipped?.name||'None')+'</b></div>'+
+        '</aside>'+
+      '</div>'+tutorial;
+    wireInventory();
+  }catch(e){
+    console.error('Equinox render failed',e);
+    const root=document.getElementById('app');
+    if(root)root.innerHTML='<div class="panel" style="margin:24px"><div class="section-title">EQUINOX ERROR</div><h1>The game could not render.</h1><p class="muted">'+String(e?.message||e)+'</p><button onclick="location.reload()">Reload Equinox</button></div>';
+    throw e;
+  }
+}
+window.render=render;
+render();
