@@ -16,6 +16,12 @@ const defaults={
  automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,performanceMode:true,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
 let state=normalizeState(load()); window.state=state; bankTick();
+if(state.recoveredIncompleteSave||state.recoveredInterruptedRoll){
+ localStorage.setItem(KEY,JSON.stringify(state));
+ delete state.recoveredIncompleteSave;
+ delete state.recoveredInterruptedRoll;
+}
+
 
 function normalizeState(s){
  if(!s||typeof s!=='object')s=Object.assign({},defaults);
@@ -89,10 +95,6 @@ function load(){
  }catch(e){return Object.assign({},defaults)}
 }
 let saveTimer=0;
-if(state.recoveredIncompleteSave){
- localStorage.setItem(KEY,JSON.stringify(state));
- delete state.recoveredIncompleteSave;
-}
 function save(){
  if(!state||state.settings&&state.settings.autoSave===false)return;
  if(state.autoRoll){
