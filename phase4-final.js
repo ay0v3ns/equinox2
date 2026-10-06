@@ -258,6 +258,7 @@
   async function boot(){
     wrapGlobalView();
     wrapSettings();
+    if(typeof window.eq4RefreshSharedSystems==='function')void window.eq4RefreshSharedSystems(true);
     refreshProfileRank();
     setInterval(refreshProfileRank,60000);
     setInterval(async()=>{if(typeof eq4Presence==='function')await eq4Presence();},20000);
