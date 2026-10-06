@@ -23,7 +23,7 @@ if(state.recoveredIncompleteSave||state.recoveredInterruptedRoll){
 }
 
 
-function normalizeState(s){
+function normalizeState(s,recoverInterrupted=true){
  if(!s||typeof s!=='object')s=Object.assign({},defaults);
  s.rolls=Number(s.rolls||0);
  s.basicLuck=Number(s.basicLuck||0);
@@ -37,7 +37,7 @@ function normalizeState(s){
  s.activePotions=Array.isArray(s.activePotions)?s.activePotions:[];
  s.pendingRollPotions=Array.isArray(s.pendingRollPotions)?s.pendingRollPotions:[];
  const interruptedRoll=!!s.rolling;
- if(interruptedRoll){
+ if(recoverInterrupted&&interruptedRoll){
    if(s.rollAutoPaid) s.inventory.Coins=(Number(s.inventory.Coins)||0)+1;
    s.rolling=false;
    s.rollAutoPaid=false;
@@ -326,7 +326,7 @@ if(!window.__equinoxTutorialKeyHandler){
  },true);
 }
 function resolveRoll(startedAt,rollDuration,rollSpeed){
- state=normalizeState(state);
+ state=normalizeState(state,false);
  window.state=state;
  const previousRolls=Number(state.rolls||0);
  const start=Number(startedAt||Date.now());
