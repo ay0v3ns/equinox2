@@ -224,12 +224,59 @@ function gearPostRollEffects(rollRecord,storedAura,storedOnly){
  }
 }
 
+function potionBoundBiome(name){const m=String(name||'').match(/^Biomebound Potion — (.+)$/);return m?m[1]:null}
+function potionSpecialText(p){return String((POTION_REGISTRY[p?.baseName||p?.name]||{}).special||'')}
+function potionIsUsableNow(p){return !p||!potionSpecialText(p).includes('Limbo')||state.dimension==='Limbo'}
+function potionBaseLuckValue(p){
+ if(!p||!potionIsUsableNow(p))return 0;
+ const reg=POTION_REGISTRY[p.baseName||p.name]||{},special=String(reg.special||'');
+ let value=Number(p.baseLuck??p.luck??0);
+ const bound=potionBoundBiome(p.baseName||p.name);if(bound&&state.biome===bound)value*=2;
+ if(special.includes('Desperation'))value=(auraSlots()<=Number(state.auraCapacity||0)*0.10?50:5)*Number(p.brewingMultiplier||1);
+ if(special.includes('Gambler'))value*=Number(p.gamblerRollMultiplier||1);
+ if(special.includes('Unstable')&&p.unstableTriggered)value=250*Number(p.brewingMultiplier||1);
+ return value;
+}
+function potionLuckNoOverflow(){
+ let total=(state.activePotions||[]).reduce(function(sum,p){return sum+potionBaseLuckValue(p)},0);
+ const next=state.pendingRollPotions&&state.pendingRollPotions[0];
+ if(next&&potionIsUsableNow(next)){let value=Number(next.luck||0);const bound=potionBoundBiome(next.baseName||next.name);if(bound&&state.biome===bound)value*=2;total+=value;}
+ Object.values(state.curses||{}).forEach(function(x){if(!x.expires||Date.now()<Number(x.expires))total+=Number(x.luck||0)});
+ (state.activePotions||[]).forEach(function(p){const special=potionSpecialText(p);if(special.includes('Chain')&&!special.includes('Chain Reaction'))total+=Math.min(10,Math.max(0,Number(p.chainCount||0)*0.25))*Number(p.brewingMultiplier||1);});
+ const mods=state.potionRollModifiers||{};total+=Number(mods.luckBonus||0);total*=Number(mods.luckMultiplier||1);return total;
+}
+function potionLuck(){
+ let total=potionLuckNoOverflow();
+ (state.activePotions||[]).forEach(function(p){const special=potionSpecialText(p);if(special.includes('Reverse')){const m=String((POTION_REGISTRY[p.baseName||p.name]||{}).buff||'').match(/Converts ([0-9.]+)%/i);if(m)total+=totalSpeed()*(Number(m[1])/100);}});
+ return total+Number(state.potionRollModifiers?.nextLuckBonus||0);
+}
+function potionSpeed(){
+ let total=(state.activePotions||[]).reduce(function(sum,p){
+   if(!potionIsUsableNow(p))return sum;
+   let value=Number(p.baseSpeed??p.speed??0);
+   const reg=POTION_REGISTRY[p.baseName||p.name]||{},special=String(reg.special||''),bound=potionBoundBiome(p.baseName||p.name);
+   if(bound&&state.biome===bound)value*=2;
+   if(special.includes('Berserker'))value+=Math.min(0.25,Math.floor(Math.max(0,Number(state.rolls||0)-Number(p.activatedAtRoll||0))/100)*0.05)*Number(p.brewingMultiplier||1);
+   if(special.includes('Momentum'))value+=Math.min(1,Math.floor(Math.max(0,Number(state.rolls||0)-Number(p.activatedAtRoll||0))/25)*0.10)*Number(p.brewingMultiplier||1);
+   return sum+value;
+ },0);
+ const next=state.pendingRollPotions&&state.pendingRollPotions[0];if(next&&potionIsUsableNow(next))total+=Number(next.speed||0);
+ Object.values(state.curses||{}).forEach(function(x){if(!x.expires||Date.now()<Number(x.expires))total+=Number(x.speed||0)});
+ const overflow=(state.activePotions||[]).filter(function(p){return String((POTION_REGISTRY[p.baseName||p.name]||{}).special||'').includes('Overflow')});
+ if(overflow.length){
+   const ordinaryLuck=((((1+state.basicLuck+gearLuck()+potionLuckNoOverflow())*gearBonusMultiplierForRoll(Math.max(1,Number(state.rolls||0)),0))+state.specialLuck)*state.finalMultiplier)*gearFinalLuckMultiplier();
+   overflow.forEach(function(p){const buff=String((POTION_REGISTRY[p.baseName||p.name]||{}).buff||''),m=buff.match(/above ([0-9,]+)%/i),threshold=m?Number(m[1].replace(/,/g,''))/100:0,rate=buff.includes('per 10%')?0.1:buff.includes('per 50%')?0.02:0.01;total+=Math.max(0,ordinaryLuck-threshold)*rate*Number(p.brewingMultiplier||1);});
+ }
+ return total+Number(state.potionRollModifiers?.speedBonus||0);
+}
 function totalLuckBase(){return ((1+state.basicLuck+gearLuck()+potionLuck())+state.specialLuck)*state.finalMultiplier}
-function potionLuck(){const active=(state.activePotions||[]).reduce(function(sum,p){return sum+(p.luck||0)},0);const next=state.pendingRollPotions&&state.pendingRollPotions[0];return active+(next?Number(next.luck||0):0)}
-function potionSpeed(){const active=(state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0);const next=state.pendingRollPotions&&state.pendingRollPotions[0];return active+(next?Number(next.speed||0):0)}
 function totalLuck(){return totalLuckBase()*gearFinalLuckMultiplier()}
 function totalSpeed(){return Math.max(0.01,state.speed*(1+gearSpeed()+potionSpeed()))}
-function rollTimeSeconds(){return 10/Math.max(0.01,totalSpeed())+1}
+function rollTimeSeconds(){
+ const base=10/Math.max(0.01,totalSpeed())+1;
+ const reduction=(state.activePotions||[]).reduce(function(sum,p){const special=potionSpecialText(p);if(special.includes('Acceleration'))return Math.min(0.20,sum+Math.min(0.20,Math.floor(Math.max(0,Number(state.rolls||0)-Number(p.activatedAtRoll||0))/50)*0.02));return sum;},0);
+ return Math.max(0.01,base*(1-reduction));
+}
 function percentText(value){const n=Number(value||0)*100;return Math.abs(n-Math.round(n))<0.01?Math.round(n)+'%':n.toFixed(1)+'%'}
 function toast(msg){ if(!settingEnabled('notifications'))return;let host=document.getElementById('notices');if(!host){host=document.createElement('div');host.id='notices';document.body.appendChild(host)}const e=document.createElement('div');e.className='notice';e.textContent=msg;host.appendChild(e);setTimeout(function(){e.remove()},3200)}
 function auraDef(name){return AURAS.find(function(a){return a.name===name})}
