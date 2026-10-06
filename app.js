@@ -28,6 +28,14 @@ function normalizeState(s){
  s.settings=Object.assign({},defaults.settings,s.settings||{});
  s.achievements=Object.assign({},defaults.achievements,s.achievements||{});
  s.achievements.stats=Object.assign({},defaults.achievements.stats,s.achievements.stats||{});
+ const hasInventory=Object.values(s.inventory).some(v=>Number(v||0)>0);
+ const impossibleRollState=s.rolls>0&&s.auras.length===0&&s.recent.length===0&&!s.lastRollResult&&!hasInventory;
+ if(impossibleRollState){
+   s.rolls=0;
+   s.rarestRoll=0;
+   s.lastRollResult=null;
+   s.recoveredIncompleteSave=true;
+ }
  if(!s.lastRollResult&&s.recent.length)s.lastRollResult=s.recent[0];
  return s;
 }
@@ -65,6 +73,10 @@ function load(){
  }catch(e){return Object.assign({},defaults)}
 }
 let saveTimer=0;
+if(state.recoveredIncompleteSave){
+ localStorage.setItem(KEY,JSON.stringify(state));
+ delete state.recoveredIncompleteSave;
+}
 function save(){
  if(!state||state.settings&&state.settings.autoSave===false)return;
  if(state.autoRoll){
