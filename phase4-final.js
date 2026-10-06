@@ -71,8 +71,8 @@
       return sd.errors.length===0;
     }catch(err){
       sd.errors.push(String(err?.message||err));
-      sd.loaded=true;
-      sd.hour=hour;
+      sd.loaded=false;
+      sd.hour='';
       return false;
     }finally{
       sd.loading=false;
