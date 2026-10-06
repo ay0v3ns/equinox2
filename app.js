@@ -184,10 +184,10 @@ function markTutorialQuest(){const t=tutorialState();if(t.phase===2&&!t.part2.qu
 function markTutorialCraft(name){const t=tutorialState();if(t.phase!==2)return;if(name==='Luck Glove')t.part2.glove=true;if(name==='Haste Potion I')t.part2.haste=true;tutorialCheck()}
 function potionRuntimeEffect(name,multiplier){
  const text=String(POTION_EFFECTS[name]||'');
- const luckMatch=text.match(/([+-]?[0-9][0-9,]*(?:\\.[0-9]+)?)%\\s*Luck/i);
- const speedMatch=text.match(/([+-]?[0-9][0-9,]*(?:\\.[0-9]+)?)%\\s*(?:Roll\\s*Speed|Speed)/i);
- const rollMatch=text.match(/for\\s+([0-9][0-9,]*)\\s+rolls?/i);
- const durationMatch=text.match(/for\\s+([0-9][0-9,]*(?:\\.[0-9]+)?)\\s+(seconds?|minutes?|hours?)/i);
+ const luckMatch=/([+-]?[0-9][0-9,]*(?:[.][0-9]+)?)%[ ]*Luck/i.exec(text);
+ const speedMatch=/([+-]?[0-9][0-9,]*(?:[.][0-9]+)?)%[ ]*(?:Roll[ ]*Speed|Speed)/i.exec(text);
+ const rollMatch=/for[ ]+([0-9][0-9,]*)[ ]+rolls?/i.exec(text);
+ const durationMatch=/for[ ]+([0-9][0-9,]*(?:[.][0-9]+)?)[ ]+(seconds?|minutes?|hours?)/i.exec(text);
  const luck=luckMatch?Number(luckMatch[1].replace(/,/g,''))/100:0;
  const speed=speedMatch?Number(speedMatch[1].replace(/,/g,''))/100:0;
  const rolls=rollMatch?Math.max(1,Number(rollMatch[1].replace(/,/g,''))):0;
@@ -199,7 +199,6 @@ function potionRuntimeEffect(name,multiplier){
  const special=/(converts|rerolls|grows|increases|volatile|compensating|returns|qualifying|reaction|milestones|double|halve)/i.test(text);
  return {luck:luck*(multiplier||1),speed:speed*(multiplier||1),rolls,ms,special,description:text};
 }
-
 function usePotion(name){
  state=normalizeState(state);
  const potionName=String(name);
