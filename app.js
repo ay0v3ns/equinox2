@@ -314,6 +314,7 @@ function roll(){
  state.rolls++;
  window.state=state;
  try{tutorialRollHook()}catch(err){console.warn('Tutorial roll hook failed',err)}
+ try{questRollHook()}catch(err){console.warn('Quest roll hook failed',err)}
  const bonus=state.rolls%10===0?2:1;
  const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
  let chosen=null,lastEligible=null;
@@ -336,6 +337,7 @@ function roll(){
    rolledAt:Date.now()
  };
  state.lastRollResult=rollRecord;
+ state.rarestRoll=Math.max(Number(state.rarestRoll||0),Number(rolledRarity||0));
  state.recent.unshift(rollRecord);
  state.recent=state.recent.slice(0,100);
  window.state=state;
