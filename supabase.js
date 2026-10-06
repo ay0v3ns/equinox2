@@ -33,9 +33,10 @@ function hideAuthGate() {
 function equinoxReloadLocalState(){
   try {
     if (typeof state === 'undefined' || typeof load !== 'function') return;
-    state = load();
+    state = typeof normalizeState === 'function' ? normalizeState(load()) : load();
     window.state = state;
     if (typeof bankTick === 'function') bankTick();
+    if (typeof save === 'function') save();
     if (typeof window.render === 'function') window.render();
   } catch (e) {
     console.warn('Equinox local state reload failed:', e);
