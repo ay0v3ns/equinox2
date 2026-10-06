@@ -299,31 +299,40 @@ function installEquinoxSaveSync() {
 }
 let equinoxCloudSaveTimer=0;
 let equinoxCloudSaveRunning=false;
+let equinoxCloudSaveDirty=false;
 async function equinoxCloudSave(){
-  if(equinoxCloudSaveRunning)return;
+  if(equinoxCloudSaveRunning){
+    equinoxCloudSaveDirty=true;
+    return;
+  }
   equinoxCloudSaveRunning=true;
   try{
-    const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
-    const user=sessionData?.session?.user;
-    if(!user)return;
-    const raw=localStorage.getItem('equinox-save-v1');
-    if(!raw)return;
-    const saveData=JSON.parse(raw);
-    const {data:existing}=await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id',user.id).maybeSingle();
-    const localScore=equinoxSaveScore(saveData);
-    const existingScore=equinoxSaveScore(existing?.save_data);
-    const localIncomplete=equinoxSaveIsIncomplete(saveData);
-    const existingIncomplete=equinoxSaveIsIncomplete(existing?.save_data);
-    if(existing?.save_data&&existingScore>localScore&&!(existingIncomplete&&!localIncomplete)){
-      console.warn('Equinox skipped cloud save because the server already has a healthier snapshot.');
-      return;
-    }
-    await EQUINOX_SUPABASE.from('game_saves').upsert({user_id:user.id,save_data:saveData,updated_at:new Date().toISOString()});
-    await equinoxSyncProfile();
+    do{
+      equinoxCloudSaveDirty=false;
+      const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
+      const user=sessionData?.session?.user;
+      if(!user)return;
+      const raw=localStorage.getItem('equinox-save-v1');
+      if(!raw)return;
+      const saveData=JSON.parse(raw);
+      const {data:existing}=await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id',user.id).maybeSingle();
+      const localScore=equinoxSaveScore(saveData);
+      const existingScore=equinoxSaveScore(existing?.save_data);
+      const localIncomplete=equinoxSaveIsIncomplete(saveData);
+      const existingIncomplete=equinoxSaveIsIncomplete(existing?.save_data);
+      if(existing?.save_data&&existingScore>localScore&&!(existingIncomplete&&!localIncomplete)){
+        console.warn('Equinox skipped cloud save because the server already has a healthier snapshot.');
+      }else{
+        const {error:saveError}=await EQUINOX_SUPABASE.from('game_saves').upsert({user_id:user.id,save_data:saveData,updated_at:new Date().toISOString()});
+        if(saveError)console.warn('Equinox game save failed',saveError);
+        else await equinoxSyncProfile();
+      }
+    }while(equinoxCloudSaveDirty);
   }catch(e){console.warn('Equinox cloud save failed',e)}
   finally{equinoxCloudSaveRunning=false}
 }
 function scheduleEquinoxCloudSave(immediate=false){
+  equinoxCloudSaveDirty=true;
   if(immediate){
     if(equinoxCloudSaveTimer){clearTimeout(equinoxCloudSaveTimer);equinoxCloudSaveTimer=0;}
     void equinoxCloudSave();
