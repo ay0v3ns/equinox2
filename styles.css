@@ -735,3 +735,134 @@ input::placeholder,
   .buff-row{grid-template-columns:1fr}
   .buff-row span{text-align:left}
 }
+
+
+/* Final compact world/effects presentation */
+.world-panel{
+  padding:16px 14px;
+  background:#080c13;
+  border-left:1px solid var(--line);
+}
+.world-kicker{
+  margin-bottom:5px;
+  font-family:var(--font-ui);
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:.18em;
+  color:#6f7c92;
+}
+.world-name{
+  margin:0 0 4px;
+  font-family:var(--font-title);
+  font-size:27px;
+  line-height:1;
+  font-weight:900;
+}
+.world-dimension{
+  margin:0 0 12px;
+  font-family:var(--font-body);
+  font-size:11px;
+  font-weight:500;
+  color:#9ca8bc;
+}
+.world-stats{
+  display:grid;
+  gap:2px;
+  border-top:1px solid #222b3c;
+}
+.world-stat{
+  min-height:34px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:6px 2px;
+  border:0;
+  border-bottom:1px solid #20283a;
+  background:transparent;
+}
+.world-stat span{
+  font-family:var(--font-ui);
+  font-size:9px;
+  font-weight:300;
+  color:#748097;
+  letter-spacing:.03em;
+}
+.world-stat b{
+  max-width:150px;
+  font-family:var(--font-ui);
+  font-size:10px;
+  font-weight:500;
+  color:#eef2fa;
+  text-align:right;
+  overflow-wrap:anywhere;
+}
+.world-block{
+  margin-top:14px;
+  padding-top:12px;
+  border-top:1px solid #222b3c;
+}
+.world-block>.section-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:7px;
+}
+.buff-list{
+  display:grid;
+  gap:3px;
+}
+.buff-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-height:34px;
+  padding:6px 7px;
+  border:1px solid #202a3b;
+  border-left:2px solid #46536d;
+  background:#0b1018;
+}
+.buff-row b{
+  min-width:0;
+  font-family:var(--font-body);
+  font-size:10px;
+  font-weight:500;
+  color:#e9eef7;
+  overflow-wrap:anywhere;
+}
+.buff-row span{
+  font-family:var(--font-ui);
+  font-size:8px;
+  line-height:1.25;
+  font-weight:300;
+  color:#8d99ad;
+  text-align:right;
+  overflow-wrap:anywhere;
+}
+.buff-row em{
+  font-style:normal;
+  color:#c2cbda;
+  white-space:nowrap;
+}
+.pending-buff{
+  border-left-color:#7b88a6;
+  background:#101623;
+}
+.roll-time{
+  width:min(100%,280px);
+  margin:4px auto 10px;
+  padding:8px 11px;
+}
+@media(max-width:700px){
+  .world-panel{
+    border-left:0;
+    border-top:1px solid var(--line);
+  }
+  .buff-row{
+    grid-template-columns:1fr;
+  }
+  .buff-row span{
+    text-align:left;
+  }
+}
