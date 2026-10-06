@@ -57,26 +57,25 @@
     mobile: window.matchMedia('(max-width: 700px)').matches
   });
 
-  const originalRoll = window.roll;
-  if (typeof originalRoll === 'function' && !window.__equinoxRollAnalyticsInstalled) {
-    window.__equinoxRollAnalyticsInstalled = true;
-    window.roll = function () {
-      const before = window.state && Number(window.state.rolls || 0);
-      const result = originalRoll.apply(this, arguments);
+  const originalResolveRoll = window.resolveRoll;
+  if (typeof originalResolveRoll === 'function' && !window.__equinoxResolveAnalyticsInstalled) {
+    window.__equinoxResolveAnalyticsInstalled = true;
+    window.resolveRoll = function () {
+      const result = originalResolveRoll.apply(this, arguments);
       try {
-        const after = window.state && Number(window.state.rolls || 0);
         const recent = window.state && Array.isArray(window.state.recent) ? window.state.recent[0] : null;
-        if (after > before) {
+        if (recent && Number(recent.roll || 0) > 0) {
           capture('equinox_roll', {
-            roll_number: after,
-            aura_name: recent?.name || null,
-            aura_rarity: Number(recent?.rolledRarity || recent?.rarity || 0),
-            breakthrough: !!recent?.breakthrough,
-            bonus_roll: !!recent?.bonus,
-            biome: recent?.biome || window.state?.biome || null,
-            day_night: recent?.time || window.state?.dayNight || null,
-            luck: Number(recent?.luck || 1),
-            roll_speed: Number(recent?.speed || 1)
+            roll_number: Number(recent.roll),
+            aura_name: recent.name || null,
+            aura_rarity: Number(recent.rolledRarity || recent.rarity || 0),
+            breakthrough: !!recent.breakthrough,
+            bonus_roll: !!recent.bonus,
+            biome: recent.biome || window.state?.biome || null,
+            day_night: recent.time || window.state?.dayNight || null,
+            luck: Number(recent.luck || 1),
+            roll_speed: Number(recent.speed || 1),
+            fixed_potion: !!recent.fixedPotion
           });
         }
       } catch (e) {
