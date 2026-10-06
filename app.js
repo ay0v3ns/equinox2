@@ -915,7 +915,7 @@ function render(){
         console.warn('Global view fallback:',e);
         main='<div class="panel"><div class="section-title">GLOBAL</div><h1>Global systems are connecting…</h1><p class="muted">Your local game remains available while the shared global services reconnect.</p></div>';
       }
-    }else if(state.activeTab==='Achievements')main=achievementsView();
+    }else if(state.activeTab==='Achievements'){try{main=achievementsView()}catch(err){console.warn('Achievement view failed:',err);main='<div class="panel"><div class="section-title">ACHIEVEMENTS</div><h1>Achievements</h1><p class="muted">Achievement data is temporarily unavailable. Your progress is still saved.</p></div>';}}
     else if(state.activeTab==='Settings')main=settingsView();
     else{
       const cooldownHint=rollTime.toFixed(2)+'s';
