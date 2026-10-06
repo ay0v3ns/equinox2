@@ -63,7 +63,7 @@ const ROLL_AURAS=AURAS.filter(function(a){return !a.crafted&&!isPotionExclusiveA
 const defaults={
  rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
  dimension:'Isles of Luck',dayNight:'Day',activeTab:'Roll',auraCapacity:20,
- recent:[],lastRollResult:null,auras:[],inventory:{},spawns:[],lastSpawn:0,pendingRollPotions:[],rollCooldownUntil:0,pendingStorageDecision:null,gearSpecials:{engineCharges:0,engineChargePending:false,monoSurgeCharges:0,monoSurgeStacks:0,weatherCharges:0,equilibriumLuckPending:false,equilibriumSpeedRolls:0,equilibriumNext:'luck',pendingGearBonusMultiplier:0},
+ recent:[],lastRollResult:null,auras:[],inventory:{},spawns:[],lastSpawn:0,pendingRollPotions:[],rollCooldownUntil:0,pendingStorageDecision:null,potionRollModifiers:{luckMultiplier:1,luckBonus:0,speedBonus:0,nextLuckBonus:0},curses:{},gearSpecials:{engineCharges:0,engineChargePending:false,monoSurgeCharges:0,monoSurgeStacks:0,weatherCharges:0,equilibriumLuckPending:false,equilibriumSpeedRolls:0,equilibriumNext:'luck',pendingGearBonusMultiplier:0},
  automation:'none',recipeProgress:{},autoAddRecipe:null,equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,performanceMode:true,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
 let state=normalizeState(load()); window.state=state; bankTick();
@@ -86,7 +86,7 @@ function normalizeState(s,recoverInterrupted=true){
  s.auras=Array.isArray(s.auras)?s.auras:[];
  s.recent=Array.isArray(s.recent)?s.recent.slice(0,100):[];
  s.activePotions=Array.isArray(s.activePotions)?s.activePotions:[];
- s.pendingRollPotions=Array.isArray(s.pendingRollPotions)?s.pendingRollPotions:[]; s.recipeProgress=(s.recipeProgress&&typeof s.recipeProgress==='object'&&!Array.isArray(s.recipeProgress))?s.recipeProgress:{}; s.autoAddRecipe=typeof s.autoAddRecipe==='string'&&s.autoAddRecipe?s.autoAddRecipe:null; s.pendingStorageDecision=(s.pendingStorageDecision&&typeof s.pendingStorageDecision==='object')?s.pendingStorageDecision:null; s.gearSpecials=Object.assign({engineCharges:0,engineChargePending:false,monoSurgeCharges:0,monoSurgeStacks:0,weatherCharges:0,equilibriumLuckPending:false,equilibriumSpeedRolls:0,equilibriumNext:'luck',pendingGearBonusMultiplier:0},s.gearSpecials||{}); s.pendingStorageDecision=(s.pendingStorageDecision&&typeof s.pendingStorageDecision==='object')?s.pendingStorageDecision:null;
+ s.pendingRollPotions=Array.isArray(s.pendingRollPotions)?s.pendingRollPotions:[]; s.recipeProgress=(s.recipeProgress&&typeof s.recipeProgress==='object'&&!Array.isArray(s.recipeProgress))?s.recipeProgress:{}; s.autoAddRecipe=typeof s.autoAddRecipe==='string'&&s.autoAddRecipe?s.autoAddRecipe:null; s.pendingStorageDecision=(s.pendingStorageDecision&&typeof s.pendingStorageDecision==='object')?s.pendingStorageDecision:null; s.gearSpecials=Object.assign({engineCharges:0,engineChargePending:false,monoSurgeCharges:0,monoSurgeStacks:0,weatherCharges:0,equilibriumLuckPending:false,equilibriumSpeedRolls:0,equilibriumNext:'luck',pendingGearBonusMultiplier:0},s.gearSpecials||{}); s.pendingStorageDecision=(s.pendingStorageDecision&&typeof s.pendingStorageDecision==='object')?s.pendingStorageDecision:null; s.curses=(s.curses&&typeof s.curses==='object'&&!Array.isArray(s.curses))?s.curses:{}; s.potionRollModifiers=(s.potionRollModifiers&&typeof s.potionRollModifiers==='object')?s.potionRollModifiers:{luckMultiplier:1,luckBonus:0,speedBonus:0,nextLuckBonus:0};
  const interruptedRoll=!!s.rolling;
  if(recoverInterrupted&&interruptedRoll){
    if(s.rollAutoPaid) s.inventory.Coins=(Number(s.inventory.Coins)||0)+1;
@@ -394,60 +394,46 @@ function potionRuntimeEffect(name,multiplier){
  return {luck:luck*(multiplier||1),speed:speed*(multiplier||1),rolls,ms,special,description:text};
 }
 function usePotion(name){
- state=normalizeState(state);
- window.state=state;
- const potionName=String(name);
- const enhanced=potionName.indexOf('Enhanced ')===0;
- const baseName=enhanced?potionName.slice(9):potionName;
- const cfg=BREWING_STAND[baseName]||null;
- const multiplier=enhanced&&cfg?Number(cfg.multiplier||1):1;
+ state=normalizeState(state);window.state=state;
+ const potionName=String(name),enhanced=potionName.indexOf('Enhanced ')===0,baseName=enhanced?potionName.slice(9):potionName;
+ const cfg=BREWING_STAND[baseName]||null,multiplier=enhanced&&cfg?Number(cfg.multiplier||1):1;
  if(!hasItem(potionName,1)){toast('You do not have '+potionName+'.');return false}
  const effect=potionRuntimeEffect(baseName,multiplier);
- if(!effect.luck&&!effect.speed&&!effect.rolls&&!effect.ms&&!effect.special){
-   toast(baseName+' has no usable runtime effect yet.');return false;
- }
+ if(!effect.luck&&!effect.speed&&!effect.rolls&&!effect.ms&&!effect.special){toast(baseName+' has no usable runtime effect yet.');return false}
  if(settingEnabled('potionConfirmation')&&!confirm('Use '+potionName+'?'))return false;
- takeItem(potionName,1);
- achievementPotionUsed(baseName);
+ takeItem(potionName,1);achievementPotionUsed(baseName);
  if(effect.rolls===1&&!effect.ms){
    state.pendingRollPotions=state.pendingRollPotions||[];
-   state.pendingRollPotions.push({
-     name:potionName,luck:effect.luck,speed:effect.speed,rolls:1,
-     started:Date.now(),special:effect.special,description:effect.description
-   });
-   try{achievementCheck()}catch(e){console.warn('Potion achievement check failed:',e)}
-   try{save()}catch(e){console.warn('Potion save failed:',e)}
-   try{render()}catch(e){console.warn('Potion render failed after use:',e)}
-   toast('Armed '+potionName+' for the next roll.');
-   return true;
+   state.pendingRollPotions.push({name:potionName,baseName:baseName,luck:effect.luck,speed:effect.speed,rolls:1,started:Date.now(),special:effect.special,description:effect.description,brewingMultiplier:multiplier});
+   achievementCheck();save();render();toast('Armed '+potionName+' for the next roll.');return true;
  }
  state.activePotions=state.activePotions||[];
  const active=state.activePotions.find(function(p){return p.name===potionName});
  if(active&&effect.ms){
    active.expires=Math.max(Number(active.expires||0),Date.now())+effect.ms;
-   active.luck=Number(active.luck||0)+effect.luck;
-   active.speed=Number(active.speed||0)+effect.speed;
    active.copies=Number(active.copies||1)+1;
-   try{save()}catch(e){console.warn('Potion save failed:',e)}
-   try{render()}catch(e){console.warn('Potion render failed after extension:',e)}
-   toast('Extended '+potionName+' • '+active.copies+' copies');
-   return true;
+   save();render();toast('Extended '+potionName+' • '+active.copies+' copies');return true;
  }
- state.activePotions.push({
-   name:potionName,luck:effect.luck,speed:effect.speed,rolls:effect.rolls||0,
-   expires:effect.ms?Date.now()+effect.ms:0,started:Date.now(),copies:1,
-   special:effect.special,curseName:potionCurseStrength(baseName)?baseName:null,
-   curseMultiplier:multiplier,description:effect.description
- });
- if(baseName==='Haste Potion I')markTutorialCraft(baseName);
- try{achievementCheck()}catch(e){console.warn('Potion achievement check failed:',e)}
- try{save()}catch(e){console.warn('Potion save failed:',e)}
- try{render()}catch(e){console.warn('Potion render failed after use:',e)}
- toast('Used '+potionName);
- return true;
+ const reg=POTION_REGISTRY[baseName]||{};
+ state.activePotions.push({name:potionName,baseName:baseName,luck:effect.luck,speed:effect.speed,baseLuck:effect.luck,baseSpeed:effect.speed,rolls:effect.rolls||0,expires:effect.ms?Date.now()+effect.ms:0,started:Date.now(),activatedAtRoll:Number(state.rolls||0),copies:1,special:effect.special,curseName:reg.curse?baseName:null,curseMultiplier:multiplier,brewingMultiplier:multiplier,description:effect.description,gamblerRollMultiplier:1,unstableTriggered:false,secondChanceUsed:false,fateUsed:false,chainCount:0,chainReactionDepth:0,endAfterRoll:false});
+ save();render();toast('Used '+potionName);return true;
 }
 window.usePotion=usePotion;
-function tickPotions(){let changed=false;state.activePotions=(state.activePotions||[]).filter(function(p){if(p.rolls){if(p.rolls<=0)return false;return true}if(p.expires&&Date.now()>=p.expires){if(p.curseName)activateCurse(p.curseName,p.curseMultiplier,1);changed=true;toast(p.name+' expired.');return false}return true});if(changed)save()}
+function tickPotions(){
+ let changed=false;
+ state.activePotions=(state.activePotions||[]).filter(function(p){
+   if(p.rolls){if(p.rolls<=0)return false;return true}
+   if(p.expires&&Date.now()>=Number(p.expires)){
+     if(p.curseName)activateCurse(p.curseName,p.curseMultiplier,Number(p.copies||1));
+     const special=potionSpecialText(p);
+     if(special==='Echo')addPotionEcho(p,0.5);else if(special==='Echo; Fortune')addPotionEcho(p,0.25);
+     changed=true;toast(p.name+' expired.');return false;
+   }
+   return true;
+ });
+ state.curses=Object.fromEntries(Object.entries(state.curses||{}).filter(function(e){return !e[1]?.expires||Date.now()<Number(e[1].expires)}));
+ if(changed)save();
+}
 
 function equipGear(name){
  const inv=state.inventory[name]||0;if(inv<1)return;
@@ -457,7 +443,7 @@ function equipGear(name){
  else {if(state.gearsEquipped.length>=2){toast('You can equip up to 2 Gears.');return}state.gearsEquipped.push(name);toast('Equipped '+name)}
  achievementCheck();save();render();
 }
-function rollPotionHook(){tickPotions();(state.activePotions||[]).forEach(function(p){if(p.rolls){p.rolls--;if(p.rolls<=0){toast(p.name+' consumed its roll effect.')}}})}
+function rollPotionHook(){tickPotions();potionSpecialPreRoll();(state.activePotions||[]).forEach(function(p){if(p.rolls){p.rolls--;if(p.rolls<=0){toast(p.name+' consumed its roll effect.')}}})}
 function globalStats(){
  const unique={};state.auras.forEach(function(a){unique[a.name]=a.rarity});
  return {username:state.username||'You',aurasCollected:Object.keys(unique).length,collectiveRarity:Object.values(unique).reduce(function(a,b){return a+b},0),rarestRoll:state.rarestRoll||0,rollCount:state.rolls,online:true,equipped:(state.auras.find(function(a){return a.equipped})||{}).name||'None',title:achievementState().equippedTitle||''};
@@ -966,10 +952,67 @@ function recipeAvailable(name){return !!recipeAvailability(name).ok}
 function workshopView(){const names=Object.keys(WORKSHOP_RECIPES||{});return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Jake · Workshop</div><h1>Crafting</h1><p class="muted">Add each Aura or Item into its recipe one piece at a time. Added materials are consumed immediately. Only one recipe can have Auto Add enabled.</p></div></div><div class="recipe-note">AUTO ADD consumes matching un-favorited, unequipped Auras already in your inventory and any newly rolled Auras that fit the active recipe.</div><div class="recipe-grid">'+names.map(function(name){return recipeCardHtml(name)}).join('')+'</div></div>'}
 function cauldronView(){const names=Object.keys(POTION_EFFECTS||{});return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Stella · Cauldron</div><h1>Potions</h1><p class="muted">Potion recipes use the same piece-by-piece crafting system. Potions without recipes remain informational until a recipe is defined.</p></div></div><div class="potion-grid">'+names.map(function(name){const rec=POTION_RECIPES&&POTION_RECIPES[name];return rec?recipeCardHtml(name,{effect:POTION_EFFECTS[name]}):'<div class="potion-card"><div class="potion-kicker">POTION · x'+Number(state.inventory[name]||0)+'</div><h2>'+eq4escape(name)+'</h2><p>'+eq4escape(POTION_EFFECTS[name])+'</p></div>'}).join('')+'</div><div class="panel" style="margin-top:18px"><div class="section-title">Brewing Stand</div><p class="muted">Enhancement consumes the base Potion, Dark Points, and Coins before the attempt. Failure consumes all three.</p></div></div>'}
 function potionDurationMs(name){const p=POTION_EFFECTS[name]||'';const m=p.match(/for (\d+) (seconds?|minutes?|hours?)/i);if(!m)return 300000;const n=Number(m[1]),u=m[2].toLowerCase();return n*(u.startsWith('hour')?3600000:u.startsWith('minute')?60000:1000)}
-function potionCurseStrength(name){return /Curse/i.test(POTION_EFFECTS[name]||'')?1:0}
-function enhancePotion(name){const cfg=BREWING_STAND[name];if(!cfg||!hasItem(name,1))return;if((state.inventory['Dark Points']||0)<cfg.dark){toast('Need '+cfg.dark+' Dark Points.');return}if((state.inventory.Coins||0)<cfg.coins){toast('Need '+fmt(cfg.coins)+' Coins.');return}takeItem(name,1);takeItem('Dark Points',cfg.dark);takeItem('Coins',cfg.coins);const success=Math.random()<cfg.success;if(success){const enhanced='Enhanced '+name;addItem(enhanced,1);const ast=achievementState().stats;ast.potionEnhancements=(ast.potionEnhancements||0)+1;toast('Brewing Stand succeeded: '+enhanced+' ×'+cfg.multiplier)}else toast('Brewing Stand failed. The Potion, Dark Points, and Coins were consumed.');achievementCheck();save();render()}
-function activateCurse(name,brewingMultiplier,copies){const strength=potionCurseStrength(name)*(brewingMultiplier||1)*Math.max(1,copies||1);if(!strength)return;const duration=potionDurationMs(name)*10;state.curses=state.curses||{};state.curses[name]={strength:strength,expires:Date.now()+duration};const ast=achievementState().stats;ast.curseReceived=(ast.curseReceived||0)+1;ast.curseStacks=(ast.curseStacks||0)+Math.max(1,copies||1);toast('Curse active: '+name+' ×'+strength.toFixed(2));save()}
-
+function potionCurseStrength(name){return POTION_REGISTRY[name]?.curse?1:0}
+function enhancePotion(name){
+ const cfg=BREWING_STAND[name];if(!cfg||!hasItem(name,1))return;
+ if((state.inventory['Dark Points']||0)<cfg.dark){toast('Need '+cfg.dark+' Dark Points.');return}
+ if((state.inventory.Coins||0)<cfg.coins){toast('Need '+fmt(cfg.coins)+' Coins.');return}
+ takeItem(name,1);takeItem('Dark Points',cfg.dark);takeItem('Coins',cfg.coins);
+ const success=Math.random()<cfg.success;
+ if(success){const enhanced='Enhanced '+name;addItem(enhanced,1);const ast=achievementState().stats;ast.potionEnhancements=(ast.potionEnhancements||0)+1;toast('Brewing Stand succeeded: '+enhanced+' ×'+cfg.multiplier)}
+ else toast('Brewing Stand failed. The Potion, Dark Points, and Coins were consumed.');
+ achievementCheck();save();render();
+}
+function activateCurse(name,brewingMultiplier,copies){
+ const reg=POTION_REGISTRY[name]||{},curse=reg.curse;if(!curse)return;
+ const mult=Number(brewingMultiplier||1),count=Math.max(1,Number(copies||1));state.curses=state.curses||{};
+ state.curses[name]={luck:Number(curse.luck||0)*mult*count,speed:Number(curse.speed||0)*mult*count,expires:Date.now()+Number(curse.duration||0),strength:mult*count};
+ const ast=achievementState().stats;ast.curseReceived=(ast.curseReceived||0)+1;ast.curseStacks=(ast.curseStacks||0)+count;
+ toast('Curse active: '+name+' ×'+(mult*count).toFixed(2));save();
+}
+function addPotionEcho(p,fraction){
+ const amount=Math.max(0,Number(p?.baseLuck??p?.luck??0)*Number(fraction||0));if(!amount)return;
+ state.activePotions=state.activePotions||[];
+ state.activePotions.push({name:String(p.name||p.baseName)+' · Echo',baseName:'',luck:amount,speed:0,baseLuck:amount,baseSpeed:0,rolls:0,expires:Date.now()+300000,started:Date.now(),activatedAtRoll:Number(state.rolls||0),copies:1,special:false,curseName:null,curseMultiplier:1,brewingMultiplier:1,echoReturn:true});
+ toast('Echo returned: '+percentText(amount)+' Luck for 5 minutes.');
+}
+function potionSpecialPreRoll(){
+ const mods=state.potionRollModifiers=state.potionRollModifiers||{luckMultiplier:1,luckBonus:0,speedBonus:0,nextLuckBonus:0};
+ mods.luckMultiplier=1;mods.luckBonus=0;mods.speedBonus=0;
+ const queued=Number(mods.nextLuckBonus||0);mods.nextLuckBonus=0;mods.luckBonus+=queued;
+ (state.activePotions||[]).forEach(function(p){
+   const special=potionSpecialText(p);
+   if(special.includes('Gambler')){const r=Math.random();p.gamblerRollMultiplier=r<0.20?2:(r<0.30?0.5:1);mods.luckMultiplier*=p.gamblerRollMultiplier;}
+   if(special.includes('Unstable')){p.unstableTriggered=Math.random()<0.05;if(p.unstableTriggered){mods.luckBonus+=(250-Number(p.baseLuck||p.luck||0))*Number(p.brewingMultiplier||1);p.endAfterRoll=true;}}
+ });
+}
+function potionSpecialPostRoll(result,rollRecord){
+ let requestReroll=false,rerollReason='';const active=state.activePotions||[],rarity=Number(result?.rarity||0),autoSkipped=!!rollRecord?.skipped;
+ const second=active.find(function(p){return String(p.baseName||p.name)==='Second Chance Potion'&&!p.secondChanceUsed});
+ if(autoSkipped&&second){second.secondChanceUsed=true;requestReroll=true;rerollReason='Second Chance'}
+ const fate=active.find(function(p){return String(p.baseName||p.name)==='Fate Potion'&&!p.fateUsed});
+ if(!autoSkipped&&fate&&rarity<1000000){fate.fateUsed=true;requestReroll=true;rerollReason='Fate'}
+ active.forEach(function(p){
+   const special=potionSpecialText(p);
+   if(special.includes('Chain')&&!special.includes('Chain Reaction'))p.chainCount=autoSkipped?0:Math.min(40,Number(p.chainCount||0)+1);
+   if(special.includes('Chain Reaction')&&!autoSkipped&&['Mythic','Exalted','Glorious','Transcendent','Apotheotic','Challenged','Challenged+'].includes(String(result?.computedTier||result?.tier||''))){
+     const depth=Number(p.chainReactionDepth||0);
+     if(depth<2){p.chainReactionDepth=depth+1;state.potionRollModifiers=state.potionRollModifiers||{};state.potionRollModifiers.nextLuckBonus=50;toast('Chain Reaction: +5,000% Luck armed for the next roll')}
+     else p.chainReactionDepth=0;
+   }
+   if(p.endAfterRoll){if(p.curseName)activateCurse(p.curseName,p.curseMultiplier,Number(p.copies||1));p.expiredNow=true;}
+ });
+ state.activePotions=active.filter(function(p){return !p.expiredNow});
+ return {requestReroll,rerollReason};
+}
+function fixedPotionOutcome(){
+ const next=state.pendingRollPotions&&state.pendingRollPotions[0];if(!next)return null;
+ const base=String(next.baseName||next.name),find=function(name){return AURAS.find(function(a){return a.name===name})||null};
+ if(base==='Red Moon Potion I'&&Math.floor(Math.random()*1000)===0)return find('Fragments of the Crimson Moon');
+ if(base==='Red Moon Potion II'&&Math.floor(Math.random()*100)===0)return find('Fragments of the Crimson Moon');
+ if(base==='Oblivion Potion'){const r=Math.floor(Math.random()*2000);if(r===0)return find('OBLIVION');if(r>=1&&r<=20)return find('Memory')}
+ return null;
+}
 
 
 /* Phase 4 — live Supabase global integration.
