@@ -39,7 +39,11 @@
       const q=results[0],s=results[1];
       if(q.error)sd.errors.push('Quests: '+q.error.message);
       else sd.quests=(q.data||[]).map(function(row){
-        return Object.assign({},row.quest_data||{},{serverId:row.quest_id});
+        const data=Object.assign({},row.quest_data||{});
+        const numericId=Number(data.id);
+        data.id=Number.isFinite(numericId)?numericId:String(data.id||row.quest_index||'');
+        data.serverId=String(row.quest_id);
+        return data;
       });
       if(s.error)sd.errors.push('Shop: '+s.error.message);
       else sd.shop=s.data||[];
@@ -184,11 +188,12 @@
 
   const localBuyShopItem=window.buyShopItem;
   window.buyShopItem = async function(i){
-    const shared=window.EQUINOX_SHARED_DATA;
+    let shared=window.EQUINOX_SHARED_DATA;
     if(!shared?.loaded||!shared?.shop?.length){
       if(typeof window.eq4RefreshSharedSystems==='function')await window.eq4RefreshSharedSystems(true);
+      shared=window.EQUINOX_SHARED_DATA;
     }
-    if(typeof EQUINOX_SUPABASE==='undefined'){
+    if(typeof EQUINOX_SUPABASE==='undefined'||!shared?.loaded||!shared?.shop?.length){
       if(typeof localBuyShopItem==='function')return localBuyShopItem(i);
       toast('Global Shop is unavailable.'); return;
     }
