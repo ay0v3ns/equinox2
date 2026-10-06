@@ -67,7 +67,12 @@
     }
   }
 
+  const localBuyShopItem=window.buyShopItem;
   window.buyShopItem = async function(i){
+    if(!window.EQ4_SHARED?.shopServerBacked){
+      if(typeof localBuyShopItem==='function')return localBuyShopItem(i);
+      toast('Global Shop is unavailable.'); return;
+    }
     if(typeof EQUINOX_SUPABASE==='undefined'){ toast('Global Shop is unavailable.'); return; }
     const local=typeof shopStock==='function'?shopStock():null;
     const item=local?.items?.[i];
