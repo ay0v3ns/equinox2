@@ -108,3 +108,78 @@ body{min-height:100dvh}
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
 }
+
+
+/* Roll button redesign: primary Equinox action, lightweight on weak hardware. */
+.roll-button{
+  position:relative;
+  width:min(100%,280px);
+  min-height:84px;
+  margin:18px auto 14px;
+  padding:0 28px;
+  border:2px solid #8b96ad;
+  background:
+    linear-gradient(180deg,#293247 0%,#1b2231 48%,#111722 100%);
+  color:#f7f9ff;
+  font-size:28px;
+  font-weight:900;
+  letter-spacing:.18em;
+  line-height:1;
+  cursor:pointer;
+  box-shadow:
+    0 0 0 1px #0a0d14 inset,
+    0 -7px 0 #0e131d inset,
+    0 10px 24px rgba(0,0,0,.34);
+  text-shadow:0 2px 0 #0a0d14;
+  transition:transform .1s ease,filter .1s ease,border-color .1s ease,box-shadow .1s ease;
+}
+.roll-button::before{
+  content:"";
+  position:absolute;
+  left:18px;
+  right:18px;
+  top:8px;
+  height:2px;
+  background:linear-gradient(90deg,transparent,#dfe6f5,transparent);
+  opacity:.5;
+}
+.roll-button::after{
+  content:"CLICK TO ROLL";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:9px;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.28em;
+  color:#aab5c9;
+}
+.roll-button:hover{
+  transform:translateY(-2px);
+  filter:brightness(1.12);
+  border-color:#c2cde2;
+  box-shadow:
+    0 0 0 1px #0a0d14 inset,
+    0 -7px 0 #0e131d inset,
+    0 14px 28px rgba(0,0,0,.42);
+}
+.roll-button:active{
+  transform:translateY(3px);
+  filter:brightness(.94);
+  box-shadow:
+    0 0 0 1px #0a0d14 inset,
+    0 -3px 0 #0e131d inset,
+    0 5px 12px rgba(0,0,0,.35);
+}
+.roll-button:focus-visible{
+  outline:2px solid #dce5f8;
+  outline-offset:3px;
+}
+@media(max-width:520px){
+  .roll-button{
+    width:min(100%,240px);
+    min-height:76px;
+    font-size:24px;
+    padding:0 20px;
+  }
+}
