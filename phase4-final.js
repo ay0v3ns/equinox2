@@ -123,27 +123,9 @@
   };
 
   function wrapGlobalView(){
-    if(typeof window.eq4GlobalView!=='function' || window.__eq4FinalGlobalWrapped)return;
-    window.__eq4FinalGlobalWrapped=true;
-    window.globalView=function(){
-      const g=globalStats();
-      const data=window.EQUINOX_GLOBAL_DATA||{profiles:[],presence:[],chat:[]};
-      const all=data.profiles||[];
-      const online=data.presence||[];
-      const rankRows=(field,source)=>{
-        const rows=(source||all).slice().sort((a,b)=>Number(b[field]||0)-Number(a[field]||0)).slice(0,10);
-        return rows.length?rows.map((x,i)=>'<div class="leader-row"><span>#'+(i+1)+' '+eq4escape(x.username)+'</span><b>'+fmt(Number(x[field]||0))+'</b></div>').join(''):'<div class="empty">No players yet.</div>';
-      };
-      const boards=[['Auras Collected','auras_collected'],['Collective Rarity','collective_rarity'],['Rarest Roll','rarest_roll_rarity'],['Roll Count','roll_count']].map(p=>
-        '<div class="global-board panel"><div class="section-title">Global · '+p[0]+'</div>'+rankRows(p[1],all)+'</div>'+
-        '<div class="global-board panel"><div class="section-title">Online · '+p[0]+'</div>'+rankRows(p[1],online)+'</div>'
-      ).join('');
-      const onlineRows=online.map(x=>'<div class="online-row"><b>'+eq4escape(x.username)+'</b><span>'+eq4escape(x.global_rank||'Unranked')+'</span><span>'+eq4escape(x.equipped_aura_name||'None')+(x.equipped_aura_rarity?' • 1/'+fmt(x.equipped_aura_rarity):'')+'</span></div>').join('')||'<div class="empty">No players online.</div>';
-      const chat=(data.chat||[]).filter(m=>{
-        const banned=targetingLanguage(m.message); return !m.hidden;
-      }).map(m=>'<div class="chat-msg"><b>'+eq4escape(m.username)+'</b><small>'+eq4escape(m.global_rank||'Unranked')+' • '+eq4escape(m.equipped_aura_name||'None')+(m.equipped_aura_rarity?' • 1/'+fmt(m.equipped_aura_rarity):'')+(targetingLanguage(m.message)?' <button class="chat-flag" onclick="eq4FlagChat('+m.id+')">Flag</button>':'')+'</small><span>'+eq4escape(m.message)+'</span></div>').join('')||'<div class="empty">No messages yet.</div>';
-      return '<div class="global-page"><div class="panel global-profile"><div><div class="section-title">Player Rank</div><h1>'+eq4escape(g.username)+'</h1><p class="muted">Equipped Aura: '+eq4escape(g.equipped)+(g.title?' • Title: ['+eq4escape(g.title)+']':'')+'</p></div><div class="global-metrics"><span>Unique Auras <b>'+fmt(g.aurasCollected)+'</b></span><span>Rarest Roll <b>1/'+fmt(g.rarestRoll||0)+'</b></span><span>Rolls <b>'+fmt(g.rollCount)+'</b></span></div></div><div class="global-boards">'+boards+'</div><div class="panel online-panel"><div class="section-title">Online Players</div>'+onlineRows+'</div><div class="panel chat-panel"><div class="section-title">Global Chat · 150 messages max</div><div class="chat-log">'+chat+'</div><div class="chat-compose"><input id="globalChatInput" maxlength="150" placeholder="Message Global Chat…"><button onclick="eq4SendChat()">Send</button></div></div><p class="muted global-note">Live global data • leaderboard snapshots update hourly • Supabase connected</p></div>';
-    };
+    // The base app owns the canonical Global renderer. Phase 4 only supplies
+    // server data, moderation, presence, and account controls.
+    if(typeof window.globalView==='function') return;
   }
 
   function wrapSettings(){
