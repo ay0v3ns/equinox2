@@ -35,6 +35,8 @@ function equinoxReloadLocalState(){
     if (typeof state === 'undefined' || typeof load !== 'function') return;
     state = load();
     window.state = state;
+    if (typeof bankTick === 'function') bankTick();
+    if (typeof window.render === 'function') window.render();
   } catch (e) {
     console.warn('Equinox local state reload failed:', e);
   }
