@@ -45,3 +45,7 @@
 
 /* Equinox visual rule: sharp, square UI surfaces. */
 *{border-radius:0!important}
+
+/* Tutorial keyboard prompt */
+.tutorial-continue{display:block;width:100%;box-sizing:border-box;margin:16px 0;padding:12px 14px;border:1px solid var(--line);background:#101520;color:#cbd4e5;text-align:center;font-size:12px;line-height:1.4;overflow-wrap:anywhere;white-space:normal}
+@media(max-width:520px){.tutorial-card{padding:22px 18px}.tutorial-continue{font-size:11px;padding:11px 10px}}
