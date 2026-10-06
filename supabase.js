@@ -314,7 +314,7 @@ async function equinoxCloudSave(){
     const existingScore=equinoxSaveScore(existing?.save_data);
     const localIncomplete=equinoxSaveIsIncomplete(saveData);
     const existingIncomplete=equinoxSaveIsIncomplete(existing?.save_data);
-    if(existing?.save_data&&existingScore>localScore&&!(localIncomplete&&!existingIncomplete)){
+    if(existing?.save_data&&existingScore>localScore&&!(existingIncomplete&&!localIncomplete)){
       console.warn('Equinox skipped cloud save because the server already has a healthier snapshot.');
       return;
     }
