@@ -17,6 +17,25 @@
 
   window.equinoxAnalytics = { capture };
 
+  window.addEventListener('error', function (event) {
+    capture('equinox_frontend_error', {
+      message: String(event?.message || 'Unknown window error').slice(0,500),
+      source: String(event?.filename || '').slice(0,500),
+      line: Number(event?.lineno || 0),
+      column: Number(event?.colno || 0),
+      phase: 'window_error'
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function (event) {
+    const reason = event?.reason;
+    capture('equinox_frontend_error', {
+      message: String(reason?.message || reason || 'Unhandled promise rejection').slice(0,500),
+      stack: String(reason?.stack || '').slice(0,1500),
+      phase: 'unhandled_rejection'
+    });
+  });
+
   if (!ready()) {
     console.warn('Equinox analytics: PostHog SDK was not available.');
     return;
