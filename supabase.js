@@ -139,7 +139,17 @@ async function equinoxHydrate() {
   localStorage.setItem('equinox-user', JSON.stringify(analyticsUser));
   if (window.posthog?.identify) window.posthog.identify(uid, { username: analyticsUser.username });
   if (window.equinoxAnalytics?.capture) window.equinoxAnalytics.capture('equinox_session_started', { has_cloud_save: !!hasCloudSave });
-  if (typeof window.render !== 'function') throw new Error('Equinox game renderer is not ready yet.');
+  if (typeof window.render !== 'function') {
+    await new Promise((resolve,reject)=>{
+      const started=Date.now();
+      const wait=()=>{
+        if(typeof window.render==='function') return resolve();
+        if(Date.now()-started>=10000) return reject(new Error('Equinox game renderer failed to initialize.'));
+        setTimeout(wait,50);
+      };
+      wait();
+    });
+  }
   window.render();
   hideAuthGate();
   if (hasCloudSave) void equinoxSyncProfile(); else void equinoxCloudSave();
