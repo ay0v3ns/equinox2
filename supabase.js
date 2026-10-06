@@ -172,7 +172,8 @@ async function equinoxHydrate() {
   }
   window.render();
   hideAuthGate();
-  if (hasCloudSave) void equinoxSyncProfile(); else void equinoxCloudSave();
+  if (typeof eq4InstallSharedWrappers === 'function') void eq4InstallSharedWrappers();
+  if (hasCloudSave && !preserveLocal) void equinoxSyncProfile(); else void equinoxCloudSave();
   } catch (e) {
     console.error('Equinox hydration failed', e);
     showAuthGate(e?.message || 'Equinox could not finish loading your game. Please try again.');
