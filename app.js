@@ -10,7 +10,27 @@ const defaults={
  recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
  automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,performanceMode:true,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
-let state=load(); window.state=state; bankTick();
+let state=normalizeState(load()); window.state=state; bankTick();
+
+function normalizeState(s){
+ if(!s||typeof s!=='object')s=Object.assign({},defaults);
+ s.rolls=Number(s.rolls||0);
+ s.basicLuck=Number(s.basicLuck||0);
+ s.specialLuck=Number(s.specialLuck||0);
+ s.finalMultiplier=Number(s.finalMultiplier||1);
+ s.speed=Math.max(0.01,Number(s.speed||1));
+ s.auraCapacity=Math.max(1,Number(s.auraCapacity||20));
+ s.inventory=(s.inventory&&typeof s.inventory==='object'&&!Array.isArray(s.inventory))?s.inventory:{};
+ s.auras=Array.isArray(s.auras)?s.auras:[];
+ s.recent=Array.isArray(s.recent)?s.recent.slice(0,100):[];
+ s.activePotions=Array.isArray(s.activePotions)?s.activePotions:[];
+ s.gearsEquipped=Array.isArray(s.gearsEquipped)?s.gearsEquipped:[];
+ s.settings=Object.assign({},defaults.settings,s.settings||{});
+ s.achievements=Object.assign({},defaults.achievements,s.achievements||{});
+ s.achievements.stats=Object.assign({},defaults.achievements.stats,s.achievements.stats||{});
+ if(!s.lastRollResult&&s.recent.length)s.lastRollResult=s.recent[0];
+ return s;
+}
 
 function load(){
  try{
