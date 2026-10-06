@@ -252,9 +252,10 @@ if(!window.__equinoxTutorialKeyHandler){
  },true);
 }
 function roll(){
- try{rollPotionHook()}catch(e){console.warn('Potion roll hook failed',e)}
+ state=normalizeState(state);
+ try{rollPotionHook()}catch(err){console.warn('Potion roll hook failed',err)}
  state.rolls++;
- try{tutorialRollHook()}catch(e){console.warn('Tutorial roll hook failed',e)}
+ try{tutorialRollHook()}catch(err){console.warn('Tutorial roll hook failed',err)}
  const bonus=state.rolls%10===0?2:1;
  const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
  let chosen=null,lastEligible=null;
@@ -262,21 +263,32 @@ function roll(){
  for(let i=0;i<ROLL_AURAS.length;i++){
    const a=ROLL_AURAS[i];
    const breakthrough=!!(a.nativeBiome&&a.nativeBiome!==state.biome&&biomeBreak>1);
-   const listValue=Math.max(1,Math.floor((a.rarity*(breakthrough?biomeBreak:1))/finalLuck));
+   const listValue=Math.max(1,Math.floor((a.rarity*(breakthrough?biomeBreak:1))/Math.max(0.000001,finalLuck)));
    if(listValue<=1)continue;
    lastEligible={a:a,breakthrough:breakthrough,listValue:listValue};
-   if(Math.floor(Math.random()*listValue)+1===1){
-     chosen=lastEligible;
-     break;
-   }
+   if(Math.floor(Math.random()*listValue)+1===1){chosen=lastEligible;break}
  }
- if(!chosen)chosen=lastEligible||{a:AURAS[0],breakthrough:false};
- const result=chosen.a;
- const ast=achievementState().stats;if(chosen.breakthrough){ast.breakthrough=true;ast.breakthroughBiomes=ast.breakthroughBiomes||[];if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;}
- try{questAuraHook(result,chosen.breakthrough)}catch(e){console.warn('Quest roll hook failed',e)}
+ if(!chosen)chosen=lastEligible||{a:ROLL_AURAS[0]||AURAS[0],breakthrough:false,listValue:1};
+ const result=chosen.a||AURAS[0];
+ const ast=achievementState().stats;
+ if(chosen.breakthrough){
+   ast.breakthrough=true;
+   ast.breakthroughBiomes=ast.breakthroughBiomes||[];
+   if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);
+   if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;
+ }
+ try{questAuraHook(result,chosen.breakthrough)}catch(err){console.warn('Quest roll hook failed',err)}
  const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
  const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
- const rolledRarity=result.rarity*(chosen.breakthrough?BREAK[state.biome]:1); state.rarestRoll=Math.max(state.rarestRoll||0,rolledRarity); const rollRecord={roll:state.rolls,name:result.name,rarity:result.rarity,rolledRarity:rolledRarity,breakthrough:chosen.breakthrough,bonus:bonus>1,luck:finalLuck,speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false}; state.lastRollResult=rollRecord; state.recent.unshift(rollRecord);
+ const rolledRarity=Number(result.rarity||0)*(chosen.breakthrough?(BREAK[state.biome]||1):1);
+ state.rarestRoll=Math.max(Number(state.rarestRoll||0),rolledRarity);
+ const rollRecord={
+   roll:state.rolls,name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',
+   rolledRarity:rolledRarity,breakthrough:!!chosen.breakthrough,bonus:bonus>1,luck:finalLuck,
+   speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false
+ };
+ state.lastRollResult=rollRecord;
+ state.recent.unshift(rollRecord);
  state.recent=state.recent.slice(0,100);
 
  if(autoSkip){
@@ -294,27 +306,27 @@ function roll(){
    if(candidates.length){
      const victim=candidates[0];
      const replace=!settingEnabled('confirmAuraRemoval')||confirm('Aura Storage is full. Remove '+victim.name+' (1/'+fmt(victim.rarity)+') and keep '+result.name+'?');
-     if(replace){
-       state.auras=state.auras.filter(function(a){return a.id!==victim.id});
-     }else{
-       save();render();toast('Skipped '+result.name+' — storage unchanged.');return;
-     }
-   }else{
-     save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return;
-   }
+     if(replace)state.auras=state.auras.filter(function(a){return a.id!==victim.id});
+     else{save();render();toast('Skipped '+result.name+' — storage unchanged.');return}
+   }else{save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return}
  }
+
  const obj={
    id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
-   name:result.name,rarity:result.rarity,tier:result.tier,rolledAt:Date.now(),
+   name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',rolledAt:Date.now(),
    favorite:false,autoSkip:false,autoEquip:false,equipped:false
  };
  state.auras.push(obj);
  state.recent[0].stored=true;
- try{achievementCheck()}catch(e){console.warn('Achievement check failed after roll',e)}
  if(autoEquip){
    state.auras.forEach(function(a){a.equipped=false});
-   obj.equipped=true;state.equippedAuraId=obj.id;
+   obj.equipped=true;
+   state.equippedAuraId=obj.id;
  }
+ if(state.equippedAuraId&&!state.auras.some(function(a){return a.id===state.equippedAuraId})){
+   state.equippedAuraId=null;
+ }
+ try{achievementCheck()}catch(err){console.warn('Achievement check failed after roll',err)}
  save();render();
  toast(chosen.breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: 2x Luck':'Roll complete'));
 }
