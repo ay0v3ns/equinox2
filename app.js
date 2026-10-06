@@ -149,12 +149,13 @@ function load(){
 let saveTimer=0;
 function save(){
  if(!state||state.settings&&state.settings.autoSave===false)return;
+ const write=function(){if(state&&typeof state==='object')state.saveUpdatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(state));};
  if(state.autoRoll){
    if(saveTimer)return;
-   saveTimer=setTimeout(function(){saveTimer=0;localStorage.setItem(KEY,JSON.stringify(state));},250);
+   saveTimer=setTimeout(function(){saveTimer=0;write();},250);
    return;
  }
- localStorage.setItem(KEY,JSON.stringify(state));
+ write();
 }
 function bankTick(){if(!state)return;const now=hourKey();if(!state.bankLastTick){state.bankLastTick=now;return}const elapsed=Math.max(0,now-state.bankLastTick);if(elapsed<1)return;const b=Array.isArray(BANK_TIERS)?(BANK_TIERS[(state.bankTier||1)-1]||BANK_TIERS[0]):null;if(!b)return;if((state.bankBalance||0)>0)state.bankBalance=Math.min(Number(b[2]||Infinity),state.bankBalance*Math.pow(Number(b[1]||1),elapsed));state.bankLastTick=now;save()}
 function fmt(n){return new Intl.NumberFormat('en-US').format(n)}
