@@ -332,7 +332,8 @@ window.equinoxCloudSave = equinoxCloudSave;
  * The existing database schema stores quest definitions as JSONB and shop rows
  * by item_id, so the browser adapts the local game objects to that shape.
  */
-const EQ4_SHARED={questRows:[],shopRows:[],hourIso:null,ready:false};
+const EQ4_SHARED={questRows:[],shopRows:[],hourIso:null,ready:false,questServerBacked:false,shopServerBacked:false};
+window.EQ4_SHARED=EQ4_SHARED;
 
 function eq4CurrentHourIso(){
   const d=new Date();
@@ -348,7 +349,8 @@ async function eq4LoadSharedQuestBoard(){
     .eq('hour_key',hourIso)
     .order('quest_index',{ascending:true});
   if(error) console.warn('Equinox quest sync failed:',error);
-  if(!data?.length && typeof window.questBoard==='function'){
+  const serverBacked=Array.isArray(data)&&data.length>0;
+  if(!serverBacked && typeof window.questBoard==='function'){
     const local=window.questBoard();
     const rows=local.slice(0,15).map((q,i)=>({
       quest_id:hourIso+'-'+String(q.id),
@@ -362,6 +364,8 @@ async function eq4LoadSharedQuestBoard(){
   EQ4_SHARED.questRows=data||[];
   EQ4_SHARED.hourIso=hourIso;
   EQ4_SHARED.ready=EQ4_SHARED.questRows.length>0;
+  EQ4_SHARED.questServerBacked=serverBacked;
+  window.EQ4_SHARED=EQ4_SHARED;
   if(EQ4_SHARED.ready && typeof window.questBoard==='function' && !window.__eq4QuestWrapped){
     const localQuestBoard=window.questBoard;
     window.questBoard=function(){
@@ -378,7 +382,7 @@ async function eq4LoadSharedQuestBoard(){
 }
 
 async function eq4LoadSharedQuestProgress(){
-  if(!EQ4_SHARED.ready)return;
+  if(!EQ4_SHARED.ready||!EQ4_SHARED.questServerBacked)return;
   const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
   const uid=sessionData?.session?.user?.id;
   if(!uid)return;
@@ -400,7 +404,7 @@ async function eq4LoadSharedQuestProgress(){
 }
 
 async function eq4SyncSharedQuestProgress(){
-  if(!EQ4_SHARED.ready||typeof window.questState!=='function')return;
+  if(!EQ4_SHARED.ready||!EQ4_SHARED.questServerBacked||typeof window.questState!=='function')return;
   const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
   const uid=sessionData?.session?.user?.id;
   if(!uid)return;
@@ -423,7 +427,8 @@ async function eq4LoadSharedShop(){
     .select('item_id,item_name,rarity,stock,max_stock,hour_key,updated_at')
     .eq('hour_key',hourIso);
   if(error) console.warn('Equinox shop sync failed:',error);
-  if(!data?.length && typeof window.shopStock==='function'){
+  const serverBacked=Array.isArray(data)&&data.length>0;
+  if(!serverBacked && typeof window.shopStock==='function'){
     const local=window.shopStock();
     const rows=local.items.map((x,i)=>({
       item_id:String(x.type)+'::'+String(x.name),
@@ -438,6 +443,8 @@ async function eq4LoadSharedShop(){
   }
   EQ4_SHARED.shopRows=data||[];
   EQ4_SHARED.hourIso=hourIso;
+  EQ4_SHARED.shopServerBacked=serverBacked;
+  window.EQ4_SHARED=EQ4_SHARED;
   if(EQ4_SHARED.shopRows.length && typeof window.shopStock==='function' && !window.__eq4ShopWrapped){
     const localShopStock=window.shopStock;
     window.shopStock=function(){
