@@ -59,16 +59,16 @@
         }
       }catch(err){sd.errors.push('Quest Progress: '+String(err?.message||err))}
       sd.hour=hour;sd.loaded=true;
-      if(typeof state!=='undefined'&&state){
+      if(window.state){
         const localHour=Math.floor(Date.now()/3600000);
-        if(state.questState&&state.questState.hour===localHour){
+        if(window.state.questState&&window.state.questState.hour===localHour){
           const qpMap=new Map(sd.questProgress.map(function(p){return [p.quest_id,p]}));
           sd.quests.forEach(function(q){
             const p=qpMap.get(q.serverId);
             if(!p)return;
-            state.questState.progress=state.questState.progress||{};
-            state.questState.progress[q.id]=Math.max(Number(state.questState.progress[q.id]||0),Number(p.progress||0));
-            if(p.completed&&!state.questState.completed.includes(q.id))state.questState.completed.push(q.id);
+            window.state.questState.progress=window.state.questState.progress||{};
+            window.state.questState.progress[q.id]=Math.max(Number(window.state.questState.progress[q.id]||0),Number(p.progress||0));
+            if(p.completed&&!window.state.questState.completed.includes(q.id))window.state.questState.completed.push(q.id);
           });
         }
       }
@@ -80,7 +80,7 @@
       return false;
     }finally{
       sd.loading=false;
-      if(typeof render==='function'&&typeof state!=='undefined'&&state.activeTab==='NPCs')render();
+      if(typeof render==='function'&&window.state.activeTab==='NPCs')render();
     }
   }
   window.eq4RefreshSharedSystems=eq4RefreshSharedSystems;
@@ -226,8 +226,8 @@
     const account=currentAccount();
     const aura=(window.state?.auras||[]).find(a=>a.equipped);
     const {error}=await EQUINOX_SUPABASE.from('chat_messages').insert({
-      user_id:user.id,username:account.username||state.username||'Player',
-      global_rank:state.globalRank||'Unranked',equipped_aura_id:aura?.id||null,
+      user_id:user.id,username:account.username||window.state?.username||'Player',
+      global_rank:window.state?.globalRank||'Unranked',equipped_aura_id:aura?.id||null,
       equipped_aura_name:aura?.name||null,equipped_aura_rarity:aura?.rarity||null,message
     });
     if(error){toast(error.message);return;}
