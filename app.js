@@ -580,9 +580,11 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
   const gearFinalMultiplier=gearRollFinalMultiplier();
   const finalLuck=((((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck+gearSpecialLuck)*state.finalMultiplier)*gearFinalLuckMultiplier();
   const displayedFinalLuck=finalLuck*gearFinalMultiplier;
+  const fixedPotion=fixedPotionOutcome();
   let chosen=null,lastEligible=null;
+  if(fixedPotion)chosen={a:fixedPotion,breakthrough:false,listValue:Number(fixedPotion.rarity||1),fixedPotion:true};
   const biomeBreak=BREAK[state.biome]||1;
-  for(let i=0;i<ROLL_AURAS.length;i++){
+  if(!fixedPotion)for(let i=0;i<ROLL_AURAS.length;i++){
    const a=ROLL_AURAS[i];
    const breakthrough=!!(a.nativeBiome&&a.nativeBiome!==state.biome&&biomeBreak>1);
    const listValue=Math.max(1,Math.floor((a.rarity*(breakthrough?biomeBreak:1))/Math.max(0.000001,finalLuck)));
@@ -595,7 +597,7 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
   const rolledRarity=Number(result.rarity||0)*(chosen.breakthrough?(BREAK[state.biome]||1):1);
   const rollRecord={
    roll:state.rolls,name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',
-   rolledRarity:rolledRarity,breakthrough:!!chosen.breakthrough,bonus:bonus>1,luck:displayedFinalLuck,
+   rolledRarity:rolledRarity,breakthrough:!!chosen.breakthrough,bonus:bonus>1,fixedPotion:!!chosen.fixedPotion,luck:displayedFinalLuck,
    speed:Number(rollSpeed||1),rollTime:duration,biome:state.biome,time:state.dayNight,stored:false,equipped:false,skipped:false,isGearBonus:!!isGearBonus,
    rolledAt:Date.now(),startedAt:start,completedAt:Date.now()
   };
@@ -627,14 +629,24 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
 
   if(autoSkip){
    rollRecord.skipped=true;
+   const potionSpecialOutcome=potionSpecialPostRoll(result,rollRecord);
    gearPostRollEffects(rollRecord,null);
    try{save()}catch(err){console.warn('Roll save failed:',err)}
    try{render()}catch(err){console.warn('Roll render failed after Auto Skip:',err)}
    toast('Auto Skip: '+result.name);
-   if(gearBonusQueued())setTimeout(triggerQueuedGearBonusRoll,0);
+   if(potionSpecialOutcome.requestReroll){toast(potionSpecialOutcome.rerollReason+': rolling one additional time.');setTimeout(function(){roll(false)},0);}
+   if(gearBonusQueued()&&!potionSpecialOutcome.requestReroll)setTimeout(triggerQueuedGearBonusRoll,0);
    return true;
   }
 
+  const potionSpecialOutcome=potionSpecialPostRoll(result,rollRecord);
+  if(potionSpecialOutcome.requestReroll){
+    try{save()}catch(err){console.warn('Potion reroll save failed:',err)}
+    try{render()}catch(err){console.warn('Potion reroll render failed:',err)}
+    toast(potionSpecialOutcome.rerollReason+': rolling one additional time.');
+    setTimeout(function(){roll(false)},0);
+    return true;
+  }
   if(auraSlots()>=state.auraCapacity){
    const candidates=state.auras.filter(function(a){return !a.favorite}).sort(function(a,b){
     if(a.rarity!==b.rarity)return a.rarity-b.rarity;
