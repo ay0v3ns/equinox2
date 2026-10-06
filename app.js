@@ -833,13 +833,16 @@ function render(){
     }).join('');
     const potionRows=(state.activePotions||[]).map(function(p){
       const remaining=p.rolls?String(p.rolls)+' roll'+(p.rolls===1?'':'s'):(p.expires?Math.max(0,(p.expires-Date.now())/1000).toFixed(0)+'s':'Active');
-      return '<div class="buff-row"><b>'+eq4escape(p.name)+'</b><span>'+(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')+' · '+remaining+'</span></div>';
+      return '<div class="buff-row"><b>'+eq4escape(p.name)+'</b><span>'+(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')+' <em>'+remaining+'</em></span></div>';
+    }).join('');
+    const pendingPotionRows=(state.pendingRollPotions||[]).map(function(p,i){
+      return '<div class="buff-row pending-buff"><b>'+eq4escape(p.name)+'</b><span>'+(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')+' <em>NEXT ROLL'+(i?' · QUEUED':'')+'</em></span></div>';
     }).join('');
     const gearRows=(state.gearsEquipped||[]).map(function(name){
       const l=gearLuckForName(name),s=gearSpeedForName(name);
       return '<div class="buff-row"><b>'+eq4escape(name)+'</b><span>'+(l?'+'+percentText(l)+' Luck':'')+(l&&s?' · ':'')+(s?'+'+percentText(s)+' Speed':'')+'</span></div>';
     }).join('');
-    const activeBuffs=(gearRows+potionRows)||'<div class="empty">No active buffs.</div>';
+    const activeBuffs=(gearRows+potionRows+pendingPotionRows)||'<div class="empty">No active effects.</div>';
     let main='';
     if(state.activeTab==='Inventory')main=inventoryView();
     else if(state.activeTab==='NPCs'){
@@ -853,7 +856,7 @@ function render(){
       try{
         const gd=window.EQUINOX_GLOBAL_DATA=window.EQUINOX_GLOBAL_DATA||{profiles:[],presence:[],chat:[],loaded:false,lastRefresh:0,loading:false,errors:[]};
         if(typeof window.eq4RefreshGlobal==='function' && (!gd.loaded || Date.now()-Number(gd.lastRefresh||0)>10000))void window.eq4RefreshGlobal(true);
-        main=eq4GlobalView();
+        main=typeof window.globalView==='function'?window.globalView():eq4GlobalView();
       }catch(e){
         console.warn('Global view fallback:',e);
         main='<div class="panel"><div class="section-title">GLOBAL</div><h1>Global systems are connecting…</h1><p class="muted">Your local game remains available while the shared global services reconnect.</p></div>';
@@ -864,7 +867,7 @@ function render(){
       const cooldownHint=rollTime.toFixed(2)+'s';
       main='<div class="roll-grid"><div class="panel hero"><div class="section-title">THE ROLL</div><h1>Equinox</h1><p class="muted">'+eq4escape(String(state.biome||'Normal'))+' · '+eq4escape(String(state.dayNight||'Day'))+'</p>'+latestText+'<button class="roll-button" onclick="roll()">ROLL</button><div class="roll-time"><span>ROLL TIME</span><b>'+cooldownHint+'</b><small>Based on current Roll Speed</small></div><p class="muted">Coins: '+fmt(state.inventory?.Coins||0)+' · Aura Storage: '+fmt(auraSlots())+'/'+fmt(state.auraCapacity||20)+'</p></div><div class="panel"><div class="section-title">RECENT ROLLS</div>'+(recentRows||'<div class="empty">No rolls yet.</div>')+'</div></div>';
     }
-    const worldPanel='<aside class="world-panel"><div class="section-title">WORLD</div><div class="world-name">'+eq4escape(String(state.biome||'Normal'))+'</div><div class="world-dimension">'+eq4escape(String(state.dimension||'Isles of Luck'))+'</div><div class="world-stats"><div class="world-stat"><span>Day / Night</span><b>'+eq4escape(String(state.dayNight||'Day'))+'</b></div><div class="world-stat"><span>Luck</span><b>'+Number(worldLuck||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Speed</span><b>'+Number(worldSpeed||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Time</span><b>'+rollTime.toFixed(2)+'s</b></div><div class="world-stat"><span>Equipped</span><b>'+eq4escape(equipped?.name||'None')+'</b></div></div><div class="world-block"><div class="section-title">BUFFS & EFFECTS</div>'+activeBuffs+'</div></aside>';
+    const worldPanel='<aside class="world-panel"><div class="world-kicker">CURRENT WORLD</div><div class="world-name">'+eq4escape(String(state.biome||'Normal'))+'</div><div class="world-dimension">'+eq4escape(String(state.dimension||'Isles of Luck'))+'</div><div class="world-stats"><div class="world-stat"><span>Day / Night</span><b>'+eq4escape(String(state.dayNight||'Day'))+'</b></div><div class="world-stat"><span>Total Luck</span><b>'+Number(worldLuck||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Speed</span><b>'+Number(worldSpeed||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Time</span><b>'+rollTime.toFixed(2)+'s</b></div><div class="world-stat"><span>Equipped Aura</span><b>'+eq4escape(equipped?.name||'None')+'</b></div></div><div class="world-block"><div class="section-title">ACTIVE EFFECTS</div><div class="buff-list">'+activeBuffs+'</div></div></aside>';
     root.innerHTML='<div id="notices" aria-live="polite"></div><div class="topbar"><div class="logo">☯ EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls||0)+'</b></span><span>Luck <b>'+Number(worldLuck||1).toFixed(2)+'×</b></span><span>Speed <b>'+Number(worldSpeed||1).toFixed(2)+'×</b></span><span>Biome <b>'+eq4escape(String(state.biome||'Normal'))+'</b></span></div></div><div class="layout tab-position-'+(state.settings?.tabPosition||'left')+'"><aside class="tabs">'+tabs.map(function(t){return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</aside><main>'+main+'</main>'+worldPanel+'</div>'+ (typeof tutorialView==='function'?tutorialView():'');
     wireInventory();
   }catch(e){
@@ -880,6 +883,7 @@ window.roll=roll;
 window.usePotion=usePotion;
 window.craftPotion=craftPotion;
 window.eq4GlobalView=typeof eq4GlobalView==='function'?eq4GlobalView:null;
+window.globalView=eq4GlobalView;
 window.eq4RefreshGlobal=eq4RefreshGlobal;
 window.eq4Presence=eq4Presence;
 window.questBoard=questBoard;
