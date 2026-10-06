@@ -785,13 +785,33 @@ const NATURAL_BIOME_RATES=[['Windy',500],['Snowy',600],['Rainy',750],['Sandstorm
 const BIOME_TOOL_NAMES=new Set(Object.keys(BIOME_TOOL_COOLDOWNS));
 const BIOME_DARK_POINT_VALUES={"Wind Essence":5,"Icicle":6,"Rainy Bottle":7,"Hourglass":30,"Eternal Flame":66,"Piece of Star":75,"Feather Vial":77,"Corruptaine":90,"Cursed Fragments":750,"NULL?":133,"Cloudburst":6,"Downpour":15,"Oceanus":110};
 const RANDOMIZER_SPECIAL_WEIGHTS={Windy:1,Snowy:1,Rainy:1,Sandstorm:1,Hell:1,Starfall:1,Heaven:1,Corruption:1,Null:1,Cloudy:1,Downpour:1,Oceanic:1,Dreamspace:1/300,'Crimson Moon':1/150,Glitched:1/60};
-async function claimBiomeToolCooldown(name){
- const seconds=Number(BIOME_TOOL_COOLDOWNS[name]||0);if(!seconds)return false;
- if(window.EQUINOX_SUPABASE&&typeof window.EQUINOX_SUPABASE.rpc==='function'){
-   try{const {data,error}=await window.EQUINOX_SUPABASE.rpc('try_use_biome_tool',{p_tool_type:name,p_cooldown_seconds:seconds});if(error)throw error;return !!data;}
-   catch(err){console.warn('Global biome tool cooldown RPC unavailable; using local fallback.',err)}
+let globalWorldSyncBusy=false;
+let globalWorldReady=false;
+let globalWorldLastSyncAt=0;
+async function syncGlobalWorldState(force){
+ if(state.dimension==='Limbo'||!window.EQUINOX_SUPABASE||typeof window.EQUINOX_SUPABASE.rpc!=='function')return false;
+ const now=Date.now();if(globalWorldSyncBusy)return true;if(!force&&now-globalWorldLastSyncAt<900)return true;
+ globalWorldLastSyncAt=now;globalWorldSyncBusy=true;
+ try{
+   const {data,error}=await window.EQUINOX_SUPABASE.rpc('tick_global_biome');if(error)throw error;
+   const row=Array.isArray(data)?data[0]:data;if(!row||!row.biome)return false;
+   const remoteBiome=String(row.biome),remoteStarted=Date.parse(row.biome_started_at)||Date.now();
+   const firstSync=!globalWorldReady;
+   const changed=!globalWorldReady||state.biome!==remoteBiome||Math.abs(Number(state.biomeStartedAt||0)-remoteStarted)>1000;
+   globalWorldReady=true;
+   if(changed){
+     const oldBiome=state.biome;state.biome=remoteBiome;state.biomeStartedAt=remoteStarted;
+     if(!firstSync){spawnBiomeItem(remoteBiome,Date.now());onBiomeChanged(oldBiome,remoteBiome);toast(remoteBiome==='Normal'?'Biome ended. The Isles returned to Normal.':remoteBiome+' biome has appeared globally.');}
+     save();render();
+   }else state.biomeStartedAt=remoteStarted;
+   return true;
+ }catch(err){console.warn('Global biome sync failed:',err);return false}finally{globalWorldSyncBusy=false}
+}
+function localBiomeFallbackTick(now){
+ if(state.biome&&state.biome!=='Normal'){
+   if(now-Number(state.biomeStartedAt||now)>=360000){const fromBiome=state.biome;state.biome='Normal';state.biomeStartedAt=now;onBiomeChanged(fromBiome,'Normal');save();toast('Biome ended. The Isles has returned to Normal.');return true}return false;
  }
- state.biomeToolCooldowns=state.biomeToolCooldowns||{};const now=Date.now(),ready=Number(state.biomeToolCooldowns[name]||0);if(ready>now)return false;state.biomeToolCooldowns[name]=now+seconds*1000;save();return true;
+ return maybeNaturalBiome(now);
 }
 function chooseWeightedBiome(weights){
  const entries=Object.entries(weights||{}).filter(function(e){return Number(e[1])>0});const total=entries.reduce(function(s,e){return s+Number(e[1]);},0);let r=Math.random()*total;
@@ -799,27 +819,33 @@ function chooseWeightedBiome(weights){
 }
 function chooseStrangeControllerBiome(){const weights={};NATURAL_BIOME_RATES.forEach(function(e){weights[e[0]]=1/Number(e[1])});return chooseWeightedBiome(weights)}
 function chooseBiomeRandomizerBiome(){return chooseWeightedBiome(RANDOMIZER_SPECIAL_WEIGHTS)}
+async function useBiomeTool(name){
+ state=normalizeState(state);window.state=state;
+ if(state.dimension==='Limbo'){toast('Biome-changing items cannot be used in Limbo.');return false}
+ if(!BIOME_TOOL_NAMES.has(name)||!hasItem(name,1)){toast('You do not have '+name+'.');return false}
+ if(window.EQUINOX_SUPABASE&&typeof window.EQUINOX_SUPABASE.rpc==='function'){
+   try{
+     const {data,error}=await window.EQUINOX_SUPABASE.rpc('use_global_biome_tool',{p_tool_type:name});if(error)throw error;
+     const result=String(data||'');if(!result){toast(name+' is on global cooldown.');return false}
+     takeItem(name,1);activateBiome(result,'item');toast(name+' activated globally: '+result+'.');return true;
+   }catch(err){console.warn('Global biome tool RPC failed; using local fallback.',err)}
+ }
+ state.biomeToolCooldowns=state.biomeToolCooldowns||{};const now=Date.now(),ready=Number(state.biomeToolCooldowns[name]||0);
+ if(ready>now){toast(name+' is on global cooldown.');return false}
+ state.biomeToolCooldowns[name]=now+Number(BIOME_TOOL_COOLDOWNS[name]||0)*1000;takeItem(name,1);
+ let result='Normal';if(name==='Strange Controller'){result=chooseStrangeControllerBiome();if(Math.floor(Math.random()*5000)===0)result='Cyberspace';}else if(name==='Biome Randomizer'){result=chooseBiomeRandomizerBiome();if(Math.floor(Math.random()*2500)===0)result='Cyberspace';}else result='Singularity';
+ if(!activateBiome(result,'item')){addItem(name,1);toast('The biome tool could not activate. The item was returned.');return false}
+ toast(name+' activated: '+result+'.');return true;
+}
 function useCompass(){
  state=normalizeState(state);window.state=state;
  if(Number(state.compassUsesRemaining||0)<=0){if(!hasItem('Compass?',1)){toast('You do not have Compass?.');return false}state.compassUsesRemaining=6;}
  state.compassUsesRemaining=Math.max(0,Number(state.compassUsesRemaining)-1);
  const entering=state.dimension!=='Limbo';state.dimension=entering?'Limbo':'Isles of Luck';
- if(entering){achievementState().stats.limboViaCompass=true;toast('Compass? opened a path to Limbo. '+state.compassUsesRemaining+' uses remaining.')}
- else toast('Compass? returned you to the Isles of Luck. '+state.compassUsesRemaining+' uses remaining.');
+ if(!entering){state.dayNight=(Math.floor(Date.now()/1200000)%2===0)?'Day':'Night';state.dayNightStartedAt=Date.now();globalWorldReady=false;void syncGlobalWorldState(true);}
+ if(entering){achievementState().stats.limboViaCompass=true;toast('Compass? opened a path to Limbo. '+state.compassUsesRemaining+' uses remaining.')}else toast('Compass? returned you to the Isles of Luck. '+state.compassUsesRemaining+' uses remaining.');
  if(state.compassUsesRemaining===0)takeItem('Compass?',1);
  save();render();achievementCheck();return true;
-}
-async function useBiomeTool(name){
- state=normalizeState(state);window.state=state;
- if(state.dimension==='Limbo'){toast('Biome-changing items cannot be used in Limbo.');return false}
- if(!BIOME_TOOL_NAMES.has(name)||!hasItem(name,1)){toast('You do not have '+name+'.');return false}
- if(!(await claimBiomeToolCooldown(name))){toast(name+' is on global cooldown.');return false}
- takeItem(name,1);let result='Normal';
- if(name==='Strange Controller'){result=chooseStrangeControllerBiome();if(Math.floor(Math.random()*5000)===0)result='Cyberspace';}
- else if(name==='Biome Randomizer'){result=chooseBiomeRandomizerBiome();if(Math.floor(Math.random()*2500)===0)result='Cyberspace';}
- else result='Singularity';
- if(!activateBiome(result,'item')){addItem(name,1);toast('The biome tool could not activate. The item was returned.');return false}
- toast(name+' activated: '+result+'.');return true;
 }
 function convertBiomeItemToDarkPoints(name){
  const value=Number(BIOME_DARK_POINT_VALUES[name]||0);if(!value||state.dimension==='Limbo'){toast(name+' cannot be converted here.');return false}
@@ -827,7 +853,7 @@ function convertBiomeItemToDarkPoints(name){
  takeItem(name,1);addItem('Dark Points',value);achievementCheck();save();render();toast(name+' converted into '+value+' Dark Points.');return true;
 }
 
-function activateBiome(name,reason){if(!name||name==='Normal')return false;const from=state.biome;const now=Date.now();state.biome=name;state.biomeStartedAt=now;spawnBiomeItem(name,now);onBiomeChanged(from,name);state.achievements=state.achievements||Object.assign({},defaults.achievements);state.achievements.stats=state.achievements.stats||Object.assign({},defaults.achievements.stats);state.achievements.stats.biomesSeen=state.achievements.stats.biomesSeen||[];if(!state.achievements.stats.biomesSeen.includes(name))state.achievements.stats.biomesSeen.push(name);save();if(reason)toast(name+' biome has appeared.');return true}function maybeNaturalBiome(now){if(state.dimension==='Limbo'||state.biome!=='Normal')return false;if(state.lastNaturalBiomeCheck&&now-state.lastNaturalBiomeCheck<950)return false;state.lastNaturalBiomeCheck=now;const roll=Math.random();let cumulative=0;for(const entry of NATURAL_BIOME_RATES){cumulative+=1/entry[1];if(roll<cumulative){activateBiome(entry[0],'natural');return true}}return false}function syncDayNight(now){if(state.dimension==='Limbo')return false;const next=(Math.floor(now/1200000)%2===0)?'Day':'Night';if(state.dayNight!==next){state.dayNight=next;state.dayNightStartedAt=now;save();return true}return false}function tickWorldSystems(now){let dirty=false;if(autoCollectGroundItems())dirty=true;if(!Number(state.lastSpawn)){spawnGeneralItems(now);dirty=true}else if(now-Number(state.lastSpawn)>=60000){spawnGeneralItems(now);dirty=true}const before=state.spawns.length;state.spawns=state.spawns.filter(function(x){return Number(x.expiresAt||0)>now});if(state.spawns.length!==before)dirty=true;if(state.biome&&state.biome!=='Normal'){if(now-Number(state.biomeStartedAt||now)>=360000){const fromBiome=state.biome;state.biome='Normal';state.biomeStartedAt=now;onBiomeChanged(fromBiome,'Normal');save();toast('Biome ended. The Isles has returned to Normal.');dirty=true}}else if(maybeNaturalBiome(now))dirty=true;if(syncDayNight(now))dirty=true;return dirty}function collect(id){
+function activateBiome(name,reason){if(!name||name==='Normal')return false;const from=state.biome;const now=Date.now();state.biome=name;state.biomeStartedAt=now;spawnBiomeItem(name,now);onBiomeChanged(from,name);state.achievements=state.achievements||Object.assign({},defaults.achievements);state.achievements.stats=state.achievements.stats||Object.assign({},defaults.achievements.stats);state.achievements.stats.biomesSeen=state.achievements.stats.biomesSeen||[];if(!state.achievements.stats.biomesSeen.includes(name))state.achievements.stats.biomesSeen.push(name);save();if(reason)toast(name+' biome has appeared.');return true}function maybeNaturalBiome(now){if(state.dimension==='Limbo'||state.biome!=='Normal')return false;if(state.lastNaturalBiomeCheck&&now-state.lastNaturalBiomeCheck<950)return false;state.lastNaturalBiomeCheck=now;const roll=Math.random();let cumulative=0;for(const entry of NATURAL_BIOME_RATES){cumulative+=1/entry[1];if(roll<cumulative){activateBiome(entry[0],'natural');return true}}return false}function syncDayNight(now){if(state.dimension==='Limbo')return false;const next=(Math.floor(now/1200000)%2===0)?'Day':'Night';if(state.dayNight!==next){state.dayNight=next;state.dayNightStartedAt=now;save();return true}return false}function tickWorldSystems(now){let dirty=false;if(autoCollectGroundItems())dirty=true;if(!Number(state.lastSpawn)){spawnGeneralItems(now);dirty=true}else if(now-Number(state.lastSpawn)>=60000){spawnGeneralItems(now);dirty=true}const before=state.spawns.length;state.spawns=state.spawns.filter(function(x){return Number(x.expiresAt||0)>now});if(state.spawns.length!==before)dirty=true;if(state.dimension!=='Limbo'&&window.EQUINOX_SUPABASE){void syncGlobalWorldState(false)}else if(state.dimension!=='Limbo'){if(localBiomeFallbackTick(now))dirty=true}if(syncDayNight(now))dirty=true;return dirty}function collect(id){
  const item=state.spawns.find(function(x){return x.id===id});if(!item)return;
  state.spawns=state.spawns.filter(function(x){return x.id!==id});
  const amount=Math.max(1,Number(item.quantity||1));addItem(item.name,amount);
