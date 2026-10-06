@@ -1114,3 +1114,27 @@ button.roll-button:disabled{
 button{
   border-radius:8px!important;
 }
+
+
+/* Crafting recipe readiness */
+.recipe-topline{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.recipe-output-status{font-size:10px;font-weight:800;letter-spacing:.08em;padding:4px 7px;border:1px solid #34415a;background:#101722}
+.recipe-output-status.sufficient{border-color:#3f684f;color:#b7e1c2}
+.recipe-output-status.insufficient{border-color:#6d4242;color:#f0b1b1}
+.recipe-output{display:grid;gap:3px;padding:10px;margin:10px 0;border:1px solid #2c374c;background:#0d131d}
+.recipe-output span,.recipe-requirements-head{font-size:9px;font-weight:800;letter-spacing:.12em;color:#8694ad}
+.recipe-output b{font-size:13px;color:#e9eff8}
+.recipe-output small{font-size:11px;color:#9da8bf}
+.recipe-requirements{display:grid;gap:5px;margin-top:10px}
+.recipe-requirements-head{display:flex;justify-content:space-between;gap:10px;padding-bottom:4px}
+.recipe-requirement{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 8px;border:1px solid #283247;background:#0b111a}
+.recipe-requirement.sufficient{border-color:#294737}
+.recipe-requirement.insufficient{border-color:#4f3030}
+.recipe-requirement>span{display:grid;gap:2px;min-width:0}
+.recipe-requirement>span b{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recipe-requirement>span small{font-size:8px;letter-spacing:.1em;color:#73819a}
+.recipe-requirement strong{font-size:11px;white-space:nowrap}
+.recipe-requirement.sufficient strong{color:#b7e1c2}
+.recipe-requirement.insufficient strong{color:#f0b1b1}
+.recipe-blocked{opacity:.96}
+.jester-gamble-panel{min-height:280px}
