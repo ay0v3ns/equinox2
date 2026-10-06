@@ -148,7 +148,7 @@ async function equinoxHydrate() {
     }
     profile = createdProfile;
   }
-  const { data: cloudSave, error: cloudSaveError } = await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id', uid).maybeSingle();
+  const { data: cloudSave, error: cloudSaveError } = await EQUINOX_SUPABASE.from('game_saves').select('save_data,updated_at').eq('user_id', uid).maybeSingle();
   if (cloudSaveError) console.warn('Equinox cloud save load failed; continuing with local save:', cloudSaveError);
   let cloudData = cloudSave?.save_data && typeof cloudSave.save_data === 'object' ? cloudSave.save_data : null;
   if(cloudData&&typeof window.normalizeState==='function'){
@@ -178,7 +178,11 @@ async function equinoxHydrate() {
   const localScore=equinoxSaveScore(localSave);
   const cloudIncomplete=equinoxSaveIsIncomplete(cloudData);
   const localIncomplete=equinoxSaveIsIncomplete(localSave);
-  const preserveLocal=!!(localSave&&(!cloudData||(cloudIncomplete&&!localIncomplete)||localScore>cloudScore));
+  const cloudUpdatedAt=cloudSave?.updated_at?Date.parse(cloudSave.updated_at):0;
+  const localUpdatedAt=Number(localSave?.saveUpdatedAt||0);
+  const newerLocal=localUpdatedAt>0&&cloudUpdatedAt>0&&localUpdatedAt>cloudUpdatedAt;
+  const newerCloud=cloudUpdatedAt>0&&localUpdatedAt>0&&cloudUpdatedAt>localUpdatedAt;
+  const preserveLocal=!!(localSave&&(!cloudData||(cloudIncomplete&&!localIncomplete)||newerLocal||(!newerCloud&&localScore>cloudScore)));
   if(hasCloudSave&&!preserveLocal){
     try{
       localStorage.setItem('equinox-save-v1',JSON.stringify(cloudData));
@@ -333,13 +337,17 @@ async function equinoxCloudSave(){
       const raw=localStorage.getItem('equinox-save-v1');
       if(!raw)return;
       const saveData=JSON.parse(raw);
-      const {data:existing}=await EQUINOX_SUPABASE.from('game_saves').select('save_data').eq('user_id',user.id).maybeSingle();
+      const {data:existing}=await EQUINOX_SUPABASE.from('game_saves').select('save_data,updated_at').eq('user_id',user.id).maybeSingle();
       const localScore=equinoxSaveScore(saveData);
       const existingScore=equinoxSaveScore(existing?.save_data);
       const localIncomplete=equinoxSaveIsIncomplete(saveData);
       const existingIncomplete=equinoxSaveIsIncomplete(existing?.save_data);
-      if(existing?.save_data&&existingScore>localScore&&!(existingIncomplete&&!localIncomplete)){
-        console.warn('Equinox skipped cloud save because the server already has a healthier snapshot.');
+      const localUpdatedAt=Number(saveData.saveUpdatedAt||0);
+      const existingUpdatedAt=existing?.updated_at?Date.parse(existing.updated_at):0;
+      const localIsNewer=localUpdatedAt>0&&existingUpdatedAt>0&&localUpdatedAt>existingUpdatedAt;
+      const existingIsNewer=existingUpdatedAt>0&&localUpdatedAt>0&&existingUpdatedAt>localUpdatedAt;
+      if(existing?.save_data&&((existingIsNewer&&!localIsNewer)||(!existingIsNewer&&existingScore>localScore)&&!(existingIncomplete&&!localIncomplete))){
+        console.warn('Equinox skipped cloud save because the server already has a newer or healthier snapshot.');
       }else{
         const {error:saveError}=await EQUINOX_SUPABASE.from('game_saves').upsert({user_id:user.id,save_data:saveData,updated_at:new Date().toISOString()});
         if(saveError)console.warn('Equinox game save failed',saveError);
