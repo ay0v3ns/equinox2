@@ -293,6 +293,9 @@ async function equinoxLogout() {
 }
 
 async function equinoxAuthBoot() {
+  // Keep a visible auth surface while an existing session and the game renderer initialize.
+  // This prevents an authenticated startup race from leaving the page visually blank.
+  showAuthGate();
   installEquinoxSaveSync();
   EQUINOX_SUPABASE.auth.onAuthStateChange((event, session) => {
     if (session?.user) {
