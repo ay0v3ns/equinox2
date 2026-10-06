@@ -511,3 +511,227 @@ input::placeholder,
     grid-template-columns:1fr;
   }
 }
+
+
+/* Roll/world/global UI cleanup */
+.roll-time{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:baseline;
+  gap:3px 9px;
+  width:min(100%,280px);
+  margin:2px auto 10px;
+  padding:9px 12px;
+  border:1px solid #293247;
+  background:#0c111a;
+  text-align:left;
+}
+.roll-time span{
+  font-family:var(--font-ui);
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:.14em;
+  color:#7f8ba1;
+}
+.roll-time b{
+  font-family:var(--font-ui);
+  font-size:14px;
+  font-weight:500;
+  color:#eef2fa;
+  justify-self:end;
+}
+.roll-time small{
+  grid-column:1/-1;
+  font-family:var(--font-ui);
+  font-size:9px;
+  font-weight:300;
+  color:#69758b;
+}
+.world-panel{
+  padding:18px 14px;
+  background:#080c13;
+  border-left:1px solid var(--line);
+}
+.world-kicker{
+  margin-bottom:6px;
+  font-family:var(--font-ui);
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:.18em;
+  color:#6f7c92;
+}
+.world-name{
+  margin:0 0 3px;
+  font-family:var(--font-title);
+  font-size:27px;
+  line-height:1;
+  font-weight:900;
+}
+.world-dimension{
+  margin:0 0 14px;
+  font-family:var(--font-body);
+  font-size:11px;
+  font-weight:500;
+  color:#a1abc0;
+}
+.world-stats{display:grid;gap:4px}
+.world-stat{
+  min-height:40px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:7px 10px;
+  border:1px solid #222b3c;
+  background:#0d121b;
+}
+.world-stat span{
+  font-family:var(--font-ui);
+  font-size:9px;
+  font-weight:300;
+  color:#78849a;
+  letter-spacing:.03em;
+}
+.world-stat b{
+  max-width:135px;
+  font-family:var(--font-ui);
+  font-size:10px;
+  font-weight:500;
+  color:#edf1f8;
+  text-align:right;
+  overflow-wrap:anywhere;
+}
+.world-block{
+  margin-top:16px;
+  padding-top:13px;
+  border-top:1px solid #222b3c;
+}
+.world-block>.section-title{margin-bottom:8px}
+.buff-list{display:grid;gap:5px}
+.buff-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  padding:8px 9px;
+  border:1px solid #232d40;
+  background:#0b1018;
+}
+.buff-row b{
+  font-family:var(--font-body);
+  font-size:10px;
+  font-weight:500;
+  color:#eef2fa;
+  overflow-wrap:anywhere;
+}
+.buff-row span{
+  font-family:var(--font-ui);
+  font-size:8px;
+  line-height:1.3;
+  font-weight:300;
+  color:#8b97ac;
+  text-align:right;
+  overflow-wrap:anywhere;
+}
+.buff-row em{
+  font-style:normal;
+  color:#bbc5d7;
+  white-space:nowrap;
+}
+.pending-buff{
+  border-color:#46536f;
+  background:#101724;
+}
+.global-group{margin-top:20px}
+.global-group-title{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+  margin:0 0 9px;
+  border-bottom:1px solid #252d3e;
+  padding-bottom:7px;
+}
+.global-group-title h2{
+  margin:0;
+  font-family:var(--font-title);
+  font-size:15px;
+  font-weight:900;
+}
+.global-group-title span{
+  font-family:var(--font-ui);
+  font-size:8px;
+  font-weight:300;
+  color:#6f7b91;
+  letter-spacing:.12em;
+}
+.global-board-head{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:8px;
+}
+.global-board-head>span{
+  font-family:var(--font-ui);
+  font-size:8px;
+  color:#68758c;
+  font-weight:300;
+}
+.leader-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:12px;
+  padding:8px 0;
+  border-bottom:1px solid #20283a;
+}
+.leader-row:last-child{border-bottom:0}
+.leader-row span{
+  font-family:var(--font-body);
+  font-size:10px;
+  color:#d4dbea;
+  overflow-wrap:anywhere;
+}
+.leader-row span b{
+  font-family:var(--font-ui);
+  font-size:8px;
+  font-weight:500;
+  color:#707d93;
+  margin-right:4px;
+}
+.leader-row strong{
+  font-family:var(--font-ui);
+  font-size:10px;
+  font-weight:500;
+  color:#eef2fa;
+}
+.chat-msg{
+  position:relative;
+  display:grid;
+  gap:4px;
+  padding:9px 0;
+  border-bottom:1px solid #20283a;
+}
+.chat-msg:last-child{border-bottom:0}
+.chat-author{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+}
+.chat-author b{font-family:var(--font-body);font-size:10px;font-weight:500}
+.chat-author small{font-family:var(--font-ui);font-size:8px;font-weight:300;color:#6f7b91}
+.chat-msg>span{font-family:var(--font-body);font-size:10px;font-weight:500;color:#cbd3e2;overflow-wrap:anywhere}
+.chat-flag{
+  justify-self:start;
+  padding:3px 7px;
+  border:1px solid #454d5c;
+  background:#131925;
+  font-family:var(--font-ui);
+  font-size:8px;
+  font-weight:500;
+}
+@media(max-width:700px){
+  .global-boards{grid-template-columns:1fr}
+  .buff-row{grid-template-columns:1fr}
+  .buff-row span{text-align:left}
+}
