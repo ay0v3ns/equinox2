@@ -1108,3 +1108,9 @@ button.roll-button:disabled{
   padding:7px 10px;
 }
 .gamble-btn{font-size:18px!important;padding:13px 16px!important}
+
+
+/* Buttons are the only rounded UI elements. Everything else stays square. */
+button{
+  border-radius:8px!important;
+}
