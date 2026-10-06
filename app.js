@@ -885,6 +885,14 @@ async function eq4Presence(){
   },{onConflict:'user_id'});
 }
 
+window.eq4escape=eq4escape;
+window.eq4RefreshGlobal=eq4RefreshGlobal;
+window.eq4GlobalView=eq4GlobalView;
+window.eq4SendChat=eq4SendChat;
+window.eq4FlagChat=eq4FlagChat;
+window.eq4Presence=eq4Presence;
+window.globalView=eq4GlobalView;
+
 function installEquinoxPhase4(){
   if(window.__equinoXPhase4Installed||typeof EQUINOX_SUPABASE==='undefined'){if(typeof EQUINOX_SUPABASE==='undefined')setTimeout(installEquinoxPhase4,100);return;}
   window.__equinoXPhase4Installed=true;
