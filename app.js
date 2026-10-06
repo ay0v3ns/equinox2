@@ -239,11 +239,12 @@ function usePotion(name){
  const baseName=enhanced?potionName.slice(9):potionName;
  const cfg=BREWING_STAND[baseName]||null;
  const multiplier=enhanced&&cfg?Number(cfg.multiplier||1):1;
- if(!hasItem(potionName,1)){toast('You do not have '+potionName+'.');return}
+ if(!hasItem(potionName,1)){toast('You do not have '+potionName+'.');return false}
  const effect=potionRuntimeEffect(baseName,multiplier);
  if(!effect.luck&&!effect.speed&&!effect.rolls&&!effect.ms&&!effect.special){
-   toast(baseName+' has no usable runtime effect yet.');return;
+   toast(baseName+' has no usable runtime effect yet.');return false;
  }
+ if(settingEnabled('potionConfirmation')&&!confirm('Use '+potionName+'?'))return false;
  takeItem(potionName,1);
  achievementPotionUsed(baseName);
  if(effect.rolls===1&&!effect.ms){
@@ -252,9 +253,11 @@ function usePotion(name){
      name:potionName,luck:effect.luck,speed:effect.speed,rolls:1,
      started:Date.now(),special:effect.special,description:effect.description
    });
-   achievementCheck();save();render();
+   try{achievementCheck()}catch(e){console.warn('Potion achievement check failed:',e)}
+   try{save()}catch(e){console.warn('Potion save failed:',e)}
+   try{render()}catch(e){console.warn('Potion render failed after use:',e)}
    toast('Armed '+potionName+' for the next roll.');
-   return;
+   return true;
  }
  state.activePotions=state.activePotions||[];
  const active=state.activePotions.find(function(p){return p.name===potionName});
@@ -263,7 +266,10 @@ function usePotion(name){
    active.luck=Number(active.luck||0)+effect.luck;
    active.speed=Number(active.speed||0)+effect.speed;
    active.copies=Number(active.copies||1)+1;
-   save();render();toast('Extended '+potionName+' • '+active.copies+' copies');return;
+   try{save()}catch(e){console.warn('Potion save failed:',e)}
+   try{render()}catch(e){console.warn('Potion render failed after extension:',e)}
+   toast('Extended '+potionName+' • '+active.copies+' copies');
+   return true;
  }
  state.activePotions.push({
    name:potionName,luck:effect.luck,speed:effect.speed,rolls:effect.rolls||0,
@@ -272,8 +278,13 @@ function usePotion(name){
    curseMultiplier:multiplier,description:effect.description
  });
  if(baseName==='Haste Potion I')markTutorialCraft(baseName);
- achievementCheck();save();render();toast('Used '+potionName);
+ try{achievementCheck()}catch(e){console.warn('Potion achievement check failed:',e)}
+ try{save()}catch(e){console.warn('Potion save failed:',e)}
+ try{render()}catch(e){console.warn('Potion render failed after use:',e)}
+ toast('Used '+potionName);
+ return true;
 }
+window.usePotion=usePotion;
 function tickPotions(){let changed=false;state.activePotions=(state.activePotions||[]).filter(function(p){if(p.rolls){if(p.rolls<=0)return false;return true}if(p.expires&&Date.now()>=p.expires){if(p.curseName)activateCurse(p.curseName,p.curseMultiplier,1);changed=true;toast(p.name+' expired.');return false}return true});if(changed)save()}
 
 function equipGear(name){
@@ -754,7 +765,7 @@ function questCraftHook(){const qs=questState();activeQuestBoard().forEach(funct
 function recipeAvailable(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return false;return Object.entries(rec.recipe).every(function(e){const item=e[0],n=e[1];return state.auras.filter(function(a){return a.name===item&&!a.favorite&&!a.equipped}).length+(state.inventory[item]||0)>=n})}
 function autoAddRecipe(name){const rec=WORKSHOP_RECIPES[name];if(!rec)return;state.craftingSelection=state.craftingSelection||{};state.craftingSelection[name]={};Object.entries(rec.recipe).forEach(function(e){const item=e[0],n=e[1];const aura=state.auras.filter(function(a){return a.name===item&&!a.favorite&&!a.equipped}).slice(0,n).map(function(a){return a.id});const left=n-aura.length;state.craftingSelection[name][item]={auras:aura,items:Math.min(left,state.inventory[item]||0)};});save();toast('Auto Add filled '+name+'.');render()}
 function workshopView(){const names=Object.keys(WORKSHOP_RECIPES);return `<div class="npc-system"><div class="system-head"><button onclick="npcTab('home')">← NPCs</button><div><div class="section-title">Jake · Workshop</div><h1>Crafting</h1><p class="muted">Add ingredients manually or use Auto Add. Favorited/equipped Auras are protected.</p></div></div><div class="recipe-grid">${names.map(name=>{const r=WORKSHOP_RECIPES[name];return '<div class="recipe-card"><small>'+r.type+'</small><h2>'+name+'</h2><p>'+r.buff+'</p><div>'+Object.entries(r.recipe).map(([k,v])=>'<span>'+v+' × '+k+'</span>').join('')+'</div><div class="recipe-actions"><button onclick="autoAddRecipe('+attrArg(name)+')">Auto Add</button><button '+(recipeAvailable(name)?'':'disabled')+' onclick="craftRecipe('+attrArg(name)+')">Craft</button></div></div>'}).join('')}</div></div>`}
-function cauldronView(){const names=Object.keys(POTION_EFFECTS);return `<div class="npc-system"><div class="system-head"><button onclick="npcTab('home')">← NPCs</button><div><div class="section-title">Stella · Cauldron</div><h1>Potions</h1><p class="muted">Craft, use, and enhance Potions. Curse duration is 10× the active duration.</p></div></div><div class="potion-grid">${names.map(name=>{const craftable=!!POTION_RECIPES[name];return '<div class="potion-card"><small>Potion</small><h2>'+name+'</h2><p>'+POTION_EFFECTS[name]+'</p>'+(craftable?'<button onclick="craftPotion('+attrArg(name)+')">Craft</button>':'')+'<button onclick="usePotion('+attrArg(name)+')">Use</button>'+(BREWING_STAND[name]?'<button onclick="enhancePotion('+attrArg(name)+')">Enhance</button>':'')+'</div>'}).join('')}</div><div class="panel" style="margin-top:18px"><div class="section-title">Brewing Stand</div><p class="muted">Enhancement consumes the base Potion, Dark Points, and Coins before the attempt. Failure consumes all three.</p></div></div>`}function potionDurationMs(name){const p=POTION_EFFECTS[name]||'';const m=p.match(/for (\d+) (seconds?|minutes?|hours?)/i);if(!m)return 300000;const n=Number(m[1]),u=m[2].toLowerCase();return n*(u.startsWith('hour')?3600000:u.startsWith('minute')?60000:1000)}
+function cauldronView(){const names=Object.keys(POTION_EFFECTS);return `<div class="npc-system"><div class="system-head"><button onclick="npcTab('home')">← NPCs</button><div><div class="section-title">Stella · Cauldron</div><h1>Potions</h1><p class="muted">Craft, use, and enhance Potions. Your active effects appear in the World panel.</p></div></div><div class="potion-grid">${names.map(name=>{const craftable=!!POTION_RECIPES[name];const count=Number(state.inventory[name]||0);return '<div class="potion-card"><div class="potion-kicker">POTION · x'+count+'</div><h2>'+eq4escape(name)+'</h2><p>'+eq4escape(POTION_EFFECTS[name])+'</p>'+(craftable?'<button onclick="craftPotion('+attrArg(name)+')">Craft</button>':'')+'<button '+(count?'':'disabled')+' onclick="usePotion('+attrArg(name)+')">'+(count?'Use':'Not Owned')+'</button>'+(BREWING_STAND[name]?'<button onclick="enhancePotion('+attrArg(name)+')">Enhance</button>':'')+'</div>'}).join('')}</div><div class="panel" style="margin-top:18px"><div class="section-title">Brewing Stand</div><p class="muted">Enhancement consumes the base Potion, Dark Points, and Coins before the attempt. Failure consumes all three.</p></div></div>`}function potionDurationMs(name){const p=POTION_EFFECTS[name]||'';const m=p.match(/for (\d+) (seconds?|minutes?|hours?)/i);if(!m)return 300000;const n=Number(m[1]),u=m[2].toLowerCase();return n*(u.startsWith('hour')?3600000:u.startsWith('minute')?60000:1000)}
 function potionCurseStrength(name){return /Curse/i.test(POTION_EFFECTS[name]||'')?1:0}
 function enhancePotion(name){const cfg=BREWING_STAND[name];if(!cfg||!hasItem(name,1))return;if((state.inventory['Dark Points']||0)<cfg.dark){toast('Need '+cfg.dark+' Dark Points.');return}if((state.inventory.Coins||0)<cfg.coins){toast('Need '+fmt(cfg.coins)+' Coins.');return}takeItem(name,1);takeItem('Dark Points',cfg.dark);takeItem('Coins',cfg.coins);const success=Math.random()<cfg.success;if(success){const enhanced='Enhanced '+name;addItem(enhanced,1);const ast=achievementState().stats;ast.potionEnhancements=(ast.potionEnhancements||0)+1;toast('Brewing Stand succeeded: '+enhanced+' ×'+cfg.multiplier)}else toast('Brewing Stand failed. The Potion, Dark Points, and Coins were consumed.');achievementCheck();save();render()}
 function activateCurse(name,brewingMultiplier,copies){const strength=potionCurseStrength(name)*(brewingMultiplier||1)*Math.max(1,copies||1);if(!strength)return;const duration=potionDurationMs(name)*10;state.curses=state.curses||{};state.curses[name]={strength:strength,expires:Date.now()+duration};const ast=achievementState().stats;ast.curseReceived=(ast.curseReceived||0)+1;ast.curseStacks=(ast.curseStacks||0)+Math.max(1,copies||1);toast('Curse active: '+name+' ×'+strength.toFixed(2));save()}
@@ -940,17 +951,20 @@ function render(){
       return '<div class="recent-row"><b>'+eq4escape(a.name)+'</b><span>1/'+fmt(a.rolledRarity||a.rarity||0)+'</span><small>#'+fmt(a.roll||0)+'</small></div>';
     }).join('');
     const potionRows=(state.activePotions||[]).map(function(p){
-      const remaining=p.rolls?String(p.rolls)+' roll'+(p.rolls===1?'':'s'):(p.expires?Math.max(0,(p.expires-Date.now())/1000).toFixed(0)+'s':'Active');
-      return '<div class="buff-row"><b>'+eq4escape(p.name)+'</b><span>'+(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')+' <em>'+remaining+'</em></span></div>';
+      const remaining=p.rolls?String(p.rolls)+' roll'+(p.rolls===1?'':'s'):(p.expires?Math.max(0,(p.expires-Date.now())/1000).toFixed(0)+'s':'ACTIVE');
+      const effectText=(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')||'Special effect';
+      return '<div class="buff-row"><div class="buff-main"><b>'+eq4escape(p.name)+'</b><small>POTION · '+eq4escape(remaining)+'</small></div><span>'+effectText+'</span></div>';
     }).join('');
     const pendingPotionRows=(state.pendingRollPotions||[]).map(function(p,i){
-      return '<div class="buff-row pending-buff"><b>'+eq4escape(p.name)+'</b><span>'+(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')+' <em>NEXT ROLL'+(i?' · QUEUED':'')+'</em></span></div>';
+      const effectText=(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')||'Special effect';
+      return '<div class="buff-row pending-buff"><div class="buff-main"><b>'+eq4escape(p.name)+'</b><small>NEXT ROLL'+(i?' · QUEUED':'')+'</small></div><span>'+effectText+'</span></div>';
     }).join('');
     const gearRows=(state.gearsEquipped||[]).map(function(name){
       const l=gearLuckForName(name),s=gearSpeedForName(name);
-      return '<div class="buff-row"><b>'+eq4escape(name)+'</b><span>'+(l?'+'+percentText(l)+' Luck':'')+(l&&s?' · ':'')+(s?'+'+percentText(s)+' Speed':'')+'</span></div>';
+      const effectText=(l?'+'+percentText(l)+' Luck':'')+(l&&s?' · ':'')+(s?'+'+percentText(s)+' Speed':'')||'Special gear';
+      return '<div class="buff-row"><div class="buff-main"><b>'+eq4escape(name)+'</b><small>GEAR · EQUIPPED</small></div><span>'+effectText+'</span></div>';
     }).join('');
-    const activeBuffs=(gearRows+potionRows+pendingPotionRows)||'<div class="empty">No active effects.</div>';
+    const activeBuffs=(gearRows+potionRows+pendingPotionRows)||'<div class="effects-empty">No active effects</div>';
     let main='';
     if(state.activeTab==='Inventory')main=inventoryView();
     else if(state.activeTab==='NPCs'){
