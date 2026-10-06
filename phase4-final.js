@@ -202,7 +202,7 @@
     if(!item) return;
     if(settingEnabled && settingEnabled('confirmShopPurchase') && !confirm('Buy '+item.name+' for '+fmt(shopPrice(item.name))+' Coins?')) return;
     const price=shopPrice(item.name);
-    if((state.inventory.Coins||0)<price){ toast('Need '+fmt(price)+' Coins.'); return; }
+    if((window.state?.inventory?.Coins||0)<price){ toast('Need '+fmt(price)+' Coins.'); return; }
     const itemId=String(item.type)+'::'+String(item.name);
     const {data,error}=await EQUINOX_SUPABASE.rpc('purchase_shop_item',{p_item_id:itemId,p_hour_key:hourIso()});
     if(error){ toast(error.message); return; }
@@ -224,7 +224,7 @@
     const ban=await EQUINOX_SUPABASE.from('chat_bans').select('banned_until').eq('user_id',user.id).maybeSingle();
     if(ban.data?.banned_until&&new Date(ban.data.banned_until)>new Date()){toast('You are banned from Global Chat until '+new Date(ban.data.banned_until).toLocaleString()+'.');return;}
     const account=currentAccount();
-    const aura=state.auras.find(a=>a.equipped);
+    const aura=(window.state?.auras||[]).find(a=>a.equipped);
     const {error}=await EQUINOX_SUPABASE.from('chat_messages').insert({
       user_id:user.id,username:account.username||state.username||'Player',
       global_rank:state.globalRank||'Unranked',equipped_aura_id:aura?.id||null,
