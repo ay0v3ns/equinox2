@@ -7,7 +7,7 @@ const ROLL_AURAS=AURAS.filter(function(a){return !a.crafted&&!a.exclusive;});
 const defaults={
  rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
  dimension:'Isles of Luck',dayNight:'Day',activeTab:'Roll',auraCapacity:20,
- recent:[],auras:[],inventory:{},spawns:[],lastSpawn:0,
+ recent:[],lastRollResult:null,auras:[],inventory:{},spawns:[],lastSpawn:0,pendingRollPotions:[],
  automation:'none',equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,performanceMode:true,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
 let state=normalizeState(load()); window.state=state; bankTick();
@@ -24,6 +24,7 @@ function normalizeState(s){
  s.auras=Array.isArray(s.auras)?s.auras:[];
  s.recent=Array.isArray(s.recent)?s.recent.slice(0,100):[];
  s.activePotions=Array.isArray(s.activePotions)?s.activePotions:[];
+ s.pendingRollPotions=Array.isArray(s.pendingRollPotions)?s.pendingRollPotions:[];
  s.gearsEquipped=Array.isArray(s.gearsEquipped)?s.gearsEquipped:[];
  s.settings=Object.assign({},defaults.settings,s.settings||{});
  s.achievements=Object.assign({},defaults.achievements,s.achievements||{});
@@ -92,8 +93,8 @@ function gearLuckForName(n){return {"Luck Glove":0.25,"Desire Glove":0.40,"Solar
 function gearSpeedForName(n){return {"Lunar Device":0.15,"Eclipse Device":0.15,"Dark Matter Device":0.15,"Aqua Device":0.10,"Shining Star":0.20,"Jackpot Gauntlet":0.07,"Exo Gauntlet":0.25}[n]||0}
 function gearLuck(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+gearLuckForName(n)},0)}
 function gearSpeed(){return (state.gearsEquipped||[]).reduce(function(sum,n){return sum+gearSpeedForName(n)},0)}
-function potionLuck(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.luck||0)},0)}
-function potionSpeed(){return (state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0)}
+function potionLuck(){const active=(state.activePotions||[]).reduce(function(sum,p){return sum+(p.luck||0)},0);const next=state.pendingRollPotions&&state.pendingRollPotions[0];return active+(next?Number(next.luck||0):0)}
+function potionSpeed(){const active=(state.activePotions||[]).reduce(function(sum,p){return sum+(p.speed||0)},0);const next=state.pendingRollPotions&&state.pendingRollPotions[0];return active+(next?Number(next.speed||0):0)}
 function totalLuck(){return ((1+state.basicLuck+gearLuck()+potionLuck())+state.specialLuck)*state.finalMultiplier}
 function totalSpeed(){return Math.max(0.01,state.speed*(1+gearSpeed()+potionSpeed()))}
 function rollTimeSeconds(){return 10/Math.max(0.01,totalSpeed())+1}
@@ -214,10 +215,12 @@ function potionRuntimeEffect(name,multiplier){
 }
 function usePotion(name){
  state=normalizeState(state);
+ window.state=state;
  const potionName=String(name);
  const enhanced=potionName.indexOf('Enhanced ')===0;
  const baseName=enhanced?potionName.slice(9):potionName;
- const multiplier=enhanced&&BREWING_STAND[baseName]?Number(BREWING_STAND[baseName].multiplier||1):1;
+ const cfg=BREWING_STAND[baseName]||null;
+ const multiplier=enhanced&&cfg?Number(cfg.multiplier||1):1;
  if(!hasItem(potionName,1)){toast('You do not have '+potionName+'.');return}
  const effect=potionRuntimeEffect(baseName,multiplier);
  if(!effect.luck&&!effect.speed&&!effect.rolls&&!effect.ms&&!effect.special){
@@ -225,23 +228,29 @@ function usePotion(name){
  }
  takeItem(potionName,1);
  achievementPotionUsed(baseName);
-
+ if(effect.rolls===1&&!effect.ms){
+   state.pendingRollPotions=state.pendingRollPotions||[];
+   state.pendingRollPotions.push({
+     name:potionName,luck:effect.luck,speed:effect.speed,rolls:1,
+     started:Date.now(),special:effect.special,description:effect.description
+   });
+   achievementCheck();save();render();
+   toast('Armed '+potionName+' for the next roll.');
+   return;
+ }
+ state.activePotions=state.activePotions||[];
  const active=state.activePotions.find(function(p){return p.name===potionName});
- if(active){
-   if(effect.ms){
-     active.expires=Math.max(Number(active.expires||0),Date.now())+effect.ms;
-   }
-   if(effect.rolls)active.rolls=Number(active.rolls||0)+effect.rolls;
+ if(active&&effect.ms){
+   active.expires=Math.max(Number(active.expires||0),Date.now())+effect.ms;
    active.luck=Number(active.luck||0)+effect.luck;
    active.speed=Number(active.speed||0)+effect.speed;
    active.copies=Number(active.copies||1)+1;
    save();render();toast('Extended '+potionName+' • '+active.copies+' copies');return;
  }
- const expires=effect.ms?Date.now()+effect.ms:0;
  state.activePotions.push({
    name:potionName,luck:effect.luck,speed:effect.speed,rolls:effect.rolls||0,
-   expires:expires,started:Date.now(),copies:1,special:effect.special,
-   curseName:potionCurseStrength(baseName)?baseName:null,
+   expires:effect.ms?Date.now()+effect.ms:0,started:Date.now(),copies:1,
+   special:effect.special,curseName:potionCurseStrength(baseName)?baseName:null,
    curseMultiplier:multiplier,description:effect.description
  });
  if(baseName==='Haste Potion I')markTutorialCraft(baseName);
@@ -257,7 +266,7 @@ function equipGear(name){
  else {if(state.gearsEquipped.length>=2){toast('You can equip up to 2 Gears.');return}state.gearsEquipped.push(name);toast('Equipped '+name)}
  achievementCheck();save();render();
 }
-function rollPotionHook(){tickPotions();(state.activePotions||[]).forEach(function(p){if(p.rolls){p.rolls--;if(p.rolls<=0)toast(p.name+' consumed its roll effect.')}})}
+function rollPotionHook(){tickPotions();(state.activePotions||[]).forEach(function(p){if(p.rolls){p.rolls--;if(p.rolls<=0){toast(p.name+' consumed its roll effect.')}}})}
 function globalStats(){
  const unique={};state.auras.forEach(function(a){unique[a.name]=a.rarity});
  return {username:state.username||'You',aurasCollected:Object.keys(unique).length,collectiveRarity:Object.values(unique).reduce(function(a,b){return a+b},0),rarestRoll:state.rarestRoll||0,rollCount:state.rolls,online:true,equipped:(state.auras.find(function(a){return a.equipped})||{}).name||'None',title:achievementState().equippedTitle||''};
@@ -300,8 +309,10 @@ if(!window.__equinoxTutorialKeyHandler){
 }
 function roll(){
  state=normalizeState(state);
+ window.state=state;
  try{rollPotionHook()}catch(err){console.warn('Potion roll hook failed',err)}
  state.rolls++;
+ window.state=state;
  try{tutorialRollHook()}catch(err){console.warn('Tutorial roll hook failed',err)}
  const bonus=state.rolls%10===0?2:1;
  const finalLuck=(((1+state.basicLuck+gearLuck()+potionLuck())*bonus)+state.specialLuck)*state.finalMultiplier;
@@ -317,28 +328,40 @@ function roll(){
  }
  if(!chosen)chosen=lastEligible||{a:ROLL_AURAS[0]||AURAS[0],breakthrough:false,listValue:1};
  const result=chosen.a||AURAS[0];
- const ast=achievementState().stats;
- if(chosen.breakthrough){
-   ast.breakthrough=true;
-   ast.breakthroughBiomes=ast.breakthroughBiomes||[];
-   if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);
-   if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;
- }
- try{questAuraHook(result,chosen.breakthrough)}catch(err){console.warn('Quest roll hook failed',err)}
- const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
- const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
  const rolledRarity=Number(result.rarity||0)*(chosen.breakthrough?(BREAK[state.biome]||1):1);
- state.rarestRoll=Math.max(Number(state.rarestRoll||0),rolledRarity);
  const rollRecord={
    roll:state.rolls,name:result.name,rarity:Number(result.rarity||0),tier:result.computedTier||result.tier||'Unknown',
    rolledRarity:rolledRarity,breakthrough:!!chosen.breakthrough,bonus:bonus>1,luck:finalLuck,
-   speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false
+   speed:totalSpeed(),biome:state.biome,time:state.dayNight,stored:false,equipped:false,skipped:false,
+   rolledAt:Date.now()
  };
  state.lastRollResult=rollRecord;
  state.recent.unshift(rollRecord);
  state.recent=state.recent.slice(0,100);
+ window.state=state;
+
+ try{
+   const ast=achievementState().stats;
+   if(chosen.breakthrough){
+     ast.breakthrough=true;
+     ast.breakthroughBiomes=ast.breakthroughBiomes||[];
+     if(!ast.breakthroughBiomes.includes(state.biome))ast.breakthroughBiomes.push(state.biome);
+     if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;
+   }
+ }catch(err){console.warn('Achievement roll setup failed',err)}
+
+ try{questAuraHook(result,chosen.breakthrough)}catch(err){console.warn('Quest roll hook failed',err)}
+
+ const autoSkip=state.auras.some(function(a){return a.name===result.name&&a.autoSkip});
+ const autoEquip=state.auras.some(function(a){return a.name===result.name&&a.autoEquip});
+
+ // A one-roll Potion applies to this roll and is consumed even if the Aura is skipped.
+ if(state.pendingRollPotions&&state.pendingRollPotions.length){
+   state.pendingRollPotions.shift();
+ }
 
  if(autoSkip){
+   rollRecord.skipped=true;
    save();render();
    toast('Auto Skip: '+result.name);
    setTimeout(roll,0);
@@ -354,8 +377,14 @@ function roll(){
      const victim=candidates[0];
      const replace=!settingEnabled('confirmAuraRemoval')||confirm('Aura Storage is full. Remove '+victim.name+' (1/'+fmt(victim.rarity)+') and keep '+result.name+'?');
      if(replace)state.auras=state.auras.filter(function(a){return a.id!==victim.id});
-     else{save();render();toast('Skipped '+result.name+' — storage unchanged.');return}
-   }else{save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return}
+     else{
+       rollRecord.skipped=true;
+       save();render();toast('Skipped '+result.name+' — storage unchanged.');return;
+     }
+   }else{
+     rollRecord.skipped=true;
+     save();render();toast('All Aura slots are Favorited. '+result.name+' was skipped.');return;
+   }
  }
 
  const obj={
@@ -364,20 +393,22 @@ function roll(){
    favorite:false,autoSkip:false,autoEquip:false,equipped:false
  };
  state.auras.push(obj);
- state.recent[0].stored=true;
+ rollRecord.stored=true;
+ rollRecord.auraId=obj.id;
  if(autoEquip){
    state.auras.forEach(function(a){a.equipped=false});
    obj.equipped=true;
+   rollRecord.equipped=true;
    state.equippedAuraId=obj.id;
  }
  if(state.equippedAuraId&&!state.auras.some(function(a){return a.id===state.equippedAuraId})){
    state.equippedAuraId=null;
  }
  try{achievementCheck()}catch(err){console.warn('Achievement check failed after roll',err)}
+ window.state=state;
  save();render();
  toast(chosen.breakthrough?'Breakthrough! '+result.name:(bonus>1?'Bonus Roll: 2x Luck':'Roll complete'));
 }
-
 function toggleFavorite(id){
  const a=state.auras.find(function(x){return x.id===id});if(!a)return;
  a.favorite=!a.favorite;save();render();
