@@ -269,27 +269,45 @@ function installEquinoxSaveSync() {
   equinoxOriginalSave = window.save;
   window.save = function(...args) {
     const result = equinoxOriginalSave.apply(this, args);
-    equinoxCloudSave();
+    scheduleEquinoxCloudSave(!!state?.autoRoll===false);
     return result;
   };
 }
-async function equinoxCloudSave() {
-  const { data: sessionData } = await EQUINOX_SUPABASE.auth.getSession();
-  const user = sessionData?.session?.user;
-  if (!user) return;
-  const raw = localStorage.getItem('equinox-save-v1');
-  if (!raw) return;
-  try {
-    const saveData = JSON.parse(raw);
+let equinoxCloudSaveTimer=0;
+let equinoxCloudSaveRunning=false;
+async function equinoxCloudSave(){
+  if(equinoxCloudSaveRunning)return;
+  equinoxCloudSaveRunning=true;
+  try{
+    const {data:sessionData}=await EQUINOX_SUPABASE.auth.getSession();
+    const user=sessionData?.session?.user;
+    if(!user)return;
+    const raw=localStorage.getItem('equinox-save-v1');
+    if(!raw)return;
+    const saveData=JSON.parse(raw);
     await EQUINOX_SUPABASE.from('game_saves').upsert({
-      user_id: user.id,
-      save_data: saveData,
-      updated_at: new Date().toISOString()
+      user_id:user.id,
+      save_data:saveData,
+      updated_at:new Date().toISOString()
     });
     await equinoxSyncProfile();
-  } catch (e) {
-    console.warn('Equinox cloud save failed', e);
+  }catch(e){
+    console.warn('Equinox cloud save failed',e);
+  }finally{
+    equinoxCloudSaveRunning=false;
   }
+}
+function scheduleEquinoxCloudSave(immediate=false){
+  if(immediate){
+    if(equinoxCloudSaveTimer){clearTimeout(equinoxCloudSaveTimer);equinoxCloudSaveTimer=0;}
+    void equinoxCloudSave();
+    return;
+  }
+  if(equinoxCloudSaveTimer)return;
+  equinoxCloudSaveTimer=setTimeout(function(){
+    equinoxCloudSaveTimer=0;
+    void equinoxCloudSave();
+  },3000);
 }
 
 async function equinoxLogout() {
