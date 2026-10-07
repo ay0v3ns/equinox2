@@ -723,10 +723,9 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
     if(['Dreamspace','Glitched','Crimson Moon'].includes(state.biome))ast.d01=true;
    }
   }catch(err){console.warn('Achievement roll setup failed',err)}
-  try{questAuraHook(result,chosen.breakthrough)}catch(err){console.warn('Quest roll hook failed',err)}
-
   recordRolledAura(result);
-  const autoSkip=auraAutoSkipEnabled(result.name);
+   try{questAuraHook(result,chosen.breakthrough)}catch(err){console.warn('Quest Aura hook failed',err)}
+   const autoSkip=auraAutoSkipEnabled(result.name);
   const autoEquip=auraAutoEquipEnabled(result.name);
   if(state.pendingRollPotions&&state.pendingRollPotions.length)state.pendingRollPotions.shift();
 
