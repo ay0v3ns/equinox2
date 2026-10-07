@@ -1520,9 +1520,9 @@ body{
 .storage-skip:hover{border-color:var(--action-red-hover)!important;background:var(--action-red)!important}
 
 
-/* Final neutral-button palette: keep ordinary controls quiet and steel-grey.
- * Intentional accents such as the primary Roll button, danger actions, and status
- * indicators keep their own visual treatment.
+/* Final neutral-button palette: ordinary controls stay subdued grey.
+ * Purposeful action colours (Roll, danger, reward, potion, biome, etc.) keep their
+ * own stronger treatment through the more specific rules above.
  */
 :root{
   --panel2:#171a1e;
@@ -1547,10 +1547,10 @@ body{
 .ach-tabs button,
 .achievement-card button,
 .chat-compose button{
-  border-color:#62666b;
-  background:linear-gradient(180deg,#4a4e53 0%,#373a3f 100%);
-  color:#eceef1;
-  filter:saturate(.55);
+  border-color:#686b70!important;
+  background:linear-gradient(180deg,#45484c 0%,#303338 100%)!important;
+  color:#e5e7ea!important;
+  filter:saturate(.35)!important;
 }
 .inventory-toolbar button:hover,
 .aura-actions button:hover,
@@ -1571,16 +1571,16 @@ body{
 .ach-tabs button:hover,
 .achievement-card button:hover,
 .chat-compose button:hover{
-  border-color:#85898e;
-  background:linear-gradient(180deg,#55595e 0%,#41454a 100%);
-  filter:saturate(.6);
+  border-color:#85888d!important;
+  background:linear-gradient(180deg,#51555a 0%,#3b3f44 100%)!important;
+  filter:saturate(.4)!important;
 }
 .setting-toggle.on{
-  border-color:#85898e;
-  background:linear-gradient(180deg,#55595e 0%,#41454a 100%);
-  color:#fff;
+  border-color:#85888d!important;
+  background:linear-gradient(180deg,#51555a 0%,#3b3f44 100%)!important;
+  color:#f2f3f5!important;
 }
 .danger,
 .settings-danger button{
-  filter:none;
+  filter:none!important;
 }
