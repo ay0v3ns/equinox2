@@ -1210,8 +1210,30 @@ function jesterDistribution(){
  const totalWeight=rows.reduce(function(sum,row){return sum+row.weight},0);rows.forEach(function(row){row.probability=totalWeight>0?row.weight/totalWeight:0});
  return {luck,luckScore,speed,speedScore,coinValue,coinScore,influence,rows,totalWeight};
 }
-function jesterGamble(){const cost=1000;const darkPoints=Math.max(0,Number(state.inventory&&state.inventory['Dark Points']||0));if(darkPoints<cost){toast("Need "+fmt(cost)+" Dark Points to gamble.");return false}takeItem('Dark Points',cost);const d=jesterDistribution();let roll=Math.random()*d.totalWeight;let reward=d.rows[d.rows.length-1];for(const row of d.rows){roll-=row.weight;if(roll<=0){reward=row;break}}addItem(reward.name,1);state.jesterLastReward={name:reward.name,probability:reward.probability,influence:d.influence,at:Date.now()};save();render();toast("Jester's Gamble: "+reward.name+" • −"+fmt(cost)+" Dark Points");return reward.name}
-function jesterView(){const d=jesterDistribution();const last=state.jesterLastReward;return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Jester · Silent Gambler</div><h1>Jester</h1><p class="muted">He never speaks. His Gamble changes with your Luck, Roll Speed, and item-derived Coin Value.</p></div></div><div class="panel jester-gamble-panel"><div class="section-title">JESTER GAMBLE</div><div class="bank-grid"><div class="bank-stat"><span>Luck Score</span><b>'+d.luckScore.toFixed(4)+'</b><small>'+fmt(d.luck)+'</small></div><div class="bank-stat"><span>Speed Score</span><b>'+d.speedScore.toFixed(4)+'</b><small>'+fmt(d.speed)+'</small></div><div class="bank-stat"><span>Coin Value Score</span><b>'+d.coinScore.toFixed(4)+'</b><small>'+fmt(d.coinValue)+'</small></div><div class="bank-stat"><span>Combined Influence</span><b>'+d.influence.toFixed(4)+'</b></div></div><p class="muted">Cost: <b>1,000 Dark Points</b> per Gamble • You have <b>'+fmt(Math.max(0,Number(state.inventory&&state.inventory['Dark Points']||0)))+'</b></p><button class="primary" '+(Number(state.inventory&&state.inventory['Dark Points']||0)<1000?'disabled':'')+' onclick="jesterGamble()">Gamble</button>'+(last?'<p class="muted" style="margin-top:10px">Last reward: <b>'+eq4escape(last.name)+'</b></p>':'')+'</div></div>'}function shopView(){const shop=activeShopStock();return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Mari · Shared Hourly Shop</div><h1>Shop</h1><p class="muted">Six global items • 2 Potions • 2 Gears • 2 Ground Items • refreshes hourly</p></div></div><div class="shop-grid">'+shop.items.map((x,i)=>'<div class="shop-card"><small>'+x.type+'</small><h2>'+x.name+'</h2><div>Stock: '+(x.stock>0?x.stock:'Sold Out')+'</div><div>Price: '+fmt(shopPrice(x.name))+' Coins</div><button '+(x.stock<=0||x.bought?'disabled':'')+' onclick="buyShopItem('+i+')">'+(x.bought?'Purchased':x.stock<=0?'Sold Out':'Buy')+'</button></div>').join('')+'</div></div>'}
+function jesterGamble(){
+ const darkCost=1000,quartzCost=50;
+ const darkPoints=Math.max(0,Number(state.inventory&&state.inventory['Dark Points']||0));
+ const foggyQuartz=Math.max(0,Number(state.inventory&&state.inventory['Foggy Quartz']||0));
+ if(darkPoints<darkCost){toast("Need "+fmt(darkCost)+" Dark Points to gamble.");return false}
+ if(foggyQuartz<quartzCost){toast("Need "+fmt(quartzCost)+" Foggy Quartz to gamble.");return false}
+ takeItem('Dark Points',darkCost);
+ takeItem('Foggy Quartz',quartzCost);
+ const d=jesterDistribution();
+ let roll=Math.random()*d.totalWeight;
+ let reward=d.rows[d.rows.length-1];
+ for(const row of d.rows){roll-=row.weight;if(roll<=0){reward=row;break}}
+ addItem(reward.name,1);
+ state.jesterLastReward={name:reward.name,probability:reward.probability,influence:d.influence,at:Date.now()};
+ save();render();
+ toast("Jester's Gamble: "+reward.name+" • −"+fmt(darkCost)+" Dark Points • −"+fmt(quartzCost)+" Foggy Quartz");
+ return reward.name;
+}
+function jesterView(){
+ const d=jesterDistribution(),last=state.jesterLastReward;
+ const dark=Math.max(0,Number(state.inventory&&state.inventory['Dark Points']||0));
+ const quartz=Math.max(0,Number(state.inventory&&state.inventory['Foggy Quartz']||0));
+ const ready=dark>=1000&&quartz>=50;
+ return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Jester · Silent Gambler</div><h1>Jester</h1><p class="muted">He never speaks. His Gamble changes with your Luck, Roll Speed, and item-derived Coin Value.</p></div></div><div class="panel jester-gamble-panel"><div class="section-title">JESTER GAMBLE</div><div class="bank-grid"><div class="bank-stat"><span>Luck Score</span><b>'+d.luckScore.toFixed(4)+'</b><small>'+fmt(d.luck)+'</small></div><div class="bank-stat"><span>Speed Score</span><b>'+d.speedScore.toFixed(4)+'</b><small>'+fmt(d.speed)+'</small></div><div class="bank-stat"><span>Coin Value Score</span><b>'+d.coinScore.toFixed(4)+'</b><small>'+fmt(d.coinValue)+'</small></div><div class="bank-stat"><span>Combined Influence</span><b>'+d.influence.toFixed(4)+'</b></div></div><p class="muted">Requirement: <b>1,000 Dark Points + 50 Foggy Quartz</b> per Gamble • You have <b>'+fmt(dark)+' Dark Points</b> and <b>'+fmt(quartz)+' Foggy Quartz</b></p><button class="primary" '+(ready?'':'disabled')+' onclick="jesterGamble()">Gamble</button>'+(last?'<p class="muted" style="margin-top:10px">Last reward: <b>'+eq4escape(last.name)+'</b></p>':'')+'</div></div>'}function shopView(){const shop=activeShopStock();return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Mari · Shared Hourly Shop</div><h1>Shop</h1><p class="muted">Six global items • 2 Potions • 2 Gears • 2 Ground Items • refreshes hourly</p></div></div><div class="shop-grid">'+shop.items.map((x,i)=>'<div class="shop-card"><small>'+x.type+'</small><h2>'+x.name+'</h2><div>Stock: '+(x.stock>0?x.stock:'Sold Out')+'</div><div>Price: '+fmt(shopPrice(x.name))+' Coins</div><button '+(x.stock<=0||x.bought?'disabled':'')+' onclick="buyShopItem('+i+')">'+(x.bought?'Purchased':x.stock<=0?'Sold Out':'Buy')+'</button></div>').join('')+'</div></div>'}
 function bankTierData(){return BANK_TIERS[(state.bankTier||1)-1]||BANK_TIERS[0]}
 function bankUpgrade(){
  const current=state.bankTier||0;if(current>=12){toast("Bank XII already mastered.");return}
