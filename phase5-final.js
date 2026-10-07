@@ -19,7 +19,7 @@
     state.settings.autoSkipAuras=Array.isArray(state.settings.autoSkipAuras)?[...new Set(state.settings.autoSkipAuras.map(String).filter(Boolean))]:[];
     state.settings.autoEquipAuras=Array.isArray(state.settings.autoEquipAuras)?[...new Set(state.settings.autoEquipAuras.map(String).filter(Boolean))]:[];
   }
-  function save5(){localStorage.setItem("equinox-save-v1",JSON.stringify(state));apply();}
+  function save5(){if(typeof save==="function")save();else localStorage.setItem("equinox-save-v1",JSON.stringify(state));apply();}
   function apply(){var s=state.settings||D,r=document.documentElement;r.classList.toggle("reduced-motion",!!s.reducedMotion);r.classList.toggle("high-contrast",!!s.highContrast);r.classList.toggle("colorblind-mode",!!s.colorblind);r.classList.toggle("compact-interface",!!s.compactInterface);r.classList.toggle("performance-mode",!!s.performanceMode||!!s.lowDetailMode);}
   window.phase5Toggle=function(k){init();if(k==="autoRoll")return;if(k==="autoSkip"||k==="autoEquip")return;state.settings[k]=!state.settings[k];save5();render();};
   window.phase5SetSetting=function(k,v){init();state.settings[k]=v;save5();render();};
