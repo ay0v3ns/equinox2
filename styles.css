@@ -1231,3 +1231,81 @@ button{
 .potion-brewing{border-color:#4e4530;background:#15130e}
 .potion-special b,.potion-curse b,.potion-brewing b{font-size:9px;letter-spacing:.12em}
 .potion-special span,.potion-curse span,.potion-brewing span{font-size:10px;line-height:1.4}
+
+
+/* Equinox monochrome theme — neutral white/black replaces the former blue accent system. */
+:root{
+  --panel:rgba(20,20,20,.92);
+  --panel2:#141414;
+  --line:#3a3a3a;
+  --muted:#a6a6a6;
+  --text:#f5f5f5;
+}
+body{
+  color:#f5f5f5;
+  background:radial-gradient(circle at 50% 0,#1c1c1c 0,#090909 48%,#050505 100%);
+}
+.topbar{background:rgba(7,7,7,.92)}
+.tabs{background:rgba(8,8,8,.82)}
+.tab{color:#aaa}
+.tab:hover,.tab.active{background:#1a1a1a;border-color:#6f6f6f;color:#fff}
+.roll-btn,.roll-button{
+  border-color:#8a8a8a;
+  background:linear-gradient(180deg,#3a3a3a 0%,#222 48%,#111 100%);
+  color:#fff;
+}
+.roll-btn:hover,.roll-button:hover{border-color:#d0d0d0}
+.roll-button::before{background:linear-gradient(90deg,transparent,#fff,transparent)}
+.recent-row,.stat,.aura-card,.inventory-toolbar,.npc-action-grid>div,.quest-preview,
+.quest-ranges span,.shop-card,.recipe-card,.potion-card,.bank-stat,.jester-stat,
+.tutorial-card,.tutorial-banner,.global-profile,.global-board,.online-panel,.chat-panel,
+.achievement-card,.settings-section,.auth-card,.history-page .panel{
+  border-color:#303030;
+  background:var(--panel);
+}
+.spawn{border-color:#777;background:#202020}
+.spawn:hover{border-color:#d0d0d0}
+.info{border-bottom-color:#292929}
+.inventory-controls input,.inventory-controls select,
+.bank-actions input,.chat-compose input,.history-search input,
+.settings-select,.setting-action,.setting-row input[type=range]{
+  background:#101010;border-color:#3d3d3d;color:#f5f5f5;
+}
+.inventory-toolbar button,.aura-actions button,.npc-action-grid button,.quest-preview button,.back-btn,
+.system-head button,.npc-system button,.recipe-card button,.potion-card button,.shop-card button,.bank-actions button{
+  border-color:#494949;
+  background:linear-gradient(180deg,#242424 0%,#141414 100%);
+  color:#f2f2f2;
+}
+.inventory-toolbar button:hover,.aura-actions button:hover,.npc-action-grid button:hover,.quest-preview button:hover,.back-btn:hover,
+.system-head button:hover,.npc-system button:hover{
+  border-color:#bdbdbd;
+  background:#2b2b2b;
+}
+.npc-card{background:linear-gradient(145deg,#191919,#0f0f0f);border-color:#353535}
+.npc-card:hover{border-color:#8a8a8a;background:linear-gradient(145deg,#242424,#151515)}
+.npc-card .npc-icon{border-color:#4a4a4a!important;background:#0d0d0d;color:#fff}
+.npc-lime .npc-icon,.npc-mari .npc-icon,.npc-jake .npc-icon,.npc-stella .npc-icon,.npc-jester .npc-icon{border-color:#555!important}
+.npc-hub{background:linear-gradient(145deg,#171717,#0e0e0e)}
+.npc-hub-count{border-color:#444;background:#0d0d0d;color:#aaa}
+.setting-toggle{border-color:#4b4b4b;background:#111;color:#aaa}
+.setting-toggle.on,.recipe-auto.active{border-color:#cfcfcf!important;background:#292929!important;color:#fff}
+.roll-time,.world-panel{background:#0b0b0b;border-color:#282828}
+.world-stat,.world-block,.global-group-title{border-color:#282828}
+.buff-row{border-color:#292929;border-left-color:#777;background:#101010}
+.pending-buff{border-left-color:#b0b0b0;background:#171717}
+.global-metrics span,.chat-msg,.recipe-note,.recipe-output,.recipe-requirement{background:#111;border-color:#303030}
+.recipe-card.recipe-autofill-active{border-color:#8a8a8a;box-shadow:0 0 0 1px rgba(255,255,255,.06)}
+.recipe-output-status{border-color:#4a4a4a;background:#111}
+.rare-card{border-color:#8b8b8b;background:linear-gradient(145deg,#1b1b1b,#0b0b0b)}
+.rare-card button{border-color:#888;background:#202020}
+.storage-card{border-color:#666}
+.storage-choice{border-color:#3c3c3c;background:#101010}
+.storage-keep{border-color:#777!important}
+.storage-skip{border-color:#777!important}
+.auth-orb{border-color:#777;background:#1a1a1a}
+.auth-card{border-color:#444;background:linear-gradient(145deg,#1b1b1b,#0d0d0d)}
+.auth-card input{border-color:#414141;background:#0b0b0b}
+.auth-card input:focus{border-color:#bcbcbc;box-shadow:0 0 0 3px rgba(255,255,255,.10)}
+.notice{background:#181818;border-color:#4a4a4a}
+.footer{border-color:#2a2a2a}
