@@ -102,7 +102,7 @@
     });
   }
   function rare(e){
-    var m=state.settings.rareRollDisplay;if(m==="Normal"||m==="Minimal")return;
+    var m=state.settings.rareRollDisplay;if(m==="Normal"||m==="Minimal"||m==="Cinematic")return;
     var o=document.createElement("div");o.className="rare-overlay "+String(m).toLowerCase();o.innerHTML='<div class="rare-card"><div class="section-title">RARE ROLL</div><h1>'+esc(e.aura)+'</h1><div>1/'+fmt(e.rarity)+'</div><small>Roll #'+fmt(e.roll)+(e.breakthrough?" • BREAKTHROUGH":"")+(e.bonus?" • BONUS ROLL":"")+'</small><button>Continue</button></div>';o.querySelector("button").onclick=function(){o.remove();};document.body.appendChild(o);
   }
   function wrapRoll(){
