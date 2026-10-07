@@ -1250,11 +1250,14 @@ body{
 .tab{color:#aaa}
 .tab:hover,.tab.active{background:#1a1a1a;border-color:#6f6f6f;color:#fff}
 .roll-btn,.roll-button{
-  border-color:#8a8a8a;
-  background:linear-gradient(180deg,#3a3a3a 0%,#222 48%,#111 100%);
+  border-color:hsl(var(--roll-hue,220) 48% 68%);
+  background:linear-gradient(180deg,
+    hsl(var(--roll-hue,220) 68% 34%) 0%,
+    hsl(var(--roll-hue,220) 62% 23%) 48%,
+    hsl(var(--roll-hue,220) 58% 15%) 100%);
   color:#fff;
 }
-.roll-btn:hover,.roll-button:hover{border-color:#d0d0d0}
+.roll-btn:hover,.roll-button:hover{border-color:hsl(var(--roll-hue,220) 56% 82%)}
 .roll-button::before{background:linear-gradient(90deg,transparent,#fff,transparent)}
 .recent-row,.stat,.aura-card,.inventory-toolbar,.npc-action-grid>div,.quest-preview,
 .quest-ranges span,.shop-card,.recipe-card,.potion-card,.bank-stat,.jester-stat,
