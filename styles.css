@@ -1764,3 +1764,57 @@ button:not(.tab):not(.roll-button):not(.npc-card):not(.recipe-add):not(.recipe-a
   background:linear-gradient(180deg,#515151 0%,#3a3a3a 100%)!important;
   filter:none!important;
 }
+
+
+/* Per-Aura live presentation layer */
+.eq-aura-visual{position:relative;isolation:isolate;overflow:hidden;--eq-speed:5s}
+.eq-aura-visual>.eq-aura-glow{position:absolute;inset:-35%;z-index:-3;pointer-events:none;background:
+ radial-gradient(circle at 50% 52%,color-mix(in srgb,var(--aura-main) 45%,transparent),transparent 18%),
+ radial-gradient(circle at 8% 12%,color-mix(in srgb,var(--aura-a1) 26%,transparent),transparent 26%),
+ radial-gradient(circle at 92% 88%,color-mix(in srgb,var(--aura-a2) 24%,transparent),transparent 30%);
+ filter:blur(18px);opacity:.72;animation:eqAuraGlow var(--eq-speed) ease-in-out infinite alternate}
+.eq-aura-core{position:absolute;left:50%;top:50%;width:46px;height:46px;transform:translate(-50%,-50%) rotate(var(--eq-tilt));border-radius:50%;z-index:-2;pointer-events:none;background:
+ radial-gradient(circle at 35% 30%,#fff9,transparent 17%),
+ radial-gradient(circle,var(--aura-main) 0 28%,var(--aura-a1) 52%,transparent 73%);
+ box-shadow:0 0 18px var(--aura-main),0 0 44px color-mix(in srgb,var(--aura-a1) 55%,transparent);
+ opacity:.22;animation:eqAuraCore var(--eq-speed) ease-in-out infinite alternate}
+.eq-aura-particles{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.eq-aura-particles i{position:absolute;left:calc(6% + (var(--p) * 8.2%));top:calc(18% + ((var(--p) * 17) % 66%));width:calc(3px + ((var(--p) % 3) * 1px));height:calc(3px + ((var(--p) % 3) * 1px));border-radius:50%;background:var(--aura-a1);box-shadow:0 0 7px var(--aura-a1),0 0 14px color-mix(in srgb,var(--aura-main) 55%,transparent);opacity:.14;animation:eqAuraFloat calc(var(--eq-speed) * (.72 + (var(--p) * .035))) ease-in-out infinite;animation-delay:calc(var(--p) * -.31s)}
+.eq-aura-title{position:relative;color:#fff;text-shadow:0 0 10px color-mix(in srgb,var(--aura-main) 35%,transparent),0 1px 0 #000;font-family:inherit}
+.eq-aura-visual .section-title,.eq-aura-visual small,.eq-aura-visual .aura-tags,.eq-aura-visual p,.eq-aura-visual span{position:relative;z-index:1}
+.eq-font-1 .eq-aura-title{font-family:Georgia,"Times New Roman",serif;letter-spacing:.01em}
+.eq-font-2 .eq-aura-title{font-family:"Trebuchet MS",Arial,sans-serif;letter-spacing:.025em}
+.eq-font-3 .eq-aura-title{font-family:"Courier New",monospace;letter-spacing:.04em}
+.eq-font-4 .eq-aura-title{font-family:Impact,"Arial Black",sans-serif;letter-spacing:.015em}
+.eq-font-5 .eq-aura-title{font-family:"Palatino Linotype",Palatino,serif;font-style:italic}
+.eq-font-6 .eq-aura-title{font-family:"Lucida Console",Monaco,monospace;letter-spacing:.03em}
+.eq-font-7 .eq-aura-title{font-family:Verdana,sans-serif;letter-spacing:.02em}
+.eq-font-8 .eq-aura-title{font-family:"Book Antiqua",Palatino,serif;letter-spacing:.015em}
+.eq-font-9 .eq-aura-title{font-family:"Arial Black",Arial,sans-serif;letter-spacing:.025em}
+.eq-font-10 .eq-aura-title{font-family:Garamond,Georgia,serif;font-style:italic}
+.eq-font-11 .eq-aura-title{font-family:"Comic Sans MS","Trebuchet MS",sans-serif;letter-spacing:.01em}
+.eq-font-12 .eq-aura-title{font-family:Tahoma,Arial,sans-serif;letter-spacing:.035em}
+.eq-aura-visual[data-aura-theme="tech"] .eq-aura-particles i,
+.eq-aura-visual[data-aura-theme="glitch"] .eq-aura-particles i{border-radius:1px;transform:rotate(45deg);animation-name:eqAuraPixel}
+.eq-aura-visual[data-aura-theme="frost"] .eq-aura-particles i{border-radius:0;transform:rotate(45deg)}
+.eq-aura-visual[data-aura-theme="fire"] .eq-aura-particles i{width:2px;height:9px;border-radius:60% 40% 60% 40%;animation-name:eqAuraRise}
+.eq-aura-visual[data-aura-theme="aquatic"] .eq-aura-particles i{border:1px solid var(--aura-a1);background:transparent;box-shadow:0 0 7px var(--aura-main)}
+.eq-aura-visual[data-aura-theme="cosmic"] .eq-aura-particles i{width:2px;height:2px;box-shadow:0 0 8px var(--aura-a1),0 0 18px var(--aura-main)}
+.eq-aura-visual[data-aura-theme="shadow"] .eq-aura-particles i{background:var(--aura-main);box-shadow:0 0 8px var(--aura-a2);opacity:.2}
+.eq-aura-visual[data-aura-theme="nature"] .eq-aura-particles i{border-radius:70% 15% 70% 15%;transform:rotate(calc(var(--p) * 23deg))}
+.eq-aura-visual[data-aura-theme="metal"] .eq-aura-particles i{border-radius:2px;transform:rotate(calc(25deg + var(--p) * 17deg))}
+.aura-card.eq-aura-visual{padding:13px;min-height:118px;border-color:color-mix(in srgb,var(--aura-main) 32%,#303030);box-shadow:inset 0 0 24px color-mix(in srgb,var(--aura-main) 6%,transparent),0 0 18px color-mix(in srgb,var(--aura-main) 7%,transparent)}
+.aura-card.eq-aura-visual:hover{border-color:color-mix(in srgb,var(--aura-main) 62%,#707070);transform:translateY(-1px)}
+.recent-row.eq-aura-visual{border-color:color-mix(in srgb,var(--aura-main) 28%,#303030);box-shadow:inset 0 0 18px color-mix(in srgb,var(--aura-main) 5%,transparent)}
+.roll-result.eq-aura-visual{width:min(100%,620px);min-height:150px;padding:24px 26px;border-color:color-mix(in srgb,var(--aura-main) 42%,#383838);background:
+ linear-gradient(145deg,color-mix(in srgb,var(--aura-main) 10%,#151515),#111);
+ box-shadow:0 0 28px color-mix(in srgb,var(--aura-main) 10%,transparent),inset 0 0 32px color-mix(in srgb,var(--aura-a1) 6%,transparent)}
+.roll-result.eq-aura-visual .eq-aura-core{width:88px;height:88px;opacity:.12}
+@keyframes eqAuraGlow{from{transform:scale(.92) rotate(-2deg);opacity:.48}to{transform:scale(1.08) rotate(2deg);opacity:.82}}
+@keyframes eqAuraCore{from{transform:translate(-50%,-50%) rotate(var(--eq-tilt)) scale(.86)}to{transform:translate(-50%,-50%) rotate(calc(var(--eq-tilt) + 18deg)) scale(1.13)}}
+@keyframes eqAuraFloat{0%,100%{transform:translate3d(0,8px,0) scale(.8);opacity:.08}50%{transform:translate3d(calc((var(--p) - 5) * 2px),-10px,0) scale(1.18);opacity:.46}}
+@keyframes eqAuraPixel{0%,100%{transform:translate(0,8px) rotate(45deg) scale(.7);opacity:.08}50%{transform:translate(5px,-9px) rotate(135deg) scale(1.15);opacity:.55}}
+@keyframes eqAuraRise{0%{transform:translateY(10px) scale(.75);opacity:.05}55%{opacity:.5}100%{transform:translateY(-16px) scale(1.06);opacity:.08}}
+@media(prefers-reduced-motion:reduce){.eq-aura-visual>.eq-aura-glow,.eq-aura-core,.eq-aura-particles i{animation:none}}
+.reduced-motion .eq-aura-visual>.eq-aura-glow,.reduced-motion .eq-aura-core,.reduced-motion .eq-aura-particles i{animation:none}
+.performance-mode .eq-aura-particles i{animation-duration:8s;opacity:.1}
