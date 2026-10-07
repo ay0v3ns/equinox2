@@ -59,18 +59,45 @@
     h+=sec("Account",'<div class="setting-row"><div><b>Username</b><small>'+esc(a.username||"Player")+'</small></div></div><div class="setting-row"><div><b>Email</b><small>'+esc(a.email||"")+'</small></div></div><div class="setting-row"><div><b>Achievement Titles</b><small>Manage equipped Achievement Titles.</small></div><button class="setting-action" onclick="tab(\'Achievements\')">Manage</button></div><div class="setting-row"><div><b>Session</b><small>Sign out of this account.</small></div><button class="setting-action" onclick="equinoxLogout()">Sign Out</button></div>');
     return h+"</div></div>";
   };
-  function db(){return new Promise(function(ok,no){var q=indexedDB.open("equinox-history-v1",1);q.onupgradeneeded=function(){if(!q.result.objectStoreNames.contains("rolls"))q.result.createObjectStore("rolls",{keyPath:"key"});};q.onsuccess=function(){ok(q.result);};q.onerror=function(){no(q.error);};});}
+  function db(){return new Promise(function(ok,no){var q=indexedDB.open("equinox-history-v1",2);q.onupgradeneeded=function(){
+  var db=q.result,store;
+  if(!db.objectStoreNames.contains("rolls")) store=db.createObjectStore("rolls",{keyPath:"key"});
+  else store=q.transaction.objectStore("rolls");
+  if(!store.indexNames.contains("roll")) store.createIndex("roll","roll",{unique:false});
+};q.onsuccess=function(){ok(q.result);};q.onerror=function(){no(q.error);};});}
   function record(e){if(!state.settings.rollHistory)return;db().then(function(x){var tx=x.transaction("rolls","readwrite");tx.objectStore("rolls").put(e);});}
   window.__phase5HistoryOpen=false;window.phase5HistorySearch="";
   window.phase5OpenHistory=function(){window.__phase5HistoryOpen=true;render();};
   window.phase5HistoryClear=function(){window.phase5HistorySearch="";render();};
+  window.equinoxHistoryPlayCutscene=function(btn){
+    try{
+      var aura=String(btn&&btn.getAttribute("data-aura")||"").trim(),roll=Number(btn&&btn.getAttribute("data-roll")||0);
+      if(!aura)return;
+      var launch=function(){if(window.equinoxPreviewCutscene)window.equinoxPreviewCutscene(aura);else if(typeof toast==="function")toast("Aura cutscene system is still loading.");};
+      var open=indexedDB.open("equinox-history-v1",2);
+      open.onsuccess=function(){
+        try{
+          var db=open.result,st=db.transaction("rolls","readonly").objectStore("rolls"),q=st.get(String(roll));
+          q.onsuccess=function(){
+            var rec=q.result;
+            if(rec&&(rec.skipped||rec.accepted===false||rec.pendingStorage||rec.rerolled)){if(typeof toast==="function")toast("This roll has no replayable Aura cutscene.");return;}
+            launch();
+          };
+          q.onerror=launch;
+        }catch(_){launch();}
+      };
+      open.onerror=launch;
+    }catch(_){if(window.equinoxPreviewCutscene)window.equinoxPreviewCutscene(aura);}
+  };
+
   function history(){
-    return db().then(function(x){return new Promise(function(ok){var a=[],tx=x.transaction("rolls","readonly"),q=tx.objectStore("rolls").openCursor(null,"prev");q.onsuccess=function(){var c=q.result;if(!c||a.length>=1000000){ok(a);return;}a.push(c.value);c.continue();};});}).catch(function(){return [];});
+    return db().then(function(x){return new Promise(function(ok){var a=[],tx=x.transaction("rolls","readonly"),st=tx.objectStore("rolls"),q=(st.indexNames.contains("roll")?st.index("roll").openCursor(null,"prev"):st.openCursor(null,"prev"));q.onsuccess=function(){var c=q.result;if(!c||a.length>=1000000){ok(a);return;}a.push(c.value);c.continue();};});}).catch(function(){return [];});
   }
   function historyView(){
     return history().then(function(rows){
       var q=String(window.phase5HistorySearch||"").toLowerCase(),f=rows.filter(function(x){return !q||String(x.roll).indexOf(q)>=0||String(x.rarity).indexOf(q)>=0||String(x.aura||"").toLowerCase().indexOf(q)>=0;});
-      var list=f.slice(0,100).map(function(x){var aura=String(x.aura||"None"),d=window.getAuraCutsceneProfile&&window.getAuraCutsceneProfile(aura),replayable=!!d&&d.cutsceneType!=="None"&&Number(d.cutsceneDuration||0)>0&&!x.skipped&&x.accepted!==false&&!x.pendingStorage&&!x.rerolled;var replay=replayable?'<button class="eq-view-cutscene" data-aura="'+esc(aura)+'" onclick="window.equinoxHistoryPlayCutscene(this)">View Cutscene</button>':'';return '<div class="history-row"><b>#'+fmt(x.roll)+'</b><span>'+esc(aura)+'</span>'+replay+'<span>1/'+fmt(x.rarity||0)+'</span><span>Luck '+fmt(x.luck||1)+'</span><span>Speed '+fmt(x.speed||1)+'</span><span>'+esc(x.biome||"Normal")+'</span><span>'+esc(x.time||"Day")+'</span><span>'+(x.breakthrough?"BREAKTHROUGH ":"")+(x.bonus?"BONUS":"")+'</span></div>';}).join("");
+      var list=f.slice(0,100).map(function(x){var aura=String(x.aura||"None"),d=window.getAuraCutsceneProfile&&window.getAuraCutsceneProfile(aura),replayable=!!d&&d.cutsceneType!=="None"&&Number(d.cutsceneDuration||0)>0&&!x.skipped&&x.accepted!==false&&!x.pendingStorage&&!x.rerolled;var replay=replayable?'<button class="eq-view-cutscene" data-aura="'+esc(aura)+'" data-roll="'+fmt(x.roll||0)+'" onclick="window.equinoxHistoryPlayCutscene(this)">View Cutscene</button>':'';return '<div class="history-row"><b>#'+fmt(x.roll)+'</b><span>'+esc(aura)+'</span>'+replay+'<span>1/'+fmt(x.rarity||0)+'</span><span>Luck '+fmt(x.luck||1)+'</span><span>Speed '+fmt(x.speed||1)+'</span><span>'+esc(x.biome||"Normal")+'</span><span>'+esc(x.time||"Day")+'</span><span>'+(x.breakthrough?"BREAKTHROUGH ":"")+(x.bonus?"BONUS":"")+'</span></div>';}).join("");
+
       return '<div class="history-page"><div class="panel"><button class="back-btn" onclick="window.__phase5HistoryOpen=false;render()">← Back</button><div class="section-title">Data · Roll History</div><h1>Roll History</h1><p class="muted">Newest entries first. Up to 1,000,000 rolls are retained.</p><div class="history-search"><input value="'+esc(q)+'" placeholder="Search roll number, rarity, or Aura…" oninput="phase5HistorySearch=this.value;clearTimeout(window.__eq5t);window.__eq5t=setTimeout(render,150)"><button onclick="phase5HistoryClear()">Clear</button></div><div class="history-list">'+(list||'<div class="empty">No stored rolls match this search.</div>')+'</div></div></div>';
     });
   }
