@@ -1309,3 +1309,209 @@ body{
 .auth-card input:focus{border-color:#bcbcbc;box-shadow:0 0 0 3px rgba(255,255,255,.10)}
 .notice{background:#181818;border-color:#4a4a4a}
 .footer{border-color:#2a2a2a}
+
+
+/* Action color system — buttons communicate their action without the old blue accent. */
+:root{
+  --action-green:#2f8f57;
+  --action-green-bg:#14291d;
+  --action-green-hover:#3eaa6a;
+  --action-red:#a33f4c;
+  --action-red-bg:#2b1418;
+  --action-red-hover:#c4515d;
+  --action-yellow:#b58a2a;
+  --action-yellow-bg:#2b2412;
+  --action-yellow-hover:#d4aa45;
+  --action-purple:#7d5ab8;
+  --action-purple-bg:#21182f;
+  --action-purple-hover:#9a72dc;
+  --action-cyan:#3c8794;
+  --action-cyan-bg:#13272b;
+  --action-cyan-hover:#58a6b4;
+  --action-orange:#a5672f;
+  --action-orange-bg:#2a1b11;
+  --action-orange-hover:#c7813b;
+  --action-neutral:#6b6b6b;
+  --action-neutral-bg:#171717;
+  --action-neutral-hover:#8b8b8b;
+}
+
+/* Recipe actions */
+.recipe-card .recipe-add{
+  border-color:var(--action-green)!important;
+  background:linear-gradient(180deg,#1f5f3b 0%,var(--action-green-bg) 100%)!important;
+  color:#dff6e6!important;
+}
+.recipe-card .recipe-add:hover:not(:disabled){
+  border-color:var(--action-green-hover)!important;
+  background:var(--action-green)!important;
+  color:#fff!important;
+}
+.recipe-card .recipe-craft{
+  border-color:var(--action-yellow)!important;
+  background:linear-gradient(180deg,#6f571b 0%,var(--action-yellow-bg) 100%)!important;
+  color:#fff0bd!important;
+}
+.recipe-card .recipe-craft:hover:not(:disabled){
+  border-color:var(--action-yellow-hover)!important;
+  background:var(--action-yellow)!important;
+  color:#fff!important;
+}
+.recipe-card .recipe-auto{
+  border-color:var(--action-purple)!important;
+  background:linear-gradient(180deg,#4d3672 0%,var(--action-purple-bg) 100%)!important;
+  color:#eadfff!important;
+}
+.recipe-card .recipe-auto:hover:not(:disabled),
+.recipe-card .recipe-auto.active{
+  border-color:var(--action-purple-hover)!important;
+  background:var(--action-purple)!important;
+  color:#fff!important;
+}
+
+/* Inventory actions */
+.aura-actions button[onclick*="discardAura"],
+.inventory-item-actions button[onclick*="discardAura"]{
+  border-color:var(--action-red)!important;
+  background:linear-gradient(180deg,#5d2530 0%,var(--action-red-bg) 100%)!important;
+  color:#ffdfe3!important;
+}
+.aura-actions button[onclick*="discardAura"]:hover,
+.inventory-item-actions button[onclick*="discardAura"]:hover{
+  border-color:var(--action-red-hover)!important;
+  background:var(--action-red)!important;
+  color:#fff!important;
+}
+.aura-actions button[onclick*="toggleFavorite"]{
+  border-color:var(--action-yellow)!important;
+  background:linear-gradient(180deg,#6b541c 0%,var(--action-yellow-bg) 100%)!important;
+  color:#ffefbd!important;
+}
+.aura-actions button[onclick*="toggleFavorite"]:hover{
+  border-color:var(--action-yellow-hover)!important;
+  background:var(--action-yellow)!important;
+  color:#fff!important;
+}
+.aura-actions button[onclick*="equipAura"],
+.inventory-item-actions button[onclick*="equipGear"]{
+  border-color:var(--action-cyan)!important;
+  background:linear-gradient(180deg,#245863 0%,var(--action-cyan-bg) 100%)!important;
+  color:#dcf7fb!important;
+}
+.aura-actions button[onclick*="equipAura"]:hover,
+.inventory-item-actions button[onclick*="equipGear"]:hover{
+  border-color:var(--action-cyan-hover)!important;
+  background:var(--action-cyan)!important;
+  color:#fff!important;
+}
+.inventory-item-actions button[onclick*="usePotion"],
+.inventory-item-actions button[onclick*="useCompass"],
+.inventory-item-actions button[onclick*="useBiomeTool"]{
+  border-color:var(--action-purple)!important;
+  background:linear-gradient(180deg,#4d3672 0%,var(--action-purple-bg) 100%)!important;
+  color:#eadfff!important;
+}
+.inventory-item-actions button[onclick*="usePotion"]:hover,
+.inventory-item-actions button[onclick*="useCompass"]:hover,
+.inventory-item-actions button[onclick*="useBiomeTool"]:hover{
+  border-color:var(--action-purple-hover)!important;
+  background:var(--action-purple)!important;
+  color:#fff!important;
+}
+
+/* Economy / NPC actions */
+.shop-card button[onclick*="buyShopItem"]{
+  border-color:var(--action-green)!important;
+  background:linear-gradient(180deg,#1f5f3b 0%,var(--action-green-bg) 100%)!important;
+  color:#dff6e6!important;
+}
+.shop-card button[onclick*="buyShopItem"]:hover:not(:disabled){
+  border-color:var(--action-green-hover)!important;
+  background:var(--action-green)!important;
+  color:#fff!important;
+}
+.bank-actions button[onclick*="bankDeposit"]{
+  border-color:var(--action-green)!important;
+  background:linear-gradient(180deg,#1f5f3b 0%,var(--action-green-bg) 100%)!important;
+  color:#dff6e6!important;
+}
+.bank-actions button[onclick*="bankDeposit"]:hover{
+  border-color:var(--action-green-hover)!important;
+  background:var(--action-green)!important;
+  color:#fff!important;
+}
+.bank-actions button[onclick*="bankWithdraw"]{
+  border-color:var(--action-orange)!important;
+  background:linear-gradient(180deg,#6a431f 0%,var(--action-orange-bg) 100%)!important;
+  color:#ffe4ca!important;
+}
+.bank-actions button[onclick*="bankWithdraw"]:hover{
+  border-color:var(--action-orange-hover)!important;
+  background:var(--action-orange)!important;
+  color:#fff!important;
+}
+.system-head button[onclick*="bankUpgrade"]{
+  border-color:var(--action-yellow)!important;
+  background:linear-gradient(180deg,#6f571b 0%,var(--action-yellow-bg) 100%)!important;
+  color:#fff0bd!important;
+}
+.system-head button[onclick*="bankUpgrade"]:hover{
+  border-color:var(--action-yellow-hover)!important;
+  background:var(--action-yellow)!important;
+  color:#fff!important;
+}
+.npc-system button[onclick*="enhancePotion"]{
+  border-color:var(--action-purple)!important;
+  background:linear-gradient(180deg,#4d3672 0%,var(--action-purple-bg) 100%)!important;
+  color:#eadfff!important;
+}
+.npc-system button[onclick*="enhancePotion"]:hover{
+  border-color:var(--action-purple-hover)!important;
+  background:var(--action-purple)!important;
+  color:#fff!important;
+}
+.npc-system button[onclick*="jesterGamble"]{
+  border-color:var(--action-orange)!important;
+  background:linear-gradient(180deg,#6a431f 0%,var(--action-orange-bg) 100%)!important;
+  color:#ffe4ca!important;
+}
+.npc-system button[onclick*="jesterGamble"]:hover{
+  border-color:var(--action-orange-hover)!important;
+  background:var(--action-orange)!important;
+  color:#fff!important;
+}
+
+/* Keep navigation / utility controls neutral rather than blue. */
+.back-btn,
+.system-head button:not([onclick*="bankUpgrade"]),
+.npc-system button[onclick*="npcTab"],
+.history-search button,
+.setting-action,
+.rare-card button{
+  border-color:var(--action-neutral)!important;
+  background:linear-gradient(180deg,#252525 0%,var(--action-neutral-bg) 100%)!important;
+  color:#f2f2f2!important;
+}
+.back-btn:hover,
+.system-head button:not([onclick*="bankUpgrade"]):hover,
+.npc-system button[onclick*="npcTab"]:hover,
+.history-search button:hover,
+.setting-action:hover,
+.rare-card button:hover{
+  border-color:var(--action-neutral-hover)!important;
+  background:#2b2b2b!important;
+}
+
+/* Storage decisions */
+.storage-keep{
+  border-color:var(--action-green)!important;
+  background:linear-gradient(180deg,#1f5f3b 0%,var(--action-green-bg) 100%)!important;
+  color:#dff6e6!important;
+}
+.storage-skip{
+  border-color:var(--action-red)!important;
+  background:linear-gradient(180deg,#5d2530 0%,var(--action-red-bg) 100%)!important;
+  color:#ffdfe3!important;
+}
+.storage-keep:hover{border-color:var(--action-green-hover)!important;background:var(--action-green)!important}
+.storage-skip:hover{border-color:var(--action-red-hover)!important;background:var(--action-red)!important}
