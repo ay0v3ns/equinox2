@@ -62,10 +62,10 @@ function isPotionExclusiveAura(a){
 const ROLL_AURAS=AURAS.filter(function(a){return !a.crafted&&!isPotionExclusiveAura(a);}).sort(function(a,b){return Number(b.rarity||0)-Number(a.rarity||0);});
 
 const defaults={
- rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
+ rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,bankTier:1,bankBalance:0,bankLastTick:0,dailyQP:0,qpDayKey:'',biome:'Normal',
  dimension:'Isles of Luck',dayNight:'Day',activeTab:'Roll',auraCapacity:20,
  recent:[],lastRollResult:null,auras:[],inventory:{},spawns:[],lastSpawn:0,pendingRollPotions:[],rollCooldownUntil:0,pendingStorageDecision:null,compassUsesRemaining:0,biomeToolCooldowns:{},potionRollModifiers:{luckMultiplier:1,luckBonus:0,speedBonus:0,nextLuckBonus:0},curses:{},gearSpecials:{engineCharges:0,engineChargePending:false,monoSurgeCharges:0,monoSurgeStacks:0,weatherCharges:0,equilibriumLuckPending:false,equilibriumSpeedRolls:0,equilibriumNext:'luck',pendingGearBonusMultiplier:0},
- automation:'none',recipeProgress:{},autoAddRecipe:null,equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,confirmCrafting:true,confirmPotionCrafting:true,reducedMotion:false,performanceMode:true,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
+ automation:'none',recipeProgress:{},autoAddRecipe:null,equippedAuraId:null,gearCapacity:2,gearsEquipped:[],npcTab:'home',tutorial:{phase:1,rolls:0,firstPotionGiven:false,part2:{glove:false,haste:false,quest:false}},activePotions:[],autoRoll:false,globalChat:[],tutorialSkipped:false,globalRank:'Unranked',settings:{notifications:true,confirmAuraRemoval:true,rollConfirmation:false,potionConfirmation:true,craftingConfirmation:true,confirmPotionCrafting:true,confirmShopPurchase:true,reducedMotion:false,performanceMode:true,autoSave:true,tabPosition:'left'},achievements:{unlocked:[],lore:[],activeSubtab:'Auras',equippedTitle:null,stats:{gearCrafted:0,gearNames:[],potionsCrafted:0,potionsUsed:0,potionEnhancements:0,curseReceived:0,curseStacks:0,itemsFound:0,rareItemsFound:0,questsCompleted:0,qpEarned:0,fullQuestSets:0,consecutiveFullQuestSets:0,qpDays:0,consecutiveQpDays:0,coinsEarned:0,biomesSeen:[],hoursByBiome:{},firstRoll:false,breakthrough:false,breakthroughBiomes:[],specialDiscoveries:{}}}
 };
 let state=normalizeState(load()); window.state=state; bankTick();
 if(state.recoveredIncompleteSave||state.recoveredInterruptedRoll){
@@ -84,6 +84,8 @@ function normalizeState(s,recoverInterrupted=true){
  s.speed=Math.max(0.01,Number(s.speed||1));s.biomeStartedAt=Number(s.biomeStartedAt||0);if(!s.biomeStartedAt)s.biomeStartedAt=Date.now();s.dayNightStartedAt=Number(s.dayNightStartedAt||0);if(!s.dayNightStartedAt)s.dayNightStartedAt=Date.now();
  s.auraCapacity=Math.max(1,Number(s.auraCapacity||20)); s.compassUsesRemaining=Math.max(0,Math.min(6,Number(s.compassUsesRemaining||0))); s.biomeToolCooldowns=(s.biomeToolCooldowns&&typeof s.biomeToolCooldowns==='object'&&!Array.isArray(s.biomeToolCooldowns))?s.biomeToolCooldowns:{};
  s.inventory=(s.inventory&&typeof s.inventory==='object'&&!Array.isArray(s.inventory))?s.inventory:{};
+  Object.keys(s.inventory).forEach(function(k){const v=Number(s.inventory[k]);s.inventory[k]=Number.isFinite(v)?Math.max(0,Math.floor(v)):0;});
+  s.bankTier=Math.max(1,Math.min(12,Math.floor(Number(s.bankTier||1))));s.bankBalance=Math.max(0,Number.isFinite(Number(s.bankBalance))?Number(s.bankBalance):0);s.bankLastTick=Math.max(0,Number(s.bankLastTick||0));s.dailyQP=Math.max(0,Math.floor(Number(s.dailyQP||0)));s.qpDayKey=typeof s.qpDayKey==='string'?s.qpDayKey:'';
  if(Number(s.inventory.Quartz||0)>0){
    s.inventory['Foggy Quartz']=(Number(s.inventory['Foggy Quartz']||0)+Number(s.inventory.Quartz||0));
    delete s.inventory.Quartz;
@@ -309,7 +311,7 @@ function potionSpeed(){
  }
  const paradox=potionParadoxCompensation();total+=paradox.speed;return total+Number(state.potionRollModifiers?.speedBonus||0);
 }
-function totalLuckBase(){return ((1+state.basicLuck+gearLuck())+state.specialLuck+potionLuck())*state.finalMultiplier}
+function totalLuckBase(){finalizeDailyQP();return ((1+state.basicLuck+gearLuck())+state.specialLuck+potionLuck())*Math.max(0.000001,Number(state.finalMultiplier||1))}
 function totalLuck(){return totalLuckBase()*gearFinalLuckMultiplier()}
 function totalSpeed(){return Math.max(0.01,state.speed*(1+gearSpeed()+potionSpeed()))}
 function rollTimeSeconds(){
@@ -359,7 +361,6 @@ function achievementItemCollected(name){
 function achievementPotionUsed(name){
  const st=achievementState().stats;st.potionsUsed=(st.potionsUsed||0)+1;st.potionNames=st.potionNames||[];if(!st.potionNames.includes(name))st.potionNames.push(name);
  if(/forbidden/i.test(name))st.forbiddenPotion=true;if(/red moon/i.test(name))st.redMoonPotion=true;if(/^Oblivion Potion/i.test(name))st.oblivionPotion=true;
- if(/curse/i.test(name)){st.curseReceived=(st.curseReceived||0)+1;st.curseStacks=(st.curseStacks||0)+1}
 }
 function achievementPotionEnhanced(success){if(!success)return;const st=achievementState().stats;st.potionEnhancements=(st.potionEnhancements||0)+1}
 function achievementCheck(){checkAchievements();save()}
@@ -415,7 +416,7 @@ function checkAchievements(){
  if(ACHIEVEMENTS.filter(x=>x.id!=='D14').every(x=>s.unlocked.includes(x.id)))changed=unlockAchievement('D14')||changed;
  if(changed)localStorage.setItem(KEY,JSON.stringify(state));return changed
 }
-function equipAchievementTitle(id){const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a||!achievementUnlocked(id))return;const s=achievementState();s.equippedTitle=s.equippedTitle===a.title?null:a.title;localStorage.setItem(KEY,JSON.stringify(state));render()}
+function equipAchievementTitle(id){const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a||!achievementUnlocked(id))return;const s=achievementState();s.equippedTitle=s.equippedTitle===a.title?null:a.title;save();render()}
 function achievementTab(name){try{const s=achievementState();s.activeSubtab=name;if(name==='Lore')s.stats.d02=true;checkAchievements();save();render()}catch(err){console.warn('Achievement tab failed:',err);if(typeof render==='function')render()}}
 function achievementsView(){checkAchievements();const s=achievementState(),cat=s.activeSubtab||'Auras';const tabs=['Auras','Biomes','Gear','Potions','Items','Quests','Progression','Discoveries','Lore'];if(cat==='Lore'){const visible=(s.lore||[]).map(id=>LORE_ENTRIES.find(x=>x.id===id)).filter(Boolean);return '<div class="ach-page"><div class="panel ach-hero"><div class="section-title">Achievements · Lore</div><h1>What Equinox Leaves Behind</h1><p class="muted">Lore is discovered through achievements. Nothing is revealed until you find it.</p></div><div class="ach-tabs">'+tabs.map(t=>'<button class="'+(t===cat?'active':'')+'" onclick="achievementTab(\''+t+'\')">'+t+'</button>').join('')+'</div><div class="lore-grid">'+(visible.length?visible.map(x=>'<article class="panel lore-card"><div class="section-title">'+x.id+'</div><h2>'+x.title+'</h2><p>'+x.text.replace(/\n/g,'<br>')+'</p></article>').join(''):'<div class="panel empty">No Lore discovered yet.</div>')+'</div></div>'}
 const list=ACHIEVEMENTS.filter(a=>a.category===cat);return '<div class="ach-page"><div class="panel ach-hero"><div class="section-title">Achievements</div><h1>'+cat+'</h1><p class="muted">'+s.unlocked.length+' / '+ACHIEVEMENTS.length+' unlocked · Achievement Titles become equippable when earned.</p></div><div class="ach-tabs">'+tabs.map(t=>'<button class="'+(t===cat?'active':'')+'" onclick="achievementTab(\''+t+'\')">'+t+'</button>').join('')+'</div><div class="achievement-grid">'+list.map(a=>{const u=s.unlocked.includes(a.id);return '<article class="achievement-card '+(u?'unlocked':'locked')+'"><div class="ach-top"><span class="ach-id">'+a.id+'</span><span class="ach-state">'+(u?'UNLOCKED':'LOCKED')+'</span></div><h2>'+(a.hidden&&!u?'???':a.title)+'</h2><p>'+(a.hidden&&!u?'????????????????':a.requirement)+'</p>'+(u?'<button onclick="equipAchievementTitle(\''+a.id+'\')">'+(s.equippedTitle===a.title?'Unequip Title':'Equip ['+a.title+']')+'</button>':'')+'</article>'}).join('')+'</div></div>'}
@@ -1049,7 +1050,7 @@ function mariView(){return `<div class="npc-system"><div class="system-head"><bu
 function toggleSetting(key){
  if(!state.settings)state.settings=Object.assign({},defaults.settings);
  state.settings[key]=!state.settings[key];
- localStorage.setItem(KEY,JSON.stringify(state));render();
+ save();render();
 }
 function resetProgress(){
  if(!confirm('Reset all Equinox progress on this browser? This cannot be undone.'))return;
@@ -1166,6 +1167,8 @@ GEAR_CATALOG=Object.fromEntries(Object.entries(WORKSHOP_RECIPES).filter(function
 
 JESTER_REWARD_TABLE=[["Lucky Potion",180,0.2],["Speed Potion",175,0.2],["Fortune Potion I",120,0.3],["Haste Potion I",120,0.3],["Fortune Potion II",100,0.35],["Haste Potion II",100,0.35],["Fortune Potion III",90,0.4],["Haste Potion III",90,0.4],["Fortune Potion IV",75,0.45],["Haste Potion IV",75,0.45],["Fortune Potion V",60,0.55],["Haste Potion V",60,0.55],["Fortune Potion VI",45,0.7],["Haste Potion VI",45,0.7],["Jewelry Potion",45,0.75],["Zombie Potion",40,0.8],["Rage Potion",60,0.5],["Diver Potion",50,0.55],["Godly Potion — Zeus",32,1],["Godly Potion — Poseidon",32,1],["Godly Potion — Hades",25,1.1],["Forbidden Potion I",22,1.15],["Forbidden Potion II",18,1.35],["Forbidden Potion III",14,1.6],["Warp Potion",12,1.8],["Momentum Potion",18,1.15],["Fate Potion",14,1.35],["Gambler's Potion",12,1.55],["Frenzy Potion",8,1.8],["Greed Potion I",10,1.3],["Greed Potion II",7,1.6],["Greed Potion III",5,1.9],["Greed Potion IV",3.5,2.2],["Desperation Potion",8,1.45],["Unstable Potion",7,1.65],["Berserker Potion",9,1.5],["Second Chance Potion",5,2],["Echo Potion",7,1.55],["Chain Potion",6,1.65],["Reverse Potion I",10,1.4],["Reverse Potion II",7,1.75],["Reverse Potion III",4.5,2.1],["Overflow Potion I",8,1.5],["Overflow Potion II",5,1.9],["Overflow Potion III",3.2,2.3],["Paradox Potion",4,2.2],["Fortune's Curse",5,1.8],["Echo of Fortune",4,2],["Acceleration Potion",8,1.45],["Chain Reaction Potion",2.5,2.5],["Fortune-Haste Potion",20,0.95],["Overclock Potion",13,1.3],["Potion of Bound",0.8,2.8],["Heavenly Potion I",0.4,3.5],["Heavenly Potion II",0.2,4],["Godlike Potion",0.1,4.5],["Oblivion Potion",0.04,5],["Red Moon Potion I",0.03,5.2],["Red Moon Potion II",0.02,5.5],["Biomebound Potion — Windy",5,1.2],["Biomebound Potion — Snowy",4.5,1.25],["Biomebound Potion — Rainy",4.2,1.3],["Biomebound Potion — Sandstorm",3.8,1.4],["Biomebound Potion — Hell",3.4,1.5],["Biomebound Potion — Heaven",3,1.6],["Biomebound Potion — Corruption",2.6,1.75],["Biomebound Potion — Null",2,1.9],["Biomebound Potion — Dreamspace",1.2,2.2],["Biomebound Potion — Crimson Moon",0.6,2.8],["Biomebound Potion — Glitched",0.3,3.2]];
 function hourKey(){return Math.floor(Date.now()/3600000)}
+function localDayKey(ts){const d=new Date(ts||Date.now());return String(d.getFullYear())+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function finalizeDailyQP(){const day=localDayKey();if(!state.qpDayKey){state.qpDayKey=day;return false}if(state.qpDayKey===day)return false;const earned=Math.max(0,Math.floor(Number(state.dailyQP||0)));state.finalMultiplier=1+(earned*0.01);state.dailyQP=0;state.qpDayKey=day;const ast=achievementState().stats;ast.qpDays=(ast.qpDays||0)+1;return true}
 function seededRandom(seed){let x=Math.sin(seed)*10000;return x-Math.floor(x)}
 function activeQuestBoard(){return typeof window.questBoard==='function'&&window.questBoard!==questBoard?window.questBoard():questBoard()}
 function questBoard(){
