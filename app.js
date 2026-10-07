@@ -126,6 +126,11 @@ function normalizeState(s,recoverInterrupted=true){
  s.automation=s.settings.autoSkipAuras.length?'skip':(s.settings.autoEquipAuras.length?'equip':'none');
  s.achievements=Object.assign({},defaults.achievements,s.achievements||{});
  s.achievements.stats=Object.assign({},defaults.achievements.stats,s.achievements.stats||{});
+ if(Array.isArray(s.achievements.stats.groundItems)&&s.achievements.stats.groundItems.includes('Quartz')){
+   s.achievements.stats.groundItems=s.achievements.stats.groundItems.map(function(x){return x==='Quartz'?'Foggy Quartz':x;});
+ }
+ s.achievements.stats.allGroundItems=false;
+ s.achievements.stats=Object.assign({},defaults.achievements.stats,s.achievements.stats||{});
  const hasInventory=Object.values(s.inventory).some(v=>Number(v||0)>0);
  const impossibleRollState=s.rolls>0&&s.auras.length===0&&s.recent.length===0&&!s.lastRollResult&&!hasInventory;
  if(impossibleRollState){
