@@ -1781,7 +1781,7 @@ button:not(.tab):not(.roll-button):not(.npc-card):not(.recipe-add):not(.recipe-a
 .eq-aura-particles{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
 .eq-aura-particles i{position:absolute;left:calc(6% + (var(--p) * 8.2%));top:calc(18% + ((var(--p) * 17) % 66%));width:calc(3px + ((var(--p) % 3) * 1px));height:calc(3px + ((var(--p) % 3) * 1px));border-radius:50%;background:var(--aura-a1);box-shadow:0 0 7px var(--aura-a1),0 0 14px color-mix(in srgb,var(--aura-main) 55%,transparent);opacity:.14;animation:eqAuraFloat calc(var(--eq-speed) * (.72 + (var(--p) * .035))) ease-in-out infinite;animation-delay:calc(var(--p) * -.31s)}
 .eq-aura-title{position:relative;color:#fff;text-shadow:0 0 10px color-mix(in srgb,var(--aura-main) 35%,transparent),0 1px 0 #000;font-family:inherit}
-.eq-aura-visual .section-title,.eq-aura-visual small,.eq-aura-visual .aura-tags,.eq-aura-visual p,.eq-aura-visual span{position:relative;z-index:1}
+.eq-aura-visual .section-title,.eq-aura-visual small,.eq-aura-visual .aura-tags,.eq-aura-visual p,.eq-aura-visual .eq-aura-title{position:relative;z-index:1}
 .eq-font-1 .eq-aura-title{font-family:Georgia,"Times New Roman",serif;letter-spacing:.01em}
 .eq-font-2 .eq-aura-title{font-family:"Trebuchet MS",Arial,sans-serif;letter-spacing:.025em}
 .eq-font-3 .eq-aura-title{font-family:"Courier New",monospace;letter-spacing:.04em}
