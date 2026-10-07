@@ -1,7 +1,7 @@
 /* Equinox Phase 5 */
 (function(){
   var D={
-    autoRoll:false,autoEquip:false,autoSkip:false,rollConfirmation:false,potionConfirmation:true,craftingConfirmation:true,confirmShopPurchase:true,rollResultBehavior:"Full",
+    autoEquip:false,autoSkip:false,rollConfirmation:false,potionConfirmation:true,craftingConfirmation:true,confirmShopPurchase:true,rollResultBehavior:"Full",
     auraNames:true,auraRarities:true,rollEffects:"Full",auraAnimations:"Full",biomeEffects:"Full",weatherEffects:"Full",damageScreenEffects:"Full",rareRollDisplay:"Enhanced",biomeTransitionEffects:"Full",
     notifications:true,notifyCrafting:true,notifyAuras:true,notifyBreakthroughs:true,notifyGlobalPlacement:true,notifyBiome:true,notifyDayNight:true,notifyWarnings:true,notifyQuests:true,notifyItems:true,notifyJester:true,notifyBank:true,notifyPotionExpiration:true,notifyShop:true,
     masterVolume:70,musicVolume:60,sfxVolume:80,uiVolume:80,muted:false,compactInterface:false,showClock:true,showRecentRolls:true,showRightPanel:true,
