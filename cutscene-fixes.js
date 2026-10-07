@@ -1,7 +1,7 @@
 /* Equinox cinematic history fixes v1.0.1 */
 (function(){
 'use strict';
-function db(){return new Promise(function(ok,no){var q=indexedDB.open('equinox-history-v1',1);q.onsuccess=function(){ok(q.result)};q.onerror=function(){no(q.error)}})}
+function db(){return new Promise(function(ok,no){var q=indexedDB.open('equinox-history-v1',2);q.onsuccess=function(){ok(q.result)};q.onerror=function(){no(q.error)}})}
 function getRoll(n){return db().then(function(x){return new Promise(function(ok){var q=x.transaction('rolls','readonly').objectStore('rolls').get(String(n));q.onsuccess=function(){ok(q.result||null)};q.onerror=function(){ok(null)}})}).catch(function(){return null})}
 function putMeta(r,m){return db().then(function(x){return new Promise(function(ok){var st=x.transaction('rolls','readwrite').objectStore('rolls'),q=st.get(String(r.roll||''));q.onsuccess=function(){var v=q.result||Object.assign({},r);Object.assign(v,m);st.put(v);ok()};q.onerror=function(){ok()}})}).catch(function(){})}
 function decorate(){
