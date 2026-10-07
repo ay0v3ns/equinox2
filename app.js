@@ -59,7 +59,7 @@ function isPotionExclusiveAura(a){
   const text=(String(a.condition||'')+' '+String(a.nativeBiome||'')).toLowerCase();
   return !!a.exclusive || /exclusive[^.]{0,120}potion|potion[^.]{0,120}(exclusive|effect|outcome)|fixed rarity[^.]{0,120}potion|from [^.]{0,80}potion/i.test(text);
 }
-const ROLL_AURAS=AURAS.filter(function(a){return !a.crafted&&!isPotionExclusiveAura(a);});
+const ROLL_AURAS=AURAS.filter(function(a){return !a.crafted&&!isPotionExclusiveAura(a);}).sort(function(a,b){return Number(b.rarity||0)-Number(a.rarity||0);});
 
 const defaults={
  rolls:0,basicLuck:0,specialLuck:0,finalMultiplier:1,speed:1,biome:'Normal',
@@ -564,6 +564,50 @@ function resolveStorageDecision(action){
  return true;
 }
 
+function auraContextBiomeTokens(a){
+ const raw=String(a&&a.nativeBiome||'').trim();
+ if(!raw)return [];
+ return raw.split(/\s+or\s+/i).map(function(x){return String(x).trim().replace(/^the\s+/i,'').replace(/\s+biome$/i,'')}).filter(Boolean);
+}
+function auraNativeContextMatches(a){
+ const tokens=auraContextBiomeTokens(a);
+ if(!tokens.length)return false;
+ const biome=String(state.biome||'Normal');
+ return tokens.some(function(t){
+   if(/^limbo$/i.test(t))return state.dimension==='Limbo';
+   return t.toLowerCase()===biome.toLowerCase();
+ });
+}
+function auraRarityForContext(a){
+ let rarity=Number(a&&a.rarity||0);
+ const condition=String(a&&a.condition||'');
+ const insidePattern=/1\s+in\s+([0-9,]+)\s+inside\s+([^.;]+)/ig;
+ let match;
+ while((match=insidePattern.exec(condition))){
+   const value=Number(String(match[1]).replace(/,/g,''));
+   const contexts=String(match[2]).split(/\s+or\s+/i).map(function(x){return x.trim().replace(/^the\s+/i,'').replace(/\s+biome$/i,'');});
+   const applies=contexts.some(function(ctx){
+     if(/^limbo$/i.test(ctx))return state.dimension==='Limbo';
+     return ctx.toLowerCase()===String(state.biome||'Normal').toLowerCase();
+   });
+   if(applies&&value>0)rarity=value;
+ }
+ const timeNight=/1\s+in\s+([0-9,]+)\s+during\s+Nighttime/i.exec(condition);
+ const timeDay=/1\s+in\s+([0-9,]+)\s+during\s+Daytime/i.exec(condition);
+ if(state.dayNight==='Night'&&timeNight)rarity=Number(String(timeNight[1]).replace(/,/g,''));
+ if(state.dayNight==='Day'&&timeDay)rarity=Number(String(timeDay[1]).replace(/,/g,''));
+ return Math.max(0,Math.floor(rarity));
+}
+function auraEligibleForRoll(a){
+ if(!a||a.crafted||a.fixed&&isPotionExclusiveAura(a))return false;
+ const text=String(a.condition||'');
+ if(a.time==='Night'&&/Exclusive\s+to\s+Nighttime|^during\s+Nighttime$/i.test(text))return state.dayNight==='Night';
+ if(a.time==='Day'&&/Exclusive\s+to\s+Daytime|^during\s+Daytime$/i.test(text))return state.dayNight==='Day';
+ if(a.time==='Night'&&a.exclusive)return state.dayNight==='Night';
+ if(a.time==='Day'&&a.exclusive)return state.dayNight==='Day';
+ if(a.nativeBiome==='Oblivion Potion'||a.nativeBiome==='Oblivion Potion effect'||a.nativeBiome==='Potion of the Dune')return false;
+ return true;
+}
 function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGearBonus){
  state=normalizeState(state,false);
  window.state=state;
@@ -580,18 +624,36 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
   const displayedFinalLuck=finalLuck;
   const fixedPotion=fixedPotionOutcome();
   if(fixedPotion&&fixedPotion.name==='OBLIVION'){try{achievementState().stats.oblivionOutcome=true}catch(_){}}
-  let chosen=null,lastEligible=null;
+  let chosen=null,fallback=null;
   if(fixedPotion)chosen={a:fixedPotion,breakthrough:false,listValue:Number(fixedPotion.rarity||1),fixedPotion:true};
   const biomeBreak=BREAK[state.biome]||1;
   if(!fixedPotion)for(let i=0;i<ROLL_AURAS.length;i++){
    const a=ROLL_AURAS[i];
-   const breakthrough=!!(a.nativeBiome&&a.nativeBiome!==state.biome&&biomeBreak>1);
-   const listValue=Math.max(1,Math.floor((a.rarity*(breakthrough?biomeBreak:1))/Math.max(0.000001,finalLuck)));
-   if(listValue<=1)continue;
-   lastEligible={a:a,breakthrough:breakthrough,listValue:listValue};
-   if(Math.floor(Math.random()*listValue)+1===1){chosen=lastEligible;break}
+   if(!auraEligibleForRoll(a))continue;
+   const nativeHere=auraNativeContextMatches(a);
+   const breakthrough=!!(a.nativeBiome&& !nativeHere && state.dimension!=='Limbo' && biomeBreak>1 && !a.exclusive && !a.fixed && !a.crafted);
+   const baseValue=Math.max(0,auraRarityForContext(a));
+   if(baseValue<=0)continue;
+   const calculated=breakthrough?baseValue:baseValue;
+   // Breakthrough changes the acquisition denominator before Luck.
+   const adjustedBase=breakthrough?Math.floor(baseValue*biomeBreak):calculated;
+   const listValue=Math.floor(adjustedBase/Math.max(0.000001,finalLuck));
+   // Probability above 100% (List Value 1 or below) is removed from the ordinary pool.
+   if(listValue<=1){
+     if(listValue===1&&!fallback)fallback={a:a,breakthrough:breakthrough,listValue:listValue};
+     continue;
+   }
+   const candidate={a:a,breakthrough:breakthrough,listValue:listValue};
+   if(Math.floor(Math.random()*listValue)+1===1){chosen=candidate;break}
   }
-  if(!chosen)chosen=lastEligible||{a:ROLL_AURAS[0]||AURAS[0],breakthrough:false,listValue:1};
+  // Canonical fallback: highest-rarity eligible Aura whose List Value is exactly 1.
+  // Equinox has no normal 1/1 result in its standard mainland pool, so Common is
+  // the safe final roll fallback rather than forcing the rarest Aura in the roster.
+  if(!chosen)chosen=fallback;
+  if(!chosen){
+   const common=ROLL_AURAS.find(function(a){return a.name==='Common'&&auraEligibleForRoll(a)});
+   chosen=common?{a:common,breakthrough:false,listValue:Math.max(2,Math.floor(auraRarityForContext(common)/Math.max(0.000001,finalLuck)))}:{a:ROLL_AURAS[ROLL_AURAS.length-1]||AURAS[0],breakthrough:false,listValue:1};
+  }
   const result=chosen.a||AURAS[0];
   const rolledRarity=Number(result.rarity||0)*(chosen.breakthrough?(BREAK[state.biome]||1):1);
   const rollRecord={
