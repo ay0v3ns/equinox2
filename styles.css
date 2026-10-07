@@ -1587,25 +1587,26 @@ body{
 
 
 /* Ground-item pickup controls: bright white against the dark ground-item playfield. */
+/* Ground items: neutral grey, subdued against the primary roll action. */
 .spawn{
-  border:1px solid #ffffff!important;
-  background:#ffffff!important;
-  color:#111317!important;
-  box-shadow:0 3px 12px rgba(255,255,255,.18),0 5px 14px rgba(0,0,0,.28)!important;
+  border:1px solid #666!important;
+  background:#3a3a3a!important;
+  color:#e8e8e8!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.28)!important;
   filter:none!important;
 }
 .spawn small{
-  color:#4b4f55!important;
+  color:#bdbdbd!important;
   opacity:1!important;
 }
 .spawn:hover{
-  border-color:#ffffff!important;
-  background:#f8f9fa!important;
-  color:#0b0d10!important;
-  box-shadow:0 4px 16px rgba(255,255,255,.26),0 7px 18px rgba(0,0,0,.34)!important;
+  border-color:#8a8a8a!important;
+  background:#464646!important;
+  color:#f2f2f2!important;
+  box-shadow:0 4px 14px rgba(0,0,0,.34)!important;
   filter:none!important;
 }
 .spawn:active{
-  background:#eeeeef!important;
+  background:#303030!important;
   transform:scale(.98);
 }
