@@ -1155,8 +1155,10 @@ POTION_REGISTRY={"Lucky Potion":{"kind":"Timed","buff":"+5% Luck for 10 seconds"
 Object.keys(POTION_REGISTRY).forEach(function(name){
   const p=POTION_REGISTRY[name];
   POTION_EFFECTS[name]=p.buff;
-  if(p.recipe && p.kind!=="Timed" && p.kind!=="Roll") WORKSHOP_RECIPES[name]={type:p.kind,buff:p.buff,advance:p.advance,special:p.special,curse:p.curse||null,curseLabel:p.curseLabel||"",recipe:p.recipe};
 });
+/* Potions belong exclusively in Stella's Cauldron. Remove any legacy Potion
+   entries from Jake's Workshop before the Potion recipe map is exposed. */
+Object.keys(POTION_REGISTRY).forEach(function(name){delete WORKSHOP_RECIPES[name];});
 BREWING_STAND=Object.fromEntries(Object.entries(POTION_REGISTRY).filter(function(e){return !!e[1].brew}).map(function(e){return [e[0],{dark:e[1].brew[0],coins:e[1].brew[1],success:e[1].brew[2],multiplier:e[1].brew[3]}]}));
 POTION_RECIPES=Object.fromEntries(Object.entries(POTION_REGISTRY).filter(function(e){return !!e[1].recipe}));
 GEAR_CATALOG=Object.fromEntries(Object.entries(WORKSHOP_RECIPES).filter(function(e){return e[1]&&e[1].type==="Gear"}));
