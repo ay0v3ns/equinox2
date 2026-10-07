@@ -70,7 +70,7 @@
   function historyView(){
     return history().then(function(rows){
       var q=String(window.phase5HistorySearch||"").toLowerCase(),f=rows.filter(function(x){return !q||String(x.roll).indexOf(q)>=0||String(x.rarity).indexOf(q)>=0||String(x.aura||"").toLowerCase().indexOf(q)>=0;});
-      var list=f.slice(0,100).map(function(x){return '<div class="history-row"><b>#'+fmt(x.roll)+'</b><span>'+esc(x.aura||"None")+'</span><span>1/'+fmt(x.rarity||0)+'</span><span>Luck '+fmt(x.luck||1)+'</span><span>Speed '+fmt(x.speed||1)+'</span><span>'+esc(x.biome||"Normal")+'</span><span>'+esc(x.time||"Day")+'</span><span>'+(x.breakthrough?"BREAKTHROUGH ":"")+(x.bonus?"BONUS":"")+'</span></div>';}).join("");
+      var list=f.slice(0,100).map(function(x){var aura=String(x.aura||"None"),d=window.getAuraCutsceneProfile&&window.getAuraCutsceneProfile(aura),replayable=!!d&&d.cutsceneType!=="None"&&Number(d.cutsceneDuration||0)>0&&!x.skipped&&x.accepted!==false&&!x.pendingStorage&&!x.rerolled;var replay=replayable?'<button class="eq-view-cutscene" data-aura="'+esc(aura)+'" onclick="window.equinoxHistoryPlayCutscene(this)">View Cutscene</button>':'';return '<div class="history-row"><b>#'+fmt(x.roll)+'</b><span>'+esc(aura)+'</span>'+replay+'<span>1/'+fmt(x.rarity||0)+'</span><span>Luck '+fmt(x.luck||1)+'</span><span>Speed '+fmt(x.speed||1)+'</span><span>'+esc(x.biome||"Normal")+'</span><span>'+esc(x.time||"Day")+'</span><span>'+(x.breakthrough?"BREAKTHROUGH ":"")+(x.bonus?"BONUS":"")+'</span></div>';}).join("");
       return '<div class="history-page"><div class="panel"><button class="back-btn" onclick="window.__phase5HistoryOpen=false;render()">← Back</button><div class="section-title">Data · Roll History</div><h1>Roll History</h1><p class="muted">Newest entries first. Up to 1,000,000 rolls are retained.</p><div class="history-search"><input value="'+esc(q)+'" placeholder="Search roll number, rarity, or Aura…" oninput="phase5HistorySearch=this.value;clearTimeout(window.__eq5t);window.__eq5t=setTimeout(render,150)"><button onclick="phase5HistoryClear()">Clear</button></div><div class="history-list">'+(list||'<div class="empty">No stored rolls match this search.</div>')+'</div></div></div>';
     });
   }
@@ -93,7 +93,11 @@
             rarity:Number(a.rolledRarity||a.rarity||(d?d.rarity:0)),
             luck:Number(a.luck||totalLuck()),speed:Number(a.speed||totalSpeed()),
             biome:a.biome||window.state.biome,time:a.time||window.state.dayNight,
-            breakthrough:!!a.breakthrough,bonus:!!a.bonus
+            breakthrough:!!a.breakthrough,bonus:!!a.bonus,
+            accepted:!window.state.pendingStorageDecision&&!a.skipped,
+            skipped:!!a.skipped,
+            pendingStorage:!!window.state.pendingStorageDecision,
+            rerolled:!!window.state.__eqRerollPending
           };
           record(e);
           if(e.rarity>=1000000)rare(e);
