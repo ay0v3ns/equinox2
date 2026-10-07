@@ -781,6 +781,25 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
   return false;
  }
 }
+function toggleAutoRoll(){
+ state=normalizeState(state);
+ if(Number(tutorialState().phase||1)<3){
+   toast('Auto Roll is unlocked after the tutorial.');
+   return false;
+ }
+ if((state.inventory.Coins||0)<=0){
+   state.autoRoll=false;save();render();toast('Auto Roll needs Coins.');return false;
+ }
+ state.autoRoll=!state.autoRoll;
+ if(!state.autoRoll){
+   state.rollCooldownUntil=0;
+   state.nextAutoRollAt=0;
+ }
+ save();render();
+ toast('Auto Roll '+(state.autoRoll?'ON':'OFF')+'.');
+ return state.autoRoll;
+}
+window.toggleAutoRoll=toggleAutoRoll;
 function roll(isAuto){
  state=normalizeState(state);
  window.state=state;
@@ -1448,7 +1467,7 @@ function render(){
     else{
       const cooldownHint=cooldownRemaining>0.01?cooldownRemaining.toFixed(1)+'s':'READY';
       const cooldownStatus=state.rolling?'TIME UNTIL ROLL COMPLETE':cooldownRemaining>0.01?'TIME UNTIL NEXT ROLL':'READY TO ROLL';
-      main='<div class="roll-grid"><div class="panel hero"><div class="section-title">THE ROLL</div><h1>Equinox</h1><p class="muted">'+eq4escape(String(state.biome||'Normal'))+' · '+eq4escape(String(state.dayNight||'Day'))+'</p>'+latestText+'<button class="roll-button" onclick="roll()">ROLL</button><div class="roll-time"><span>TIME UNTIL ROLL</span><b>'+cooldownHint+'</b><small>'+cooldownStatus+'</small></div><p class="muted">Coins: '+fmt(state.inventory?.Coins||0)+' · Aura Storage: '+fmt(auraSlots())+'/'+fmt(state.auraCapacity||20)+'</p></div><div class="panel"><div class="section-title">RECENT ROLLS</div>'+(recentRows||'<div class="empty">No rolls yet.</div>')+'</div></div>'+groundPanel;
+      const autoRollUnlocked=Number(tutorialState().phase||1)>=3;const autoRollLabel=state.autoRoll?'AUTO ROLL: ON':'AUTO ROLL: OFF';main='<div class="roll-grid"><div class="panel hero"><div class="section-title">THE ROLL</div><h1>Equinox</h1><p class="muted">'+eq4escape(String(state.biome||'Normal'))+' · '+eq4escape(String(state.dayNight||'Day'))+'</p>'+latestText+'<button class="roll-button" onclick="roll()">ROLL</button><button class="auto-roll-toggle '+(state.autoRoll?'active':'')+'" '+(autoRollUnlocked?'':'disabled')+' onclick="toggleAutoRoll()">'+(autoRollUnlocked?autoRollLabel:'AUTO ROLL: LOCKED')+'</button><div class="roll-time"><span>TIME UNTIL ROLL</span><b>'+cooldownHint+'</b><small>'+cooldownStatus+'</small></div><p class="muted">Coins: '+fmt(state.inventory?.Coins||0)+' · Aura Storage: '+fmt(auraSlots())+'/'+fmt(state.auraCapacity||20)+'</p></div><div class="panel"><div class="section-title">RECENT ROLLS</div>'+(recentRows||'<div class="empty">No rolls yet.</div>')+'</div></div>'+groundPanel;
     }
     const worldPanel='<aside class="world-panel"><div class="world-kicker">CURRENT WORLD</div><div class="world-name">'+eq4escape(String(state.biome||'Normal'))+'</div><div class="world-dimension">'+eq4escape(String(state.dimension||'Isles of Luck'))+'</div><div class="world-stats"><div class="world-stat"><span>Day / Night</span><b>'+eq4escape(String(state.dayNight||'Day'))+'</b></div><div class="world-stat"><span>Total Luck</span><b>'+Number(worldLuck||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Speed</span><b>'+Number(worldSpeed||1).toFixed(2)+'×</b></div><div class="world-stat"><span>Roll Time</span><b>'+rollTime.toFixed(2)+'s</b></div><div class="world-stat"><span>Equipped Aura</span><b>'+eq4escape(equipped?.name||'None')+'</b></div></div><div class="world-block"><div class="section-title">ACTIVE EFFECTS</div><div class="buff-list">'+activeBuffs+'</div></div></aside>';
     root.innerHTML='<div id="notices" aria-live="polite"></div><div class="topbar"><div class="logo">☯ EQUINOX</div><div class="topstats"><span>Rolls <b>'+fmt(state.rolls||0)+'</b></span><span>Coins <b>'+fmt(state.inventory?.Coins||0)+'</b></span><span>Luck <b>'+Number(worldLuck||1).toFixed(2)+'×</b></span><span>Speed <b>'+Number(worldSpeed||1).toFixed(2)+'×</b></span><span>Biome <b>'+eq4escape(String(state.biome||'Normal'))+'</b></span></div></div><div class="layout tab-position-'+(state.settings?.tabPosition||'left')+'"><aside class="tabs">'+tabs.map(function(t){return '<button class="tab '+(state.activeTab===t[0]?'active':'')+'" onclick="tab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</aside><main>'+main+'</main>'+worldPanel+'</div>'+ (typeof storageDecisionView==='function'?storageDecisionView():'') + (typeof tutorialView==='function'?tutorialView():'');
