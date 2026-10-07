@@ -33,7 +33,7 @@
     h+=sec("Gameplay",t("rollConfirmation","Roll Confirmation","Confirm manual rolling actions.")+t("potionConfirmation","Potion Confirmation","Confirm before using Potions.")+t("craftingConfirmation","Crafting Confirmation","Confirm before crafting.")+t("confirmShopPurchase","Shop Purchase Confirmation","Confirm before spending Coins in Mari's Shop.")+s("rollResultBehavior","Roll Result Behavior","Full, Compact, Minimal, or Instant."));
     var automationSearch=String(window.equinoxAutomationSearch||"").toLowerCase();
     var auraMap={};
-    (state.auras||[]).forEach(function(a){
+    (state.rolledAuras||[]).forEach(function(a){
       if(!a||!a.name)return;
       var key=String(a.name);
       var old=auraMap[key];
