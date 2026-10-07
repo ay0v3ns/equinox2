@@ -454,7 +454,7 @@ function usePotion(name){
  const effect=potionRuntimeEffect(baseName,multiplier);
  if(!effect.luck&&!effect.speed&&!effect.rolls&&!effect.ms&&!effect.special){toast(baseName+' has no usable runtime effect yet.');return false}
  if(settingEnabled('potionConfirmation')&&!confirm('Use '+potionName+'?'))return false;
- takeItem(potionName,1);achievementPotionUsed(baseName);
+ takeItem(potionName,1);achievementPotionUsed(baseName);questPotionUseHook();
  if(effect.rolls===1&&!effect.ms){
    state.pendingRollPotions=state.pendingRollPotions||[];
    state.pendingRollPotions.push({name:potionName,baseName:baseName,luck:effect.luck,speed:effect.speed,rolls:1,started:Date.now(),special:effect.special,description:effect.description,brewingMultiplier:multiplier});
@@ -1358,7 +1358,7 @@ function enhancePotion(name){
  if((state.inventory.Coins||0)<cfg.coins){toast('Need '+fmt(cfg.coins)+' Coins.');return}
  takeItem(name,1);takeItem('Dark Points',cfg.dark);takeItem('Coins',cfg.coins);
  const success=Math.random()<cfg.success;
- if(success){const enhanced='Enhanced '+name;addItem(enhanced,1);const ast=achievementState().stats;ast.potionEnhancements=(ast.potionEnhancements||0)+1;toast('Brewing Stand succeeded: '+enhanced+' ×'+cfg.multiplier)}
+ if(success){const enhanced='Enhanced '+name;addItem(enhanced,1);const ast=achievementState().stats;ast.potionEnhancements=(ast.potionEnhancements||0)+1;questPotionEnhanceHook(true);toast('Brewing Stand succeeded: '+enhanced+' ×'+cfg.multiplier)}
  else toast('Brewing Stand failed. The Potion, Dark Points, and Coins were consumed.');
  achievementCheck();save();render();
 }
