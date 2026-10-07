@@ -63,7 +63,35 @@ var S={
 'Dream Catcher':{main:'#ff7fd4',acc:['#9c7cff','#7fe8ff','#ffd28d'],theme:'dream',particles:'dream dust + thread sparks + floating petals',motifs:['dream catcher lattice','thread halo','sleeping stars'],motion:'orbital spiral'},
 'Leviathan':{main:'#2cc7d6',acc:['#9ae9ff','#224f92','#d4ffff'],theme:'aquatic',particles:'salt spray + pressure bubbles + deep-sea sparks',motifs:['leviathan rings','depth marks','tidal crown'],motion:'rising stream'}
 };
-function build(a){var n=String(a.name),t=tier(a),s=S[n],seed=hash(n),th=s&&s.theme||theme(a),b=BASE[th]||BASE.prismatic,h=(b[0]+seed%41-20+360)%360,sa=Math.max(52,Math.min(94,b[1]+(seed>>>8)%17-8)),li=Math.max(40,Math.min(82,b[2]+(seed>>>16)%15-7)),main=s&&s.main||hx(h,sa,li),acc=s&&s.acc||[hx(h+35,Math.max(50,sa-8),Math.min(86,li+8)),hx(h-55,Math.max(45,sa-18),Math.max(32,li-3)),hx(h+180,78,74)],mot=s&&s.motifs?s.motifs.slice():(MOTIFS[th]||MOTIFS.prismatic).slice(),words=n.replace(/[^A-Za-z0-9]+/g,' ').trim().split(/\\s+/).filter(function(x){return x.length>2});if(words[0])mot.unshift(words[0].toLowerCase()+' emblem');mot=mot.slice(0,4);var dur=s&&s.duration!=null?s.duration:(SPECIAL_CUTSCENES[n]?SPECIAL_CUTSCENES[n].duration:(t==='Basic'||t==='Special Acquisition'?0:t==='Epic'?1:t==='Unique'?6:t==='Mythic'?14:t==='Exalted'?18:t==='Glorious'?22:t==='Transcendent'?36:120+seed%151),st=[];if(t==='Epic')st=['main-color flare','one-second fade','aura-fit particles'];if(t==='Unique')st=['blackout','four-point star','accelerating rotation','0.2s color flash'];if(t==='Mythic')st=['blackout','top / bottom glow','four-point star','swirling particles','0.5s bright flash','outward particle burst'];if(t==='Exalted')st=['Mythic foundation','eight-point star','orbiting mini-stars','independent particle swirls','peak flash'];if(t==='Glorious')st=['Exalted foundation','fire-like top / bottom energy','rotating runes / objects','0.6s screen-cut flash','backward section drift'];if(t==='Transcendent')st=['Glorious foundation','typed narrative text','multi-layer effects','extreme contrast / saturation flash','violent shake','gradual stabilization'];if(t==='Apotheotic')st=['recognition','formation','escalation','revelation','final convergence'];if(t==='Special Acquisition')st=[];if(t==='Equinox')st=['silence / blackout','star emergence','world-fragment memory','Equinox sigil formation','layered reality distortion','narrative text','five-minute escalation','final convergence','apex flash','post-flash stillness'];if(a.mutationOf){st.push('mutation echo from '+a.mutationOf);mot.push('parent-aura echo ring')}var ct=s&&s.type?s.type:(SPECIAL_CUTSCENES[n]?SPECIAL_CUTSCENES[n].type:((t==='Basic'||t==='Special Acquisition')?'None':t));return{version:V,name:n,tier:t,theme:th,seed:seed,mainColor:main,accentColors:acc,particleProfile:s&&s.particles||PARTICLES[th]||PARTICLES.prismatic,visualMotifs:mot,motionProfile:s&&s.motion||MOTION[seed%MOTION.length],cutsceneType:s&&s.type||ct,cutsceneDuration:dur,cutsceneStages:st,cutsceneText:s&&s.text||textFor(a,t),cinematicEligible:!a.crafted&&ct!=='None'&&dur>0,mutationOf:a.mutationOf||null};}
+function build(a){
+ var n=String(a.name),t=tier(a),s=S[n],seed=hash(n),th=s&&s.theme||theme(a),b=BASE[th]||BASE.prismatic;
+ var h=(b[0]+seed%41-20+360)%360,sa=Math.max(52,Math.min(94,b[1]+(seed>>>8)%17-8)),li=Math.max(40,Math.min(82,b[2]+(seed>>>16)%15-7));
+ var main=s&&s.main||hx(h,sa,li),acc=s&&s.acc||[hx(h+35,Math.max(50,sa-8),Math.min(86,li+8)),hx(h-55,Math.max(45,sa-18),Math.max(32,li-3)),hx(h+180,78,74)];
+ var mot=s&&s.motifs?s.motifs.slice():(MOTIFS[th]||MOTIFS.prismatic).slice();
+ var words=n.replace(/[^A-Za-z0-9]+/g,' ').trim().split(/\\s+/).filter(function(x){return x.length>2});
+ if(words[0])mot.unshift(words[0].toLowerCase()+' emblem');
+ mot=mot.slice(0,4);
+ var special=SPECIAL_CUTSCENES[n]||null;
+ var dur=s&&s.duration!=null?s.duration:(special?special.duration:(t==='Basic'||t==='Special Acquisition'?0:t==='Epic'?1:t==='Unique'?6:t==='Mythic'?14:t==='Exalted'?18:t==='Glorious'?22:t==='Transcendent'?36:120+seed%151));
+ var ct=s&&s.type?s.type:(special?special.type:((t==='Basic'||t==='Special Acquisition')?'None':t));
+ var st=[];
+ if(ct==='Epic')st=['main-color flare','one-second fade','aura-fit particles'];
+ if(ct==='Unique')st=['blackout','four-point star','accelerating rotation','0.2s color flash'];
+ if(ct==='Mythic')st=['blackout','top / bottom glow','four-point star','swirling particles','0.5s bright flash','outward particle burst'];
+ if(ct==='Exalted')st=['Mythic foundation','eight-point star','orbiting mini-stars','independent particle swirls','peak flash'];
+ if(ct==='Glorious')st=['Exalted foundation','fire-like top / bottom energy','rotating runes / objects','0.6s screen-cut flash','backward section drift'];
+ if(ct==='Transcendent')st=['Glorious foundation','typed narrative text','multi-layer effects','extreme contrast / saturation flash','violent shake','gradual stabilization'];
+ if(ct==='Apotheotic')st=['recognition','formation','escalation','revelation','final convergence'];
+ if(ct==='Equinox')st=['silence / blackout','star emergence','world-fragment memory','Equinox sigil formation','layered reality distortion','narrative text','five-minute escalation','final convergence','apex flash','post-flash stillness'];
+ if(a.mutationOf){st.push('mutation echo from '+a.mutationOf);mot.push('parent-aura echo ring');}
+ return {
+  version:V,name:n,tier:t,theme:th,seed:seed,mainColor:main,accentColors:acc,
+  particleProfile:s&&s.particles||PARTICLES[th]||PARTICLES.prismatic,visualMotifs:mot,
+  motionProfile:s&&s.motion||MOTION[seed%MOTION.length],cutsceneType:ct,cutsceneDuration:dur,
+  cutsceneStages:st,cutsceneText:s&&s.text||textFor(a,t),
+  cinematicEligible:!a.crafted&&ct!=='None'&&dur>0,mutationOf:a.mutationOf||null
+ };
+}
 function refresh(){try{if(typeof AURAS!=='undefined'&&Array.isArray(AURAS))AURAS.forEach(function(a){P[a.name]=build(a)});window.EQUINOX_AURA_PRESENTATIONS=P;window.EQUINOX_AURA_PRESENTATION_VERSION=V;}catch(e){console.warn('Aura presentation registry failed',e)}}
 window.getAuraPresentation=function(name){var k=String(name||'');if(P[k])return P[k];try{var a=typeof auraDef==='function'?auraDef(k):null;if(a){P[k]=build(a);return P[k]}}catch(e){}return null};
 window.getAuraCutsceneProfile=function(name){var d=window.getAuraPresentation(name);return d&&d.cinematicEligible?d:null};
