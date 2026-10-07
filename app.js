@@ -86,6 +86,11 @@ function normalizeState(s,recoverInterrupted=true){
  s.inventory=(s.inventory&&typeof s.inventory==='object'&&!Array.isArray(s.inventory))?s.inventory:{};
  s.auras=Array.isArray(s.auras)?s.auras:[];
  s.recent=Array.isArray(s.recent)?s.recent.slice(0,100):[];
+ s.rolledAuras=Array.isArray(s.rolledAuras)?s.rolledAuras.filter(function(x){return x&&String(x.name||'').trim()}).map(function(x){return{name:String(x.name),rarity:Number(x.rarity||0),tier:String(x.tier||'Unknown')}}):[];
+ const rolledMap=new Map(s.rolledAuras.map(function(x){return[x.name,x]}));
+ s.auras.forEach(function(a){if(a&&a.name&&!rolledMap.has(String(a.name))){const d=AURAS.find(function(z){return z.name===a.name});rolledMap.set(String(a.name),{name:String(a.name),rarity:Number(a.rarity||d?.rarity||0),tier:String(a.tier||d?.computedTier||d?.tier||'Unknown')});}});
+ s.recent.forEach(function(r){if(r&&r.name&&!rolledMap.has(String(r.name))){const d=AURAS.find(function(z){return z.name===r.name});rolledMap.set(String(r.name),{name:String(r.name),rarity:Number(r.rarity||d?.rarity||0),tier:String(r.tier||d?.computedTier||d?.tier||'Unknown')});}});
+ s.rolledAuras=[...rolledMap.values()];
  s.activePotions=Array.isArray(s.activePotions)?s.activePotions:[];
  s.pendingRollPotions=Array.isArray(s.pendingRollPotions)?s.pendingRollPotions:[]; s.recipeProgress=(s.recipeProgress&&typeof s.recipeProgress==='object'&&!Array.isArray(s.recipeProgress))?s.recipeProgress:{}; s.autoAddRecipe=typeof s.autoAddRecipe==='string'&&s.autoAddRecipe?s.autoAddRecipe:null; s.pendingStorageDecision=(s.pendingStorageDecision&&typeof s.pendingStorageDecision==='object')?s.pendingStorageDecision:null; s.gearSpecials=Object.assign({engineCharges:0,engineChargePending:false,monoSurgeCharges:0,monoSurgeStacks:0,weatherCharges:0,equilibriumLuckPending:false,equilibriumSpeedRolls:0,equilibriumNext:'luck',pendingGearBonusMultiplier:0},s.gearSpecials||{}); s.pendingStorageDecision=(s.pendingStorageDecision&&typeof s.pendingStorageDecision==='object')?s.pendingStorageDecision:null; s.curses=(s.curses&&typeof s.curses==='object'&&!Array.isArray(s.curses))?s.curses:{}; s.potionRollModifiers=(s.potionRollModifiers&&typeof s.potionRollModifiers==='object')?s.potionRollModifiers:{luckMultiplier:1,luckBonus:0,speedBonus:0,nextLuckBonus:0};
  const interruptedRoll=!!s.rolling;
@@ -147,7 +152,7 @@ function load(){
       for(let i=0;i<(Number(grouped[name])||0);i++) next.auras.push({
         id:'aura-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
         name:name,rarity:data?data.rarity:0,tier:data?data.computedTier||data.tier:'Unknown',
-        rolledAt:Date.now()+i,favorite:false,autoSkip:auraAutoSkipEnabled(result.name),autoEquip:auraAutoEquipEnabled(result.name),equipped:false
+        rolledAt:Date.now()+i,favorite:false,autoSkip:false,autoEquip:false,equipped:false
       });
     });
   }
@@ -698,6 +703,7 @@ function resolveRoll(startedAt,rollDuration,rollSpeed,forcedBonusMultiplier,isGe
   }catch(err){console.warn('Achievement roll setup failed',err)}
   try{questAuraHook(result,chosen.breakthrough)}catch(err){console.warn('Quest roll hook failed',err)}
 
+  recordRolledAura(result);
   const autoSkip=auraAutoSkipEnabled(result.name);
   const autoEquip=auraAutoEquipEnabled(result.name);
   if(state.pendingRollPotions&&state.pendingRollPotions.length)state.pendingRollPotions.shift();
@@ -845,7 +851,8 @@ function toggleFavorite(id){
 }
 function setAuraAutomationByName(name,mode){
  const auraName=String(name||'');
- if(!auraName||!(state.auras||[]).some(function(a){return String(a.name)===auraName}))return;
+ if(!auraName||!['skip','equip'].includes(mode))return;
+ recordRolledAura({name:auraName});
  state.settings=state.settings||{};
  state.settings.autoSkipAuras=Array.isArray(state.settings.autoSkipAuras)?state.settings.autoSkipAuras:[];
  state.settings.autoEquipAuras=Array.isArray(state.settings.autoEquipAuras)?state.settings.autoEquipAuras:[];
@@ -878,6 +885,14 @@ function setAuraAutomation(id,mode){
  if(mode==='skip'&&a.autoSkip)return setAuraAutomationByName(a.name,'skip');
  if(mode==='equip'&&a.autoEquip)return setAuraAutomationByName(a.name,'equip');
  return setAuraAutomationByName(a.name,mode);
+}
+function recordRolledAura(aura){
+ if(!aura||!aura.name)return;
+ state.rolledAuras=Array.isArray(state.rolledAuras)?state.rolledAuras:[];
+ const name=String(aura.name),idx=state.rolledAuras.findIndex(function(x){return String(x?.name||'')===name});
+ const d=AURAS.find(function(x){return x.name===name});
+ const entry={name:name,rarity:Number(aura.rarity||d?.rarity||0),tier:String(aura.computedTier||aura.tier||d?.computedTier||d?.tier||'Unknown')};
+ if(idx>=0)state.rolledAuras[idx]=Object.assign({},state.rolledAuras[idx],entry);else state.rolledAuras.push(entry);
 }
 function auraAutoSkipEnabled(name){return !!(state.settings&&Array.isArray(state.settings.autoSkipAuras)&&state.settings.autoSkipAuras.includes(String(name)))}
 function auraAutoEquipEnabled(name){return !auraAutoSkipEnabled(name)&&!!(state.settings&&Array.isArray(state.settings.autoEquipAuras)&&state.settings.autoEquipAuras.includes(String(name)))}
