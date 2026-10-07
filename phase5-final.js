@@ -1,7 +1,7 @@
 /* Equinox Phase 5 */
 (function(){
   var D={
-    autoEquip:false,autoSkip:false,rollConfirmation:false,potionConfirmation:true,craftingConfirmation:true,confirmShopPurchase:true,rollResultBehavior:"Full",
+    autoEquip:false,autoSkip:false,autoSkipAuras:[],autoEquipAuras:[],rollConfirmation:false,potionConfirmation:true,craftingConfirmation:true,confirmShopPurchase:true,rollResultBehavior:"Full",
     auraNames:true,auraRarities:true,rollEffects:"Full",auraAnimations:"Full",biomeEffects:"Full",weatherEffects:"Full",damageScreenEffects:"Full",rareRollDisplay:"Enhanced",biomeTransitionEffects:"Full",
     notifications:true,notifyCrafting:true,notifyAuras:true,notifyBreakthroughs:true,notifyGlobalPlacement:true,notifyBiome:true,notifyDayNight:true,notifyWarnings:true,notifyQuests:true,notifyItems:true,notifyJester:true,notifyBank:true,notifyPotionExpiration:true,notifyShop:true,
     masterVolume:70,musicVolume:60,sfxVolume:80,uiVolume:80,muted:false,compactInterface:false,showClock:true,showRecentRolls:true,showRightPanel:true,
@@ -14,10 +14,14 @@
     biomeTransitionEffects:["Full","Reduced","Instant"],screenShake:["Full","Reduced","Off"],particleQuality:["High","Medium","Low","Off"],auraQuality:["High","Medium","Low"],biomeQuality:["High","Medium","Low"]
   };
   function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
-  function init(){state.settings=Object.assign({},D,state.settings||{});}
+  function init(){
+    state.settings=Object.assign({},D,state.settings||{});
+    state.settings.autoSkipAuras=Array.isArray(state.settings.autoSkipAuras)?[...new Set(state.settings.autoSkipAuras.map(String).filter(Boolean))]:[];
+    state.settings.autoEquipAuras=Array.isArray(state.settings.autoEquipAuras)?[...new Set(state.settings.autoEquipAuras.map(String).filter(Boolean))]:[];
+  }
   function save5(){localStorage.setItem("equinox-save-v1",JSON.stringify(state));apply();}
   function apply(){var s=state.settings||D,r=document.documentElement;r.classList.toggle("reduced-motion",!!s.reducedMotion);r.classList.toggle("high-contrast",!!s.highContrast);r.classList.toggle("colorblind-mode",!!s.colorblind);r.classList.toggle("compact-interface",!!s.compactInterface);r.classList.toggle("performance-mode",!!s.performanceMode||!!s.lowDetailMode);}
-  window.phase5Toggle=function(k){init();state.settings[k]=!state.settings[k];save5();render();};
+  window.phase5Toggle=function(k){init();if(k==="autoRoll")return;if(k==="autoSkip"||k==="autoEquip")return;state.settings[k]=!state.settings[k];save5();render();};
   window.phase5SetSetting=function(k,v){init();state.settings[k]=v;save5();render();};
   window.phase5ResetSettings=function(){if(!confirm("Reset Settings to defaults? Your progress will remain."))return;state.settings=Object.assign({},D);save5();toast("Settings reset.");render();};
   function t(k,n,d){var on=!!state.settings[k];return '<div class="setting-row"><div><b>'+esc(n)+'</b><small>'+esc(d)+'</small></div><button class="setting-toggle '+(on?"on":"")+'" onclick="phase5Toggle(\''+k+'\')">'+(on?"ON":"OFF")+'</button></div>';}
@@ -26,7 +30,22 @@
   function sec(n,b){return '<section class="panel settings-section"><div class="section-title">'+n+'</div>'+b+'</section>';}
   window.settingsView=function(){
     init();var h='<div class="settings-page"><div class="panel settings-hero"><div class="section-title">Player Configuration</div><h1>Settings</h1><p class="muted">Control Equinox presentation, automation, accessibility, performance, social display, data, lore, and account behavior.</p></div><div class="settings-grid">';
-    h+=sec("Gameplay",t("autoEquip","Auto Equip","Respect per-Aura Auto Equip rules.")+t("autoSkip","Auto Skip","Respect per-Aura Auto Skip rules.")+t("rollConfirmation","Roll Confirmation","Confirm manual rolling actions.")+t("potionConfirmation","Potion Confirmation","Confirm before using Potions.")+t("craftingConfirmation","Crafting Confirmation","Confirm before crafting.")+t("confirmShopPurchase","Shop Purchase Confirmation","Confirm before spending Coins in Mari's Shop.")+s("rollResultBehavior","Roll Result Behavior","Full, Compact, Minimal, or Instant."));
+    h+=sec("Gameplay",t("rollConfirmation","Roll Confirmation","Confirm manual rolling actions.")+t("potionConfirmation","Potion Confirmation","Confirm before using Potions.")+t("craftingConfirmation","Crafting Confirmation","Confirm before crafting.")+t("confirmShopPurchase","Shop Purchase Confirmation","Confirm before spending Coins in Mari's Shop.")+s("rollResultBehavior","Roll Result Behavior","Full, Compact, Minimal, or Instant."));
+    var automationSearch=String(window.equinoxAutomationSearch||"").toLowerCase();
+    var auraMap={};
+    (state.auras||[]).forEach(function(a){
+      if(!a||!a.name)return;
+      var key=String(a.name);
+      var old=auraMap[key];
+      if(!old||Number(a.rarity||0)>Number(old.rarity||0))auraMap[key]={name:key,rarity:Number(a.rarity||0),tier:a.tier||"Unknown"};
+    });
+    var automationAuras=Object.values(auraMap).filter(function(a){return !automationSearch||a.name.toLowerCase().includes(automationSearch)}).sort(function(a,b){return b.rarity-a.rarity||a.name.localeCompare(b.name)});
+    var automationRows=automationAuras.length?automationAuras.map(function(a){
+      var skip=typeof auraAutoSkipEnabled==="function"?auraAutoSkipEnabled(a.name):false;
+      var equip=typeof auraAutoEquipEnabled==="function"?auraAutoEquipEnabled(a.name):false;
+      return '<div class="setting-row aura-automation-row"><div><b>'+esc(a.name)+'</b><small>1/'+Number(a.rarity||0).toLocaleString("en-US")+' • '+esc(a.tier)+' · Automation applies to future matching rolls.</small></div><div class="automation-actions"><button class="setting-toggle '+(skip?"on":"")+'" onclick="setAuraAutomationByName('+attrArg(a.name)+',\'skip\')">'+(skip?"AUTO SKIP: ON":"AUTO SKIP: OFF")+'</button><button class="setting-toggle '+(equip?"on":"")+'" onclick="setAuraAutomationByName('+attrArg(a.name)+',\'equip\')">'+(equip?"AUTO EQUIP: ON":"AUTO EQUIP: OFF")+'</button></div></div>';
+    }).join(''):'<div class="empty">No rolled Auras match this search yet.</div>';
+    h+=sec("Aura Automation",'<p class="muted">Configure Auto Skip and Auto Equip for Auras you have already rolled. Only one automation mode can be active for the same Aura.</p><div class="history-search"><input value="'+esc(automationSearch)+'" placeholder="Search your rolled Auras…" oninput="window.equinoxAutomationSearch=this.value;render()"></div>'+automationRows);
     h+=sec("Display",t("auraNames","Aura Names","Show Aura names.")+t("auraRarities","Aura Rarities","Show rarity denominators.")+s("rollEffects","Roll Effects","Visual roll effects.")+s("auraAnimations","Aura Animations","Aura animation intensity.")+s("biomeEffects","Biome Effects","Biome visuals.")+s("weatherEffects","Weather Effects","Weather visuals.")+s("damageScreenEffects","Damage/Screen Effects","Temporary screen effects.")+s("rareRollDisplay","Rare Roll Display","Normal, Enhanced, Cinematic, or Minimal.")+s("biomeTransitionEffects","Biome Transition Effects","Biome change presentation."));
     h+=sec("Notifications",t("notifications","Notifications","Master notification switch.")+t("notifyCrafting","Crafting Recipes Ready","Crafting notifications.")+t("notifyAuras","Aura Rarity Notifications","Aura notifications.")+t("notifyBreakthroughs","Breakthroughs","Breakthrough notifications.")+t("notifyGlobalPlacement","Leaderboard Placement","Top-ten notifications.")+t("notifyBiome","Biome Changes","Biome notifications.")+t("notifyDayNight","Day/Night Changes","Day/Night notifications.")+t("notifyWarnings","Warnings / Confirmations","Warning notifications.")+t("notifyQuests","Quest Resets / Completions","Quest notifications.")+t("notifyItems","Items Collected","Item notifications.")+t("notifyJester","Jester's Gamble Rewards","Gamble notifications.")+t("notifyBank","Bank Ready","Bank notifications.")+t("notifyPotionExpiration","Potion Expiration","Potion expiration notifications.")+t("notifyShop","Shop Reset","Shop notifications."));
     h+=sec("Audio",t("muted","Mute All Audio","Disable Equinox audio.")+r("masterVolume","Master Volume","All audio.",0,100,1)+r("musicVolume","Music Volume","Music.",0,100,1)+r("sfxVolume","SFX Volume","Roll and rare-event sounds.",0,100,1)+r("uiVolume","UI Volume","Interface sounds.",0,100,1));
