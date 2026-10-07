@@ -1518,3 +1518,69 @@ body{
 }
 .storage-keep:hover{border-color:var(--action-green-hover)!important;background:var(--action-green)!important}
 .storage-skip:hover{border-color:var(--action-red-hover)!important;background:var(--action-red)!important}
+
+
+/* Final neutral-button palette: keep ordinary controls quiet and steel-grey.
+ * Intentional accents such as the primary Roll button, danger actions, and status
+ * indicators keep their own visual treatment.
+ */
+:root{
+  --panel2:#171a1e;
+  --text:#e3e5e8;
+}
+.inventory-toolbar button,
+.aura-actions button,
+.npc-action-grid button,
+.quest-preview button,
+.back-btn,
+.system-head button,
+.npc-system button,
+.recipe-card button,
+.potion-card button,
+.shop-card button,
+.bank-actions button,
+.tutorial-card button,
+.tutorial-banner button,
+.setting-action,
+.setting-toggle,
+.history-search button,
+.ach-tabs button,
+.achievement-card button,
+.chat-compose button{
+  border-color:#62666b;
+  background:linear-gradient(180deg,#4a4e53 0%,#373a3f 100%);
+  color:#eceef1;
+  filter:saturate(.55);
+}
+.inventory-toolbar button:hover,
+.aura-actions button:hover,
+.npc-action-grid button:hover,
+.quest-preview button:hover,
+.back-btn:hover,
+.system-head button:hover,
+.npc-system button:hover,
+.recipe-card button:hover,
+.potion-card button:hover,
+.shop-card button:hover,
+.bank-actions button:hover,
+.tutorial-card button:hover,
+.tutorial-banner button:hover,
+.setting-action:hover,
+.setting-toggle:hover,
+.history-search button:hover,
+.ach-tabs button:hover,
+.achievement-card button:hover,
+.chat-compose button:hover{
+  border-color:#85898e;
+  background:linear-gradient(180deg,#55595e 0%,#41454a 100%);
+  filter:saturate(.6);
+}
+.setting-toggle.on{
+  border-color:#85898e;
+  background:linear-gradient(180deg,#55595e 0%,#41454a 100%);
+  color:#fff;
+}
+.danger,
+.settings-danger button{
+  filter:none;
+}
