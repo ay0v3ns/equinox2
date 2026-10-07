@@ -30,6 +30,6 @@ var B={
 'Monarch':['#17321d','#d8ef6d','#ffb1a7','monarch','falling cascade',['leaf crown','wing lattice','pollen throne'],['THE KINGDOM GREW A WING. . .','NOW IT HAS SOMETHING TO PROTECT. . .'],'green'],
 'Equinox':['#f4efe1','#b5b8ff','#8fd7c4','equilibrium','counter-rotation',['four-point star','eight-point star','balance rings','Isles fragments','Equinox sigil','dimensional seams'],['THE EQUINOX HAS FOUND YOU. . .','THE BALANCE HOLDS. . .'],'white']
 };
-Object.keys(B).forEach(function(n){var d=P[n],b=B[n];if(!d)return;d.mainColor=b[0];d.accentColors=[b[1],b[2]];d.sceneKind=b[3];d.motionProfile=b[4];d.visualMotifs=b[5];d.cutsceneText=b[6];d.revealStyle=b[7];d.bespoke=true;if(n==='Equinox'){d.cutsceneType='Equinox';d.cutsceneDuration=300;d.cutsceneOverride='EQUINOX_FIVE_MINUTE';}});
+Object.keys(B).forEach(function(n){var d=P[n],b=B[n];if(!d)return;d.mainColor=b[0];d.accentColors=[b[1],b[2]];d.sceneKind=b[3];d.motionProfile=b[4];d.visualMotifs=b[5];d.cutsceneText=b[6];d.revealStyle=b[7];d.bespoke=true;if(n==='Equinox'){d.cutsceneType='Equinox';d.cutsceneDuration=300;d.cutsceneOverride='EQUINOX_FIVE_MINUTE';}else if(d.tier==='Special Acquisition'){d.cutsceneType='None';d.cutsceneDuration=0;d.cinematicEligible=false;}});
 window.EQUINOX_BESPOKE_PRESENTATION_VERSION='2.0.1';
 })();
