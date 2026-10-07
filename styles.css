@@ -134,6 +134,33 @@ body{min-height:100dvh}
   text-shadow:0 2px 0 #0a0d14;
   transition:transform .1s ease,filter .1s ease,border-color .1s ease,box-shadow .1s ease;
 }
+.auto-roll-toggle{
+  display:block;
+  width:min(100%,280px);
+  min-height:42px;
+  margin:0 auto 14px;
+  padding:0 18px;
+  border:1px solid #66728a;
+  background:#151c29;
+  color:#dbe3f3;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.12em;
+  cursor:pointer;
+}
+.auto-roll-toggle:hover:not(:disabled){
+  border-color:#9aa8c2;
+  background:#1a2435;
+}
+.auto-roll-toggle.active{
+  border-color:#9aa8c2;
+  background:#202b3e;
+  color:#ffffff;
+}
+.auto-roll-toggle:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
 .roll-button::before{
   content:"";
   position:absolute;
