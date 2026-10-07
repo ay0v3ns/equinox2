@@ -1085,7 +1085,8 @@ function inventoryView(){
  if(sort==='recent')rows.sort(function(a,b){return b.rolledAt-a.rolledAt});
  if(sort==='alpha')rows.sort(function(a,b){return a.name.localeCompare(b.name)});
  const auraCards=rows.map(function(a){
-   return '<div class="aura-card '+(a.equipped?'equipped':'')+'"><div class="aura-main"><div><b>'+a.name+'</b><small>1/'+fmt(a.rarity)+' • '+a.tier+(a.equipped?' • EQUIPPED':'')+'</small></div><div class="aura-tags">'+(a.favorite?'★ Favorited':'')+'</div></div><div class="aura-actions"><button onclick="toggleFavorite(\''+a.id+'\')">'+(a.favorite?'Unfavorite':'Favorite')+'</button><button onclick="equipAura(\''+a.id+'\')">Equip</button><button class="danger" onclick="discardAura(\''+a.id+'\')">Remove</button></div></div>';
+   const open=auraVisualShell(a.name,'aura-card '+(a.equipped?'equipped':''));
+    return open+'<div class="aura-main"><div><b class="eq-aura-title">'+eq4escape(a.name)+'</b><small>1/'+fmt(a.rarity)+' • '+eq4escape(a.tier)+(a.equipped?' • EQUIPPED':'')+'</small></div><div class="aura-tags">'+(a.favorite?'★ Favorited':'')+'</div></div><div class="aura-actions"><button onclick="toggleFavorite(\''+a.id+'\')">'+(a.favorite?'Unfavorite':'Favorite')+'</button><button onclick="equipAura(\''+a.id+'\')">Equip</button><button class="danger" onclick="discardAura(\''+a.id+'\')">Remove</button></div>'+auraVisualClose();
  }).join('')||'<div class="empty">No collected Auras match this filter.</div>';
  const potionRows=Object.entries(state.inventory).filter(function(e){return /Potion/.test(e[0])&&Number(e[1])>0}).map(function(e){const active=(state.activePotions||[]).some(function(p){return p.name===e[0]});return '<div class="inventory-row"><span>'+eq4escape(e[0])+(active?' <small>• ACTIVE</small>':'')+'</span><div class="inventory-item-actions"><button onclick="usePotion('+attrArg(e[0])+')">Use</button><b>x'+e[1]+'</b></div></div>'}).join('')||'<div class="empty">No Potions yet.</div>';
  const gearRows=Object.entries(state.inventory).filter(function(e){return isGearName(e[0])}).map(function(e){const gd=gearDefForName(e[0]),equipped=isGearEquipped(e[0]),gs=gearSpecialState();const special=gd?.special?'<small class="gear-special-inline">'+eq4escape(gd.special)+'</small>':'';const engine=e[0]==='The World Engine'?'<button '+(equipped&&Number(gs.engineCharges||0)>0?'':'disabled')+' onclick="spendWorldEngineCharge()">Spend Charge · '+Number(gs.engineCharges||0)+'</button>':'';return '<div class="inventory-row gear-row"><span><b>'+eq4escape(e[0])+'</b> '+(equipped?'• EQUIPPED':'')+special+'</span><div class="inventory-item-actions">'+engine+'<button onclick="equipGear('+attrArg(e[0])+')">'+(equipped?'Unequip':'Equip')+'</button><b>x'+e[1]+'</b></div></div>'}).join('')||'<div class="empty">No Gears yet.</div>';
@@ -1517,6 +1518,18 @@ setTimeout(installEquinoxPhase4,0);
  * Mounts the existing game systems into #app. Kept in the base app so
  * authentication, Phase 4/5/6, and every game action share one renderer.
  */
+function auraVisualShell(name,classes){
+  const d=window.getAuraPresentation&&window.getAuraPresentation(name);
+  if(!d)return '<div class="'+classes+'">';
+  const seed=Number(d.seed||0)>>>0,fontVariant=(seed%12)+1,tilt=((seed%9)-4),speed=(3.8+(seed%50)/10).toFixed(2);
+  const theme=String(d.theme||'prismatic').replace(/[^a-z0-9_-]/gi,'');
+  const safe=function(v){return eq4escape(String(v==null?'':v))};
+  let particles='';const count=10+(seed%5);
+  for(let i=0;i<count;i++)particles+='<i style="--p:'+i+'"></i>';
+  return '<div class="'+classes+' eq-aura-visual eq-font-'+fontVariant+'" data-aura-theme="'+safe(theme)+'" style="--aura-main:'+safe(d.mainColor)+';--aura-a1:'+safe(d.accentColors[0])+';--aura-a2:'+safe(d.accentColors[1])+';--eq-tilt:'+tilt+'deg;--eq-speed:'+speed+'s"><span class="eq-aura-glow" aria-hidden="true"></span><span class="eq-aura-particles" aria-hidden="true">'+particles+'</span><span class="eq-aura-core" aria-hidden="true"></span>';
+}
+function auraVisualClose(){return '</div>';}
+
 function render(){
   if(!EQUINOX_DATA_READY)return;
 
@@ -1533,12 +1546,17 @@ function render(){
     const computedRollTime=typeof rollTimeSeconds==='function'?rollTimeSeconds():11;
     const rollTime=state.rolling?Math.max(1,Number(state.rollDuration||computedRollTime)):computedRollTime;
     const cooldownRemaining=Math.max(0,(Number(state.rollCooldownUntil||0)-Date.now())/1000);
-    const latestText=latest
-      ? '<div class="roll-result"><div class="section-title">LATEST ROLL</div><h2>'+eq4escape(latest.name)+'</h2><p>1/'+fmt(latest.rolledRarity||latest.rarity||0)+(latest.breakthrough?' · BREAKTHROUGH':'')+(latest.bonus?' · BONUS ROLL':'')+'</p></div>'
-      : '<div class="roll-result"><div class="section-title">LATEST ROLL</div><h2>Nothing yet</h2><p class="muted">Your first Aura is waiting.</p></div>';
-    const recentRows=recent.map(function(a){
-      return '<div class="recent-row"><b>'+eq4escape(a.name)+'</b><span>1/'+fmt(a.rolledRarity||a.rarity||0)+'</span><small>#'+fmt(a.roll||0)+'</small></div>';
-    }).join('');
+    let latestText;
+     if(latest){
+       const lv=auraVisualShell(latest.name,'roll-result');
+       latestText=lv+'<div class="section-title">LATEST ROLL</div><h2 class="eq-aura-title">'+eq4escape(latest.name)+'</h2><p>1/'+fmt(latest.rolledRarity||latest.rarity||0)+(latest.breakthrough?' · BREAKTHROUGH':'')+(latest.bonus?' · BONUS ROLL':'')+'</p>'+auraVisualClose();
+     }else{
+       latestText='<div class="roll-result"><div class="section-title">LATEST ROLL</div><h2>Nothing yet</h2><p class="muted">Your first Aura is waiting.</p></div>';
+     }
+     const recentRows=recent.map(function(a){
+       const rv=auraVisualShell(a.name,'recent-row');
+       return rv+'<b class="eq-aura-title">'+eq4escape(a.name)+'</b><span>1/'+fmt(a.rolledRarity||a.rarity||0)+'</span><small>#'+fmt(a.roll||0)+'</small>'+auraVisualClose();
+     }).join('');
     const potionRows=(state.activePotions||[]).map(function(p){
       const remaining=p.rolls?String(p.rolls)+' roll'+(p.rolls===1?'':'s'):(p.expires?Math.max(0,(p.expires-Date.now())/1000).toFixed(0)+'s':'ACTIVE');
       const effectText=(p.luck?'+'+percentText(p.luck)+' Luck':'')+(p.luck&&p.speed?' · ':'')+(p.speed?'+'+percentText(p.speed)+' Speed':'')||'Special effect';
