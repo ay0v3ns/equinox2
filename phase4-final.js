@@ -46,7 +46,7 @@
         return data;
       });
       if(s.error)sd.errors.push('Shop: '+s.error.message);
-      else sd.shop=s.data||[];
+      else sd.shop=(s.data||[]).filter(function(row){return ['Potion','Gear','Item'].includes(String(row?.item_id||'').split('::')[0])&&!!row.item_name;});
       sd.questProgress=[];
       try{
         const session=await EQUINOX_SUPABASE.auth.getSession();
