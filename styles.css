@@ -1610,3 +1610,157 @@ body{
   background:#303030!important;
   transform:scale(.98);
 }
+
+
+/* Final neutral desaturation pass — remove legacy blue/blue-grey emphasis from
+ * navigation, NPC directory cards, authentication, account controls, and
+ * leaderboard/status presentation. Purposeful action colors remain unchanged.
+ */
+button:not(.roll-button),
+.npc-card,
+.auth-card .auth-submit,
+.auth-card .auth-switch,
+.setting-actions button,
+.global-status,
+.global-board,
+.online-panel{
+  --neutral-border:#5f5f5f;
+  --neutral-bg:#181818;
+  --neutral-bg-top:#242424;
+}
+
+/* NPC directory cards */
+.npc-card.npc-lime,
+.npc-card.npc-mari,
+.npc-card.npc-jake,
+.npc-card.npc-stella,
+.npc-card.npc-jester,
+.npc-subgrid .npc-card{
+  border-color:#3f3f3f!important;
+  background:linear-gradient(145deg,#1a1a1a,#101010)!important;
+  color:#e5e5e5!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.16)!important;
+}
+.npc-card.npc-lime:hover,
+.npc-card.npc-mari:hover,
+.npc-card.npc-jake:hover,
+.npc-card.npc-stella:hover,
+.npc-card.npc-jester:hover,
+.npc-subgrid .npc-card:hover{
+  border-color:#777!important;
+  background:linear-gradient(145deg,#242424,#151515)!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.22)!important;
+}
+.npc-card .npc-icon,
+.npc-lime .npc-icon,
+.npc-mari .npc-icon,
+.npc-jake .npc-icon,
+.npc-stella .npc-icon,
+.npc-jester .npc-icon{
+  border-color:#555!important;
+  background:#111!important;
+  color:#e8e8e8!important;
+}
+.npc-copy small,
+.npc-copy p,
+.npc-copy strong{
+  color:#999!important;
+}
+
+/* Authentication */
+.auth-card .auth-submit{
+  border:1px solid #686868!important;
+  background:linear-gradient(180deg,#454545 0%,#303030 100%)!important;
+  color:#f0f0f0!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.18)!important;
+  filter:saturate(.2)!important;
+}
+.auth-card .auth-submit:hover:not(:disabled){
+  border-color:#888!important;
+  background:linear-gradient(180deg,#515151 0%,#3a3a3a 100%)!important;
+  filter:none!important;
+}
+.auth-card .auth-switch{
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:#a8a8a8!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+.auth-card .auth-switch:hover{
+  color:#f0f0f0!important;
+}
+
+/* Account actions */
+.setting-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:14px;
+}
+.setting-actions button,
+.settings-danger button{
+  border-color:#646464!important;
+  background:linear-gradient(180deg,#3f3f3f 0%,#2b2b2b 100%)!important;
+  color:#ededed!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.18)!important;
+  filter:saturate(.15)!important;
+}
+.setting-actions button:hover,
+.settings-danger button:hover{
+  border-color:#858585!important;
+  background:linear-gradient(180deg,#4e4e4e 0%,#363636 100%)!important;
+  filter:none!important;
+}
+
+/* Global status / leaderboard presentation */
+.global-status{
+  border-color:#3c3c3c!important;
+  background:#111!important;
+  color:#e5e5e5!important;
+  box-shadow:none!important;
+}
+.global-status b{color:#e5e5e5!important}
+.global-status span{color:#8f8f8f!important}
+
+.global-board,
+.online-panel{
+  border-color:#3c3c3c!important;
+  background:#121212!important;
+  box-shadow:none!important;
+}
+.global-board-head>span,
+.global-group-title span,
+.leader-row span b{
+  color:#777!important;
+}
+.leader-row{
+  border-bottom-color:#292929!important;
+}
+.leader-row span{
+  color:#d7d7d7!important;
+}
+.leader-row strong{
+  color:#ededed!important;
+}
+.online-row{
+  border-color:#2b2b2b!important;
+  background:#101010!important;
+}
+.online-state{
+  color:#9b9b9b!important;
+}
+
+/* Remove the last generic blue-grey button treatment from ordinary controls. */
+button:not(.tab):not(.roll-button):not(.npc-card):not(.recipe-add):not(.recipe-auto):not(.recipe-craft):not(.danger):not([onclick*="discardAura"]):not([onclick*="toggleFavorite"]):not([onclick*="equipAura"]):not([onclick*="equipGear"]):not([onclick*="usePotion"]):not([onclick*="useCompass"]):not([onclick*="useBiomeTool"]):not([onclick*="buyShopItem"]):not([onclick*="bankDeposit"]):not([onclick*="bankWithdraw"]):not([onclick*="bankUpgrade"]):not([onclick*="enhancePotion"]):not([onclick*="jesterGamble"]){
+  border-color:#686868!important;
+  background:linear-gradient(180deg,#454545 0%,#303030 100%)!important;
+  color:#e5e5e5!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.16)!important;
+  filter:saturate(.25)!important;
+}
+button:not(.tab):not(.roll-button):not(.npc-card):not(.recipe-add):not(.recipe-auto):not(.recipe-craft):not(.danger):not([onclick*="discardAura"]):not([onclick*="toggleFavorite"]):not([onclick*="equipAura"]):not([onclick*="equipGear"]):not([onclick*="usePotion"]):not([onclick*="useCompass"]):not([onclick*="useBiomeTool"]):not([onclick*="buyShopItem"]):not([onclick*="bankDeposit"]):not([onclick*="bankWithdraw"]):not([onclick*="bankUpgrade"]):not([onclick*="enhancePotion"]):not([onclick*="jesterGamble"]):hover:not(:disabled){
+  border-color:#858585!important;
+  background:linear-gradient(180deg,#515151 0%,#3a3a3a 100%)!important;
+  filter:none!important;
+}
