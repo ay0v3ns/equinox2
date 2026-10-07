@@ -1251,9 +1251,9 @@ function coinValueForName(name,seen){
  if(groundDenoms[name])return 2*groundDenoms[name];
  return 100;
 }
-function shopPrice(name){const row=SHOP_POOL.find(x=>x[1]===name);if(!row)return 0;return Math.max(1,Math.floor(coinValueForName(name)*(1-(bankShopReduction()/100))))}
+function shopPrice(name,type){const row=SHOP_POOL.find(x=>x[1]===name&&(!type||x[0]===type));if(!row)return 0;const effectiveType=type||row[0];let value=coinValueForName(name);if(effectiveType==='Item'){const itemDenoms={"Wind Essence":500,"Icicle":600,"Rainy Bottle":750,"Hourglass":3000,"Eternal Flame":6666,"Piece of Star":7500,"Feather Vial":7777,"Corruptaine":9000,"NULL?":13333,"Cloudburst":650,"Downpour":1500,"Oceanus":11000,"Cursed Fragments":75000};value=itemDenoms[name]?2*itemDenoms[name]:100}return Math.max(1,Math.floor(value*(1-(bankShopReduction()/100))))}
 function bankShopReduction(){const b=state.bankTier||0;return b>=10?10:b>=7?6:b>=4?3:0}
-function buyShopItem(i){const shop=activeShopStock(),x=shop.items[i];if(!x||x.stock<=0||x.bought)return;const price=shopPrice(x.name);if((state.inventory.Coins||0)<price){toast("Need "+fmt(price)+" Coins.");return}takeItem("Coins",price);x.stock--;x.bought=true;addItem(x.name,1);save();render();toast("Bought "+x.name)}
+function buyShopItem(i){const shop=activeShopStock(),x=shop.items[i];if(!x||x.stock<=0||x.bought)return;const price=shopPrice(x.name,x.type);if((state.inventory.Coins||0)<price){toast("Need "+fmt(price)+" Coins.");return}takeItem("Coins",price);x.stock--;x.bought=true;addItem(x.name,1);save();render();toast("Bought "+x.name)}
 function jesterCoinValue(){let total=0;(state.auras||[]).forEach(function(a){total+=coinValueForName(a.name)});Object.entries(state.inventory||{}).forEach(function(e){const name=e[0],count=Math.max(0,Number(e[1]||0));if(!count||name==='Coins'||name==='Dark Points')return;total+=coinValueForName(name)*count});return Math.max(0,total)}
 function jesterDistribution(){
  const luck=Math.max(0,Number(totalLuck()||0)),speed=Math.max(0,Number(totalSpeed()||0)),coinValue=jesterCoinValue();
