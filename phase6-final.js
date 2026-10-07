@@ -36,10 +36,7 @@
 
   function syncGameplaySettings(){
     if(typeof state==='undefined'||!state.settings)return;
-    if(typeof state.autoRoll==='boolean'){
-      state.autoRoll=!!state.settings.autoRoll;
-      if(state.autoRoll && state.tutorialSkipped===false) state.autoRoll=false;
-    }
+    /* Auto Roll is controlled from the Roll page, never by Settings. */
   }
 
   function installSettingsBridge(){
