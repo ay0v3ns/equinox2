@@ -1177,8 +1177,26 @@ function questBoard(){
  while(selected.length<15){seed=seededRandom(seed)*1000000;const i=Math.floor(seed)%pool.length;const q=pool[i];if(!selected.some(x=>x.id===q.id)){const range=QP_RANGES[q.difficulty];const qp=range[0]+(Math.floor(seededRandom(seed+q.id)*1000)%(range[1]-range[0]+1));selected.push({...q,qp})}}
  return selected;
 }
-function questState(){const h=hourKey();if(!state.questState||state.questState.hour!==h){const previous=state.questState;state.questState={hour:h,completed:[],progress:{},qp:0,milestones:{}};if(previous&&previous.qp){state.dailyQuota=Math.max(1,(Number(previous.qp)*0.01)+1);achievementState().stats.qpDays=(achievementState().stats.qpDays||0)+1;}}return state.questState}
-function completeQuest(id){const qs=questState(),q=activeQuestBoard().find(x=>x.id===id);if(!q||qs.completed.includes(id))return;const progress=questProgress(q);const target=q.type==='Biome'||q.type==='Time Played'?questTarget(q)*60:questTarget(q);if(progress<target){if(q.type==='Mixed'){toast('This quest is not complete yet.');return}toast('Progress: '+progress+' / '+target);return}qs.completed.push(id);markTutorialQuest();qs.qp+=q.qp;try{if(q.serverId&&typeof window.eq4RecordQuestProgress==='function')void window.eq4RecordQuestProgress(q,qs.progress[id]||0,true)}catch(err){console.warn('Shared quest progress sync failed:',err)}const ast=achievementState().stats;ast.questsCompleted=(ast.questsCompleted||0)+1;ast.qpEarned=(ast.qpEarned||0)+q.qp;if(qs.completed.length===15){ast.fullQuestSets=(ast.fullQuestSets||0)+1;ast.consecutiveFullQuestSets=(ast.consecutiveFullQuestSets||0)+1;}if(q.coins)ast.coinsEarned=(ast.coinsEarned||0)+q.coins;const n=qs.completed.length;[5,10,15].forEach(m=>{if(n>=m&&!qs.milestones[m]){qs.milestones[m]=true;const r=QUEST_MILESTONES[m];addItem("Potion Gift Box",r.potions);addItem("Coins",r.coins);toast("Quest milestone "+m+" complete: +"+r.potions+" Potion Gift Box, +"+r.coins+" Coins")}});save();render()}
+function questState(){
+ finalizeDailyQP();
+ const h=hourKey();
+ if(!state.questState||state.questState.hour!==h){
+  state.questState={hour:h,completed:[],progress:{},qp:0,milestones:{},metrics:{rolls:0,items:0,coins:0,crafts:0,gearCrafted:0,potionsCrafted:0,potionsUsed:0,timePlayedSeconds:0,biomeSeconds:{},breakthroughs:0,nonNormalRolls:0,auras:[],craftsWith3Ingredients:0,craftRareIngredients:0,craftEpicIngredients:0,craftMythicIngredients:0,gearAdvanceMax:0,gearAdvanceCountMax:0,potionMythicIngredient:false,potionEnhanced:false}}
+ }
+ return state.questState
+}
+function completeQuest(id){
+ const qs=questState(),q=activeQuestBoard().find(x=>x.id===id);if(!q||qs.completed.includes(id))return;
+ const progress=questProgress(q),target=(q.type==='Biome'||q.type==='Time Played')?questTarget(q)*60:1;
+ if(progress<target){toast('Progress: '+progress+' / '+target);return}
+ qs.completed.push(id);markTutorialQuest();qs.qp+=q.qp;
+ state.dailyQP=Math.max(0,Math.floor(Number(state.dailyQP||0)))+Math.max(0,Math.floor(Number(q.qp||0)));
+ try{if(q.serverId&&typeof window.eq4RecordQuestProgress==='function')void window.eq4RecordQuestProgress(q,qs.progress[id]||0,true)}catch(err){console.warn('Shared quest progress sync failed:',err)}
+ const ast=achievementState().stats;ast.questsCompleted=(ast.questsCompleted||0)+1;ast.qpEarned=(ast.qpEarned||0)+q.qp;
+ if(qs.completed.length===15){ast.fullQuestSets=(ast.fullQuestSets||0)+1;ast.consecutiveFullQuestSets=(ast.consecutiveFullQuestSets||0)+1}
+ const n=qs.completed.length;[5,10,15].forEach(function(m){if(n>=m&&!qs.milestones[m]){qs.milestones[m]=true;const rr=QUEST_MILESTONES[m];addItem("Potion Gift Box",rr.potions);addItem("Coins",rr.coins);toast("Quest milestone "+m+" complete: +"+rr.potions+" Potion Gift Box, +"+rr.coins+" Coins")}})
+ save();render()
+}
 function questView(){
  const qs=questState();let rows=activeQuestBoard();const sort=state.questSort||"difficulty";rows.sort(sort==="type"?(a,b)=>a.type.localeCompare(b.type)||a.difficulty-b.difficulty:(a,b)=>a.difficulty-b.difficulty||a.type.localeCompare(b.type));
  return '<div class="npc-system"><div class="system-head"><button onclick="npcTab(\'home\')">← NPCs</button><div><div class="section-title">Lime · Global Quest Board</div><h1>15 Quests This Hour</h1><p class="muted">Shared hourly set • '+qs.completed.length+'/15 completed • '+qs.qp+' QP</p></div><button onclick="state.questSort=state.questSort===\'difficulty\'?\'type\':\'difficulty\';save();render()">Sort: '+(sort==="difficulty"?"Difficulty":"Type")+'</button></div><div class="quest-grid">'+rows.map(q=>'<div class="quest-card '+(qs.completed.includes(q.id)?'done':'')+'"><div><b>'+q.objective+'</b><small>'+q.type+' · Difficulty '+q.difficulty+' · '+q.qp+' QP</small></div><button '+(qs.completed.includes(q.id)?'disabled':'')+' onclick="completeQuest('+q.id+')">'+(qs.completed.includes(q.id)?'Completed':'Complete')+'</button></div>').join('')+'</div><div class="quest-milestones"><b>Hourly Milestones</b><span>5 → 1 Potion Gift Box + 500 Coins</span><span>10 → 2 Potion Gift Boxes + 1,000 Coins</span><span>15 → 3 Potion Gift Boxes + 1,500 Coins</span></div></div>';
