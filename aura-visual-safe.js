@@ -79,6 +79,10 @@ function installStyle(){
   .eqsafe-host[data-eqsafe-font="serif-dream"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="serif-dream"] .aura-name{font-family:Lora,Georgia,serif;font-style:italic;letter-spacing:.045em}
   .eqsafe-host[data-eqsafe-font="serif-royal"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="serif-royal"] .aura-name{font-family:Georgia,"Times New Roman",serif;font-weight:700;letter-spacing:.04em}
   .eqsafe-host[data-eqsafe-font="sans-wide"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="sans-wide"] .aura-name{font-family:Figtree,system-ui,sans-serif;font-weight:900;letter-spacing:.075em}
+  .eq-cutscene[data-eqsafe-font="mono"] .eq-narrative,.eq-cutscene[data-eqsafe-font="mono-light"] .eq-narrative{font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important}
+  .eq-cutscene[data-eqsafe-font="serif-light"] .eq-narrative,.eq-cutscene[data-eqsafe-font="serif-dream"] .eq-narrative{font-family:Lora,Georgia,serif!important}
+  .eq-cutscene[data-eqsafe-font="serif-heavy"] .eq-narrative,.eq-cutscene[data-eqsafe-font="serif-royal"] .eq-narrative,.eq-cutscene[data-eqsafe-font="serif-sharp"] .eq-narrative{font-family:Georgia,"Times New Roman",serif!important}
+  .eq-cutscene[data-eqsafe-font="sans-wide"] .eq-narrative{font-family:Figtree,system-ui,sans-serif!important}
   @keyframes eqsafeEmblem{from{transform:rotate(var(--eqsafe-start,0deg))}to{transform:rotate(calc(var(--eqsafe-start,0deg) + var(--eqsafe-spin-angle,360deg)))}}
   @keyframes eqsafeDrift{from{translate:0 0;opacity:.18}to{translate:var(--dx,5px) var(--dy,-7px);opacity:.62}}
   .eqsafe-host{border-color:color-mix(in srgb,var(--eqsafe-main) 42%,#252d3e)!important;background:
@@ -135,6 +139,27 @@ function semanticCore(id){
   if(k==='wave-gem')return '<polygon class="main" points="50,14 74,38 64,73 50,87 36,73 26,38"/><path class="line" d="M29 58Q42 45 54 57T72 53"/>';
   if(k==='rain-cloud')return '<path class="main" d="M27 50Q26 34 42 34Q49 20 62 31Q76 31 76 46Q85 49 81 59H23Q17 53 27 50Z"/><path class="line" d="M31 68L26 80M49 68L44 83M67 68L62 80"/>';
   if(k==='shore-lace')return '<path class="line" d="M14 48Q27 34 40 48T66 48T90 48M14 61Q27 47 40 61T66 61T90 61"/><circle class="line" cx="50" cy="50" r="29"/>';
+  if(k==='aurora')return '<path class="line" d="M8 63Q25 28 46 48T92 30M9 74Q32 42 55 62T91 47"/><path class="accent" d="M13 24Q36 44 59 21T88 26"/>';
+  if(k==='dreamcatcher')return '<circle class="line" cx="50" cy="43" r="28"/><circle class="accent" cx="50" cy="43" r="17"/><path class="line" d="M29 29L71 57M71 29L29 57M50 15V71M22 43H78M37 70L34 91M50 71V94M63 70L67 91"/>';
+  if(k==='scarab')return '<ellipse class="main" cx="50" cy="53" rx="15" ry="25"/><path class="line" d="M50 28V78M35 40L19 31M65 40L81 31M35 55L16 55M65 55L84 55M36 69L21 82M64 69L79 82"/><circle class="accent" cx="50" cy="25" r="7"/>';
+  if(k==='singularity')return '<circle class="line" cx="50" cy="50" r="30"/><circle class="accent" cx="50" cy="50" r="20"/><circle class="main" cx="50" cy="50" r="6"/><path class="line" d="M50 7V25M50 75V93M7 50H25M75 50H93"/>';
+  if(k==='projection')return '<polygon class="line" points="50,14 80,32 80,68 50,86 20,68 20,32"/><polygon class="accent" points="50,26 69,38 69,62 50,74 31,62 31,38"/><path class="main" d="M50 14V86M20 32L80 68M80 32L20 68"/>';
+  if(k==='astral-crown')return '<path class="main" d="M20 66L17 36L38 49L50 20L62 49L83 36L80 66Z"/><polygon class="accent" points="'+pointList(50,50,40,8,-Math.PI/2)+'"/>';
+  if(k==='mirror-eye')return '<path class="line" d="M11 50Q50 17 89 50Q50 83 11 50Z"/><circle class="main" cx="50" cy="50" r="11"/><path class="accent" d="M30 22L21 36M70 22L79 36M30 78L21 64M70 78L79 64"/>';
+  if(k==='zero-ring')return '<circle class="line" cx="50" cy="50" r="30"/><circle class="accent" cx="50" cy="50" r="18"/><path class="line" d="M27 73L73 27"/>';
+  if(k==='equinox')return '<circle class="line" cx="50" cy="50" r="31"/><path class="line" d="M50 14V86M18 50H82"/><path class="main" d="M50 14L56 42L82 50L56 58L50 86L44 58L18 50L44 42Z"/><circle cx="50" cy="50" r="7" fill="#070910"/>';
+  if(k==='fear-eye')return '<path class="line" d="M12 50Q50 13 88 50Q50 87 12 50Z"/><circle class="main" cx="50" cy="50" r="15"/><circle cx="54" cy="46" r="5" fill="#070910"/>';
+  if(k==='clock')return '<circle class="line" cx="50" cy="50" r="31"/><path class="line" d="M50 50V27M50 50L67 60"/><path class="accent" d="M50 15V21M50 79V85M15 50H21M79 50H85"/>';
+  if(k==='supernova')return '<circle class="main" cx="50" cy="50" r="12"/><polygon class="accent" points="'+pointList(50,50,38,12,-Math.PI/2)+'"/><circle class="line" cx="50" cy="50" r="29"/>';
+  if(k==='sword')return '<path class="main" d="M47 13H53L56 58L64 64H36L44 58Z"/><rect class="main" x="29" y="61" width="42" height="7" rx="2"/><path class="main" d="M47 68H53L57 83L50 89L43 83Z"/>';
+  if(k==='broken-rune')return '<circle class="line" cx="50" cy="50" r="29"/><path class="line" d="M32 28L45 42L37 54L52 68L44 80M68 28L55 42L63 54L48 68L56 80"/>';
+  if(k==='hand')return '<path class="main" d="M31 78V47Q31 39 37 39Q42 39 42 46V28Q42 20 48 20Q53 20 53 28V45V23Q53 16 59 16Q65 16 65 24V47V30Q65 23 71 23Q77 23 77 31V57Q77 79 58 87Q43 91 31 78Z"/>';
+  if(k==='compass')return '<circle class="line" cx="50" cy="50" r="32"/><polygon class="main" points="50,14 58,45 50,50 42,45"/><polygon class="accent" points="50,86 42,55 50,50 58,55"/><circle cx="50" cy="50" r="5" fill="#070910"/>';
+  if(k==='memory')return '<path class="line" d="M25 32Q50 14 75 32V68Q50 86 25 68Z"/><path class="accent" d="M35 38Q50 26 65 38V62Q50 74 35 62Z"/>';
+  if(k==='meta-cube')return '<polygon class="line" points="50,12 79,29 79,63 50,80 21,63 21,29"/><path class="accent" d="M50 12V46M21 29L50 46L79 29M50 46V80"/>';
+  if(k==='dreammetric')return '<circle class="line" cx="50" cy="50" r="29"/><polygon class="accent" points="'+pointList(50,50,24,7,-Math.PI/2)+'"/><path class="line" d="M21 50Q50 24 79 50Q50 76 21 50Z"/>';
+  if(k==='sandworm')return '<path class="main" d="M13 66Q25 39 43 49Q56 57 51 68Q46 80 61 78Q74 77 84 58Q82 83 61 88Q38 93 31 77Q26 66 13 66Z"/><path class="line" d="M21 65L15 54M30 59L25 47M40 55L37 42"/>';
+  if(k==='black-crown')return '<path class="main" d="M20 67L17 34L38 49L50 23L62 49L83 34L80 67Z"/><path class="accent" d="M27 73H73M33 43L50 59L67 43"/>';
   if(/moon|eclipse/.test(k))return '<circle class="main" cx="47" cy="50" r="27"/><circle cx="61" cy="41" r="23" fill="#070910"/>';
   if(/wave|ocean|leviathan/.test(k))return '<path class="main" d="M10 61Q28 34 48 58T90 54Q73 82 51 66T10 61Z"/>';
   if(/pixel|glitch|zero|meta/.test(k))return '<rect class="main" x="24" y="24" width="20" height="20"/><rect class="main" x="54" y="18" width="22" height="22"/><rect class="main" x="42" y="52" width="30" height="30"/>';
