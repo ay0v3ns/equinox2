@@ -4,7 +4,7 @@
  */
 (function(){
 'use strict';
-var VERSION='1.1.0', disabled=false, observer=null, io=null, queued=false;
+var VERSION='1.1.1', disabled=false, observer=null, io=null, queued=false;
 var seen=new WeakMap();
 var STYLE_ID='eqsafe-aura-style';
 var SCRIPT_ID='eqsafe-aura-identities-script';
@@ -54,6 +54,12 @@ function installStyle(){
   html.eqsafe-ready .roll-result > .eq-aura-core{display:none!important}
   .eqsafe-aura-art{position:absolute;right:6px;top:50%;width:78px;height:78px;transform:translateY(-50%);z-index:1;pointer-events:none;opacity:.42;filter:drop-shadow(0 0 7px var(--eqsafe-main));contain:layout paint style}
   .eqsafe-aura-art svg{display:block;width:100%;height:100%;overflow:visible}
+  .eqsafe-host.eqsafe-visible .eqsafe-aura-art svg{animation:eqsafeVisibleTurn var(--eqsafe-turn,18s) linear infinite}
+  .eqsafe-host.eqsafe-visible .eqsafe-aura-art{filter:drop-shadow(0 0 9px var(--eqsafe-main))}
+  .eqsafe-motes{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+  .eqsafe-mote{position:absolute;width:3px;height:3px;border-radius:50%;background:var(--eqsafe-a1);box-shadow:0 0 5px var(--eqsafe-main);opacity:.34;animation:eqsafeMote 3.4s ease-in-out infinite alternate}
+  @keyframes eqsafeVisibleTurn{from{transform:rotate(0deg)}to{transform:rotate(var(--eqsafe-spin,360deg))}}
+  @keyframes eqsafeMote{from{translate:0 0;opacity:.16}to{translate:4px -7px;opacity:.55}}
   .eqsafe-aura-art .main{fill:var(--eqsafe-main);stroke:var(--eqsafe-a1);stroke-width:1.4}
   .eqsafe-aura-art .line{fill:none;stroke:var(--eqsafe-a1);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .eqsafe-aura-art .accent{fill:none;stroke:var(--eqsafe-a2);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round;opacity:.78}
@@ -130,6 +136,9 @@ function artFor(name,id,mode){
   div.style.setProperty('--eqsafe-main',cssEsc(p[0]||'#8aa4ff'));
   div.style.setProperty('--eqsafe-a1',cssEsc(p[1]||'#d8e2ff'));
   div.style.setProperty('--eqsafe-a2',cssEsc(p[2]||'#28344f'));
+  var sp=num(id.spin,.03);
+  div.style.setProperty('--eqsafe-turn',(Math.max(12,24-Math.abs(sp)*60)).toFixed(1)+'s');
+  div.style.setProperty('--eqsafe-spin',sp<0?'-360deg':'360deg');
   div.innerHTML=svg;div.dataset.aura=name;div.dataset.identity=id.id||'';
   return div;
 }
@@ -177,6 +186,26 @@ function decorate(el){
     console.warn('[AuraSafe] skipped card',e);
   }
 }
+var visibleDetailed=new Set(),MAX_DETAILED=18;
+function addVisibleDetails(el){
+  if(disabled||!el||visibleDetailed.has(el)||visibleDetailed.size>=MAX_DETAILED)return;
+  try{
+    var art=el.querySelector(':scope > .eqsafe-aura-art');if(!art)return;
+    el.classList.add('eqsafe-visible');
+    var motes=document.createElement('span');motes.className='eqsafe-motes';motes.setAttribute('aria-hidden','true');
+    for(var i=0;i<4;i++){
+      var m=document.createElement('i');m.className='eqsafe-mote';
+      m.style.left=(12+((i*23+17)%74))+'%';m.style.top=(14+((i*31+9)%68))+'%';
+      m.style.animationDelay=(-i*.55)+'s';motes.appendChild(m);
+    }
+    el.appendChild(motes);visibleDetailed.add(el);
+  }catch(e){console.warn('[AuraSafe] visible detail skipped',e);}
+}
+function removeVisibleDetails(el){
+  if(!el)return;
+  try{el.classList.remove('eqsafe-visible');var m=el.querySelector(':scope > .eqsafe-motes');if(m)m.remove();}catch(_){}
+  visibleDetailed.delete(el);
+}
 function candidates(root){
   try{return Array.prototype.slice.call((root||document).querySelectorAll('.aura-card,.recent-row,.roll-result'));}catch(_){return[];}
 }
@@ -190,7 +219,12 @@ function install(){
   try{
     window.EQUINOX_AURA_SAFE_STATUS='installing';
     if('IntersectionObserver' in window){
-      io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){decorate(e.target);io.unobserve(e.target);}});},{rootMargin:'180px'});
+      io=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){decorate(e.target);addVisibleDetails(e.target);}
+          else removeVisibleDetails(e.target);
+        });
+      },{rootMargin:'100px'});
     }
     observer=new MutationObserver(function(muts){
       if(disabled)return;
@@ -199,10 +233,10 @@ function install(){
           Array.prototype.forEach.call(m.addedNodes||[],function(node){
             if(!node||node.nodeType!==1)return;
             if(node.matches&&node.matches('.eq-cutscene'))decorateCutscene(node);
-            if(node.matches&&node.matches('.aura-card,.recent-row,.roll-result'))decorate(node);
+            if(node.matches&&node.matches('.aura-card,.recent-row,.roll-result')){decorate(node);if(io)io.observe(node);}
             if(node.querySelectorAll){
               node.querySelectorAll('.eq-cutscene').forEach(decorateCutscene);
-              node.querySelectorAll('.aura-card,.recent-row,.roll-result').forEach(decorate);
+              node.querySelectorAll('.aura-card,.recent-row,.roll-result').forEach(function(el){decorate(el);if(io)io.observe(el);});
             }
           });
         });
@@ -210,12 +244,12 @@ function install(){
     });
     observer.observe(document.body,{childList:true,subtree:true});
     document.documentElement.classList.add('eqsafe-ready');
-    candidates(document).forEach(decorate);
+    candidates(document).forEach(function(el){decorate(el);if(io)io.observe(el);});
     document.querySelectorAll('.eq-cutscene').forEach(decorateCutscene);
     window.EQUINOX_AURA_SAFE_VERSION=VERSION;
     window.EQUINOX_AURA_SAFE_STATUS='ready';
     window.equinoxAuraSafeRefresh=queueScan;
-    window.equinoxAuraSafeDisable=function(){disabled=true;document.documentElement.classList.remove('eqsafe-ready');try{observer&&observer.disconnect();io&&io.disconnect();}catch(_){}document.querySelectorAll('.eqsafe-aura-art').forEach(function(x){x.remove();});document.querySelectorAll('.eq-cutscene[data-eqsafe-cutscene]').forEach(function(x){delete x.dataset.eqsafeCutscene;});};
+    window.equinoxAuraSafeDisable=function(){disabled=true;document.documentElement.classList.remove('eqsafe-ready');try{observer&&observer.disconnect();io&&io.disconnect();}catch(_){}document.querySelectorAll('.eqsafe-motes').forEach(function(x){x.remove();});visibleDetailed.clear();document.querySelectorAll('.eqsafe-aura-art').forEach(function(x){x.remove();});document.querySelectorAll('.eq-cutscene[data-eqsafe-cutscene]').forEach(function(x){delete x.dataset.eqsafeCutscene;});};
   }catch(e){fail('install',e);}
 }
 function boot(){
