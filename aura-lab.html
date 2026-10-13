@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Equinox Aura Lab</title>
+<link rel="stylesheet" href="aura-lab.css?v=20261013-lab1">
+</head>
+<body>
+<header class="lab-top">
+  <div>
+    <div class="eyebrow">EQUINOX · ISOLATED TEST ENVIRONMENT</div>
+    <h1>Aura Lab</h1>
+    <p>Experimental Aura rendering only. This page does not load the Equinox game, auth, saves, rolling, or cinematics.</p>
+  </div>
+  <a class="back" href="/">← Back to Equinox</a>
+</header>
+
+<section class="controls">
+  <label>Search <input id="search" type="search" placeholder="Aura name…"></label>
+  <label>Tier <select id="tier"><option value="">All tiers</option></select></label>
+  <label>Page size
+    <select id="pageSize">
+      <option>24</option><option selected>48</option><option>96</option>
+    </select>
+  </label>
+  <label>Motion
+    <select id="motion">
+      <option value="off">Static</option>
+      <option value="visible" selected>Visible only</option>
+      <option value="all">All rendered cards</option>
+    </select>
+  </label>
+  <button id="stress" class="danger">Stress test all 687</button>
+  <button id="reset">Reset</button>
+</section>
+
+<section class="status">
+  <div><b id="count">0</b><span>matching Auras</span></div>
+  <div><b id="rendered">0</b><span>rendered cards</span></div>
+  <div><b id="fps">--</b><span>approx FPS</span></div>
+  <div><b id="nodes">--</b><span>DOM nodes</span></div>
+  <div><b id="mode">SAFE</b><span>lab mode</span></div>
+</section>
+
+<section class="pager">
+  <button id="prev">← Previous</button>
+  <span id="page">Page 1 / 1</span>
+  <button id="next">Next →</button>
+</section>
+
+<main id="grid" class="grid" aria-live="polite"></main>
+
+<section class="audit">
+  <h2>Uniqueness audit</h2>
+  <div id="audit">Waiting for identity registry…</div>
+</section>
+
+<script src="aura-visual-identities.js?v=20261013-safe1"></script>
+<script src="aura-lab.js?v=20261013-lab1"></script>
+</body>
+</html>
