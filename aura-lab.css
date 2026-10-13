@@ -1,0 +1,25 @@
+:root{color-scheme:dark;--bg:#07090d;--panel:#0e131c;--line:#222b38;--text:#e8edf6;--muted:#8994a5}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 50% -20%,#152033 0,transparent 38%),var(--bg);color:var(--text);font:14px/1.4 system-ui,sans-serif;min-height:100vh}
+.lab-top{display:flex;justify-content:space-between;gap:24px;padding:28px 32px 20px;border-bottom:1px solid var(--line);background:#090d14cc;position:sticky;top:0;z-index:30;backdrop-filter:blur(12px)}
+.lab-top h1{margin:3px 0 4px;font-size:32px}.lab-top p{margin:0;color:var(--muted);max-width:760px}
+.eyebrow{font-size:10px;letter-spacing:.18em;color:#78b8ff}.back{align-self:center;color:#c8d8ee;text-decoration:none;border:1px solid #334155;padding:9px 13px;border-radius:8px}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:18px 32px;border-bottom:1px solid var(--line);background:#0a0f17}
+.controls label{display:grid;gap:5px;color:#aeb9c9;font-size:12px}
+input,select,button{background:#101722;color:#e8edf6;border:1px solid #293548;border-radius:7px;padding:8px 10px}
+button{cursor:pointer}.danger{border-color:#773441;background:#251116}.danger.active{background:#5a1724;border-color:#bd4057}
+.status{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:16px 32px}
+.status div{background:var(--panel);border:1px solid var(--line);padding:11px 14px;border-radius:10px;display:flex;flex-direction:column}
+.status b{font-size:20px}.status span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.pager{display:flex;align-items:center;justify-content:center;gap:16px;padding:2px 32px 16px}.pager span{color:#aab5c5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;padding:0 32px 32px}
+.aura{min-height:112px;border:1px solid color-mix(in srgb,var(--main) 40%,#28313f);border-radius:12px;background:radial-gradient(circle at 86% 50%,color-mix(in srgb,var(--main) 16%,transparent),transparent 34%),#0d121a;position:relative;overflow:hidden;isolation:isolate;padding:15px 112px 14px 15px}
+.aura h3{margin:0 0 3px;font-size:17px;text-shadow:0 0 10px color-mix(in srgb,var(--main) 50%,transparent)}.aura .rarity{font-size:12px;color:#c3ccda}.aura .meta{margin-top:9px;font-size:10px;line-height:1.6;color:#7f8a99}
+.symbol{position:absolute;right:10px;top:50%;width:94px;height:94px;transform:translateY(-50%);filter:drop-shadow(0 0 9px var(--main));opacity:.78}
+.symbol svg{width:100%;height:100%;overflow:visible;transform-origin:50% 50%}.symbol .main{fill:var(--main);stroke:var(--a1);stroke-width:1.4}.symbol .line{fill:none;stroke:var(--a1);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.symbol .accent{fill:none;stroke:var(--a2);stroke-width:1.05;opacity:.8}.symbol .node{fill:var(--a1);stroke:var(--main);stroke-width:.5}
+.aura.animate .symbol svg{animation:turn var(--turn) linear infinite}.aura.animate .mote{animation:mote var(--dur) ease-in-out infinite alternate}
+.motes{position:absolute;inset:0;pointer-events:none;z-index:-1}.mote{position:absolute;left:var(--x);top:var(--y);width:3px;height:3px;background:var(--a1);border-radius:50%;box-shadow:0 0 5px var(--main);opacity:.3}
+@keyframes turn{to{transform:rotate(var(--spin))}}@keyframes mote{to{translate:var(--dx) var(--dy);opacity:.65}}
+.audit{margin:0 32px 36px;padding:18px;border:1px solid var(--line);border-radius:12px;background:#0b1018}.audit h2{margin:0 0 10px;font-size:16px}.audit pre{white-space:pre-wrap;color:#aeb9c9}
+[data-font=mono] h3,[data-font=mono-light] h3{font-family:ui-monospace,monospace}[data-font=serif-light] h3,[data-font=serif-dream] h3{font-family:Georgia,serif;font-style:italic}[data-font=serif-heavy] h3,[data-font=serif-royal] h3,[data-font=serif-sharp] h3{font-family:Georgia,serif}[data-font=sans-wide] h3{font-family:system-ui,sans-serif;letter-spacing:.06em;font-weight:900}
+@media(max-width:700px){.lab-top{position:static;padding:20px;display:block}.back{display:inline-block;margin-top:14px}.controls,.status,.grid{padding-left:16px;padding-right:16px}.status{grid-template-columns:repeat(2,1fr)}.aura{min-height:100px;padding-right:96px}.symbol{width:78px;height:78px}}
