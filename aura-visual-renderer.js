@@ -3,7 +3,7 @@
  */
 (function(){
 'use strict';
-var VERSION='2.0.0';
+var VERSION='3.0.0';
 
 var CURATED={
 'Fragments of the Crimson Moon':{kind:'shattered-moon',palette:['#8b0a1d','#ff2948','#1b0005'],particle:'moon-shard',backdrop:'eclipse',font:'serif-sharp',spin:-.10},
@@ -73,15 +73,44 @@ function particleFor(kind,theme){
  return theme==='aquatic'?'bubble':theme==='fire'?'ember':theme==='glitch'?'pixel':'spark';
 }
 function specFor(name){
- var d=window.getAuraPresentation&&window.getAuraPresentation(name),seed=hash(name),theme=d&&d.theme||'prismatic',c=CURATED[name];
+ var d=window.getAuraPresentation&&window.getAuraPresentation(name),seed=hash(name),theme=d&&d.theme||'prismatic';
+ var explicit=window.getAuraVisualIdentity&&window.getAuraVisualIdentity(name);
+ if(explicit)return Object.assign({name:name,seed:seed,variant:(explicit.mark&&explicit.mark.variant)||seed%19,rings:2+seed%4,satellites:2+(seed>>>4)%7},explicit);
+ var c=CURATED[name];
  if(c)return Object.assign({name:name,seed:seed,variant:seed%19,rings:2+seed%4,satellites:2+(seed>>>4)%7},c);
  var kind=semantic(name,theme),p=d&&d.accentColors||['#fff','#8aa4ff','#b79cff'];
  return {name:name,seed:seed,kind:kind,palette:[d&&d.mainColor||p[0],p[0],p[1]||p[0]],particle:particleFor(kind,theme),backdrop:theme,font:fontFor(kind,seed),spin:((seed%21)-10)/100,variant:seed%19,rings:1+(seed%4),satellites:2+((seed>>>5)%8)};
 }
 function pts(cx,cy,r,n,rot){var a=[];for(var i=0;i<n;i++){var t=rot+i*Math.PI*2/n;a.push((cx+Math.cos(t)*r).toFixed(1)+','+(cy+Math.sin(t)*r).toFixed(1))}return a.join(' ')}
 function lineSigil(seed){var s='';for(var i=0;i<5;i++){var a=((seed>>(i*3))%360)*Math.PI/180,r1=15+(seed>>(i+2))%15,r2=40+(seed>>(i+5))%22;s+='<line x1="'+(50+Math.cos(a)*r1).toFixed(1)+'" y1="'+(50+Math.sin(a)*r1).toFixed(1)+'" x2="'+(50+Math.cos(a+1.7)*r2).toFixed(1)+'" y2="'+(50+Math.sin(a+1.7)*r2).toFixed(1)+'"/>'}return s}
+function identityAccent(spec){
+ var m=spec.mark;if(!m)return'';
+ var sides=Math.max(3,Number(m.sides||6)),inner=Math.max(.18,Math.min(.72,Number(m.inner||.42))),tw=Number(m.twist||0)*Math.PI/180;
+ var ptsA=[],ptsB=[],r1=34,r2=34*inner;
+ for(var i=0;i<sides;i++){var a=-Math.PI/2+i*Math.PI*2/sides+tw,b=a+Math.PI/sides;ptsA.push((50+Math.cos(a)*r1).toFixed(1)+','+(50+Math.sin(a)*r1).toFixed(1));ptsB.push((50+Math.cos(b)*r2).toFixed(1)+','+(50+Math.sin(b)*r2).toFixed(1));}
+ var star=[];for(var j=0;j<sides;j++){star.push(ptsA[j]);star.push(ptsB[j]);}
+ var out='<polygon class="eqv-identity" points="'+star.join(' ')+'"/>';
+ var nodes=Math.max(2,Number(m.nodes||4));for(var n=0;n<nodes;n++){var t=n*Math.PI*2/nodes+tw*1.7,rr=19+((n+Number(m.phase||0))%3)*7;out+='<circle class="eqv-node" cx="'+(50+Math.cos(t)*rr).toFixed(1)+'" cy="'+(50+Math.sin(t)*rr).toFixed(1)+'" r="'+(1.5+(n%3)*.65).toFixed(2)+'"/>';}
+ if(Number(m.mirror||0)===1)out+='<path class="eqv-identity" d="M20 50 Q35 26 50 50 T80 50 M20 54 Q35 78 50 54 T80 54"/>';
+ if(Number(m.mirror||0)===2)out+='<path class="eqv-identity" d="M50 18 Q26 35 50 50 T50 82 M54 18 Q78 35 54 50 T54 82"/>';
+ return out;
+}
 function core(spec){
  var k=spec.kind,v=spec.variant;
+ if(k==='common-orb')return '<circle class="eqv-line" cx="50" cy="50" r="18"/><circle class="eqv-fill" cx="50" cy="50" r="5"/>'+identityAccent(spec);
+ if(k==='split-diamond')return '<polygon class="eqv-fill" points="50,15 77,50 50,85 23,50"/><path class="eqv-cutline" d="M50 15 L50 85"/>'+identityAccent(spec);
+ if(k==='up-spark')return '<path class="eqv-fill" d="M50 14 L58 40 L82 50 L58 60 L50 86 L42 60 L18 50 L42 40 Z"/>'+identityAccent(spec);
+ if(k==='leaf')return '<path class="eqv-fill" d="M22 66 Q28 25 78 22 Q74 71 31 79 Z"/><path class="eqv-line" d="M29 72 Q47 52 72 29 M42 60 L34 46 M53 49 L62 39"/>'+identityAccent(spec);
+ if(k==='rare-star')return '<polygon class="eqv-fill" points="'+pts(50,50,32,5,-Math.PI/2)+'"/><circle class="eqv-cut" cx="50" cy="50" r="8"/>'+identityAccent(spec);
+ if(k==='barred-rune')return '<circle class="eqv-line" cx="50" cy="50" r="27"/><path class="eqv-line" d="M31 31 L69 69 M69 31 L31 69"/>'+identityAccent(spec);
+ if(k==='crest')return '<path class="eqv-fill" d="M22 31 L36 45 L50 22 L64 45 L78 31 L73 72 H27 Z"/><path class="eqv-line" d="M29 79 H71"/>'+identityAccent(spec);
+ if(k==='ink-drop')return '<path class="eqv-fill" d="M50 16 C61 35 72 49 67 65 C62 82 39 86 30 70 C21 54 38 36 50 16Z"/><circle class="eqv-cut" cx="55" cy="61" r="7"/>'+identityAccent(spec);
+ if(k==='seven')return '<path class="eqv-line" d="M28 27 H72 L45 78" style="stroke-width:9"/>'+identityAccent(spec);
+ if(k==='wind')return '<path class="eqv-line" d="M18 39 Q38 26 57 39 Q66 45 59 50 Q53 54 47 49 M14 53 H68 Q80 53 80 62 Q80 72 67 71 M24 66 H54"/>'+identityAccent(spec);
+ if(k==='wave-gem')return '<polygon class="eqv-fill" points="50,16 72,37 63,71 50,84 37,71 28,37"/><path class="eqv-cutline" d="M31 57 Q43 45 54 56 T70 53"/>'+identityAccent(spec);
+ if(k==='rain-cloud')return '<path class="eqv-fill" d="M28 50 Q27 34 42 34 Q49 20 61 31 Q75 31 75 46 Q84 49 80 59 H24 Q18 53 28 50Z"/><path class="eqv-line" d="M32 67 L27 79 M49 67 L44 82 M66 67 L61 79"/>'+identityAccent(spec);
+ if(k==='shore-lace')return '<path class="eqv-line" d="M15 49 Q27 35 39 49 T63 49 T87 49 M15 60 Q27 46 39 60 T63 60 T87 60"/><circle class="eqv-line" cx="50" cy="50" r="28"/>'+identityAccent(spec);
+
  if(/shattered-moon|blood-eclipse|moon/.test(k))return '<circle class="eqv-fill" cx="50" cy="50" r="27"/><circle class="eqv-cut" cx="'+(64+v%4)+'" cy="'+(40-v%3)+'" r="23"/><path class="eqv-line" d="M45 25 L51 38 L44 49 L52 58 L47 75 M33 40 L46 48 M52 58 L67 64"/><polygon class="eqv-fill" points="25,67 37,59 33,75"/><polygon class="eqv-fill" points="71,27 83,20 79,36"/>';
  if(/crown/.test(k))return '<path class="eqv-fill" d="M22 67 L18 35 L38 49 L50 25 L62 49 L82 35 L78 67 Z"/><path class="eqv-line" d="M27 74 H73"/>';
  if(/eye/.test(k))return '<path class="eqv-line" d="M13 50 Q50 16 87 50 Q50 84 13 50Z"/><circle class="eqv-fill" cx="50" cy="50" r="'+(10+v%5)+'"/><circle class="eqv-cut" cx="54" cy="46" r="4"/>';
@@ -107,7 +136,7 @@ function core(spec){
  if(/lightning/.test(k))return '<polygon class="eqv-fill" points="55,11 31,53 48,53 40,89 71,43 53,43"/>';
  if(/door/.test(k))return '<path class="eqv-line" d="M29 82 V22 H71 V82"/><rect class="eqv-fill" x="38" y="31" width="25" height="51"/><circle class="eqv-cut" cx="57" cy="58" r="2.5"/>';
  if(/balance|equinox/.test(k))return '<circle class="eqv-line" cx="50" cy="50" r="30"/><path class="eqv-line" d="M50 18 V80 M28 34 H72 M33 34 L25 52 H41 Z M67 34 L59 52 H75 Z"/><circle class="eqv-fill" cx="50" cy="18" r="5"/>';
- return '<circle class="eqv-line" cx="50" cy="50" r="31"/><polygon class="eqv-line" points="'+pts(50,50,26,6,-Math.PI/2)+'"/><g class="eqv-line">'+lineSigil(spec.seed)+'</g>';
+ return '<g>'+identityAccent(spec)+'</g>';
 }
 function render(name,opts){
  var s=specFor(name),o=opts||{},size=Number(o.size||280),id='eqv'+s.seed.toString(36)+(s.variant||0),p=s.palette;
