@@ -4,7 +4,7 @@
  */
 (function(){
 'use strict';
-var VERSION='1.0.0', disabled=false, observer=null, io=null, queued=false;
+var VERSION='1.1.0', disabled=false, observer=null, io=null, queued=false;
 var seen=new WeakMap();
 var STYLE_ID='eqsafe-aura-style';
 var SCRIPT_ID='eqsafe-aura-identities-script';
@@ -13,6 +13,7 @@ function fail(stage,err){
   console.warn('[AuraSafe] disabled at '+stage,err||'');
   window.__equinoxAuraSafeError={stage:stage,message:String(err&&err.message||err||''),time:Date.now()};
   disabled=true;
+  window.EQUINOX_AURA_SAFE_STATUS='disabled';
   document.documentElement.classList.remove('eqsafe-ready');
   try{if(observer)observer.disconnect();if(io)io.disconnect();}catch(_){}
 }
@@ -26,12 +27,12 @@ function loadIdentities(){
       var old=document.getElementById(SCRIPT_ID);
       if(old){
         var start=Date.now();
-        (function wait(){if(window.getAuraVisualIdentity)return resolve(true);if(Date.now()-start>3500)return reject(new Error('identity registry timeout'));setTimeout(wait,60)})();
+        (function wait(){if(window.getAuraVisualIdentity)return resolve(true);if(Date.now()-start>12000)return reject(new Error('identity registry timeout'));setTimeout(wait,60)})();
         return;
       }
       var s=document.createElement('script');s.id=SCRIPT_ID;s.async=true;
       s.src='aura-visual-identities.js?v=20261013-safe1';
-      var timer=setTimeout(function(){s.onload=s.onerror=null;reject(new Error('identity registry timeout'));},4000);
+      var timer=setTimeout(function(){s.onload=s.onerror=null;reject(new Error('identity registry timeout'));},12000);
       s.onload=function(){clearTimeout(timer);window.getAuraVisualIdentity?resolve(true):reject(new Error('identity registry missing API'));};
       s.onerror=function(){clearTimeout(timer);reject(new Error('identity registry failed to load'));};
       document.head.appendChild(s);
@@ -187,7 +188,7 @@ function queueScan(){
 function install(){
   if(disabled)return;
   try{
-    installStyle();
+    window.EQUINOX_AURA_SAFE_STATUS='installing';
     if('IntersectionObserver' in window){
       io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){decorate(e.target);io.unobserve(e.target);}});},{rootMargin:'180px'});
     }
@@ -212,14 +213,17 @@ function install(){
     candidates(document).forEach(decorate);
     document.querySelectorAll('.eq-cutscene').forEach(decorateCutscene);
     window.EQUINOX_AURA_SAFE_VERSION=VERSION;
+    window.EQUINOX_AURA_SAFE_STATUS='ready';
     window.equinoxAuraSafeRefresh=queueScan;
     window.equinoxAuraSafeDisable=function(){disabled=true;document.documentElement.classList.remove('eqsafe-ready');try{observer&&observer.disconnect();io&&io.disconnect();}catch(_){}document.querySelectorAll('.eqsafe-aura-art').forEach(function(x){x.remove();});document.querySelectorAll('.eq-cutscene[data-eqsafe-cutscene]').forEach(function(x){delete x.dataset.eqsafeCutscene;});};
   }catch(e){fail('install',e);}
 }
 function boot(){
   // Core game gets the first chance to become interactive.
+  try{installStyle();window.EQUINOX_AURA_SAFE_STATUS='waiting';}catch(e){fail('style-install',e);return;}
   setTimeout(function(){
     if(disabled)return;
+    window.EQUINOX_AURA_SAFE_STATUS='loading-identities';
     loadIdentities().then(install).catch(function(e){fail('identity-load',e);});
   },1800);
 }
