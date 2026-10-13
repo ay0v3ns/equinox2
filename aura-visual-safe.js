@@ -13,6 +13,7 @@ function fail(stage,err){
   console.warn('[AuraSafe] disabled at '+stage,err||'');
   window.__equinoxAuraSafeError={stage:stage,message:String(err&&err.message||err||''),time:Date.now()};
   disabled=true;
+  document.documentElement.classList.remove('eqsafe-ready');
   try{if(observer)observer.disconnect();if(io)io.disconnect();}catch(_){}
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]});}
@@ -44,6 +45,12 @@ function installStyle(){
   .eqsafe-host{position:relative!important;overflow:hidden!important;isolation:isolate}
   .eqsafe-host>*:not(.eqsafe-aura-art){position:relative;z-index:2}
   .eqsafe-host > .eqv-wrap,.eqsafe-host > .eq-aura-core{display:none!important}
+  html.eqsafe-ready .aura-card > .eqv-wrap,
+  html.eqsafe-ready .recent-row > .eqv-wrap,
+  html.eqsafe-ready .roll-result > .eqv-wrap,
+  html.eqsafe-ready .aura-card > .eq-aura-core,
+  html.eqsafe-ready .recent-row > .eq-aura-core,
+  html.eqsafe-ready .roll-result > .eq-aura-core{display:none!important}
   .eqsafe-aura-art{position:absolute;right:6px;top:50%;width:78px;height:78px;transform:translateY(-50%);z-index:1;pointer-events:none;opacity:.42;filter:drop-shadow(0 0 7px var(--eqsafe-main));contain:layout paint style}
   .eqsafe-aura-art svg{display:block;width:100%;height:100%;overflow:visible}
   .eqsafe-aura-art .main{fill:var(--eqsafe-main);stroke:var(--eqsafe-a1);stroke-width:1.4}
@@ -165,12 +172,26 @@ function install(){
     if('IntersectionObserver' in window){
       io=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){decorate(e.target);io.unobserve(e.target);}});},{rootMargin:'180px'});
     }
-    observer=new MutationObserver(queueScan);
+    observer=new MutationObserver(function(muts){
+      if(disabled)return;
+      try{
+        muts.forEach(function(m){
+          Array.prototype.forEach.call(m.addedNodes||[],function(node){
+            if(!node||node.nodeType!==1)return;
+            if(node.matches&&node.matches('.aura-card,.recent-row,.roll-result')){decorate(node);return;}
+            if(node.querySelectorAll){
+              node.querySelectorAll('.aura-card,.recent-row,.roll-result').forEach(decorate);
+            }
+          });
+        });
+      }catch(e){console.warn('[AuraSafe] mutation decoration skipped',e);}
+    });
     observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
-    queueScan();
+    document.documentElement.classList.add('eqsafe-ready');
+    candidates(document).forEach(decorate);
     window.EQUINOX_AURA_SAFE_VERSION=VERSION;
     window.equinoxAuraSafeRefresh=queueScan;
-    window.equinoxAuraSafeDisable=function(){disabled=true;try{observer&&observer.disconnect();io&&io.disconnect();}catch(_){}document.querySelectorAll('.eqsafe-aura-art').forEach(function(x){x.remove();});};
+    window.equinoxAuraSafeDisable=function(){disabled=true;document.documentElement.classList.remove('eqsafe-ready');try{observer&&observer.disconnect();io&&io.disconnect();}catch(_){}document.querySelectorAll('.eqsafe-aura-art').forEach(function(x){x.remove();});};
   }catch(e){fail('install',e);}
 }
 function boot(){
