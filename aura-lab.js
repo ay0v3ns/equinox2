@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-var V=window.EQUINOX_AURA_VISUAL_IDENTITIES||{},all=Object.entries(V).filter(function(x){return x[0]!=='Shorelace';});
+var V={},all=[],started=false;
 var state={q:'',tier:'',page:1,size:48,motion:'visible',stress:false};
 var grid=document.getElementById('grid'),io=null;
 
@@ -86,5 +86,20 @@ document.getElementById('reset').onclick=function(){state={q:'',tier:'',page:1,s
 document.getElementById('prev').onclick=function(){state.page=Math.max(1,state.page-1);render();scrollTo(0,0)};
 document.getElementById('next').onclick=function(){state.page++;render();scrollTo(0,0)};
 var frames=0,last=performance.now();function fps(t){frames++;if(t-last>1000){document.getElementById('fps').textContent=Math.round(frames*1000/(t-last));frames=0;last=t}requestAnimationFrame(fps)}requestAnimationFrame(fps);
-tiers();audit();render();
+function startLab(){
+ if(started)return;
+ V=window.EQUINOX_AURA_VISUAL_IDENTITIES||{};
+ all=Object.entries(V).filter(function(x){return x[0]!=='Shorelace';});
+ if(!all.length)return false;
+ started=true;tiers();audit();render();return true;
+}
+(function waitRegistry(){
+ if(startLab())return;
+ document.getElementById('audit').innerHTML='<pre>Loading 687-Aura identity registry…</pre>';
+ var tries=0,t=setInterval(function(){
+   tries++;
+   if(startLab()){clearInterval(t);return;}
+   if(tries>120){clearInterval(t);document.getElementById('audit').innerHTML='<pre>Registry failed to initialize. Aura Lab stayed isolated; production Equinox is unaffected.</pre>';}
+ },100);
+})();
 })();
