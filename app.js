@@ -1526,7 +1526,8 @@ function auraVisualShell(name,classes){
   const safe=function(v){return eq4escape(String(v==null?'':v))};
   let particles='';const count=10+(seed%5);
   for(let i=0;i<count;i++)particles+='<i style="--p:'+i+'"></i>';
-  return '<div class="'+classes+' eq-aura-visual eq-font-'+fontVariant+'" data-aura-theme="'+safe(theme)+'" style="--aura-main:'+safe(d.mainColor)+';--aura-a1:'+safe(d.accentColors[0])+';--aura-a2:'+safe(d.accentColors[1])+';--eq-tilt:'+tilt+'deg;--eq-speed:'+speed+'s"><span class="eq-aura-glow" aria-hidden="true"></span><span class="eq-aura-particles" aria-hidden="true">'+particles+'</span><span class="eq-aura-core" aria-hidden="true"></span>';
+  const bespoke=window.renderAuraVisual?window.renderAuraVisual(name,{size:76}):'<span class="eq-aura-core" aria-hidden="true"></span>';
+  return '<div class="'+classes+' eq-aura-visual eq-font-'+fontVariant+'" data-aura-theme="'+safe(theme)+'" style="--aura-main:'+safe(d.mainColor)+';--aura-a1:'+safe(d.accentColors[0])+';--aura-a2:'+safe(d.accentColors[1])+';--eq-tilt:'+tilt+'deg;--eq-speed:'+speed+'s"><span class="eq-aura-glow" aria-hidden="true"></span><span class="eq-aura-particles" aria-hidden="true">'+particles+'</span>'+bespoke;
 }
 function auraVisualClose(){return '</div>';}
 
