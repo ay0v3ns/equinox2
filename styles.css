@@ -1823,7 +1823,7 @@ button:not(.tab):not(.roll-button):not(.npc-card):not(.recipe-add):not(.recipe-a
 /* Aura Visual Renderer v2 */
 .eq-centerpiece{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.7);z-index:2;opacity:0;pointer-events:none;will-change:transform,filter,opacity}
 .eqv-wrap{position:relative;width:var(--eqv-size,280px);height:var(--eqv-size,280px);display:grid;place-items:center;filter:drop-shadow(0 0 18px var(--eqv-main)) drop-shadow(0 0 38px color-mix(in srgb,var(--eqv-a1) 55%,transparent))}
-.eqv-svg{width:100%;height:100%;overflow:visible;animation:eqvTurn calc(18s / max(.12,abs(var(--eqv-spin)))) linear infinite}
+.eqv-svg{width:100%;height:100%;overflow:visible;animation:eqvTurn 18s linear infinite}
 .eqv-core{transform-origin:50% 50%;animation:eqvPulse 3.6s ease-in-out infinite alternate}
 .eqv-fill{fill:url(#unused);fill:var(--eqv-main);stroke:var(--eqv-a1);stroke-width:1.4;paint-order:stroke;vector-effect:non-scaling-stroke}
 .eqv-line{fill:none;stroke:var(--eqv-a1);stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
@@ -1831,7 +1831,7 @@ button:not(.tab):not(.roll-button):not(.npc-card):not(.recipe-add):not(.recipe-a
 .eqv-orbit{position:absolute;inset:8%;border:1px solid color-mix(in srgb,var(--eqv-a1) 42%,transparent);border-radius:50%;box-shadow:0 0 14px color-mix(in srgb,var(--eqv-main) 25%,transparent);animation:eqvOrbit 11s linear infinite}
 .eqv-o2{inset:17%;border-style:dashed;animation-duration:7s;animation-direction:reverse}
 .eqv-o3{inset:2%;border-color:color-mix(in srgb,var(--eqv-a2) 30%,transparent);animation-duration:17s;transform:rotate(28deg) scaleY(.62)}
-[data-eqv-kind*="moon"] .eqv-wrap,[data-eqv-kind*="eclipse"].eqv-wrap{filter:drop-shadow(0 0 24px #ff1738) drop-shadow(0 0 55px #5f000d)}
+[data-eqv-kind*="moon"],[data-eqv-kind*="eclipse"]{filter:drop-shadow(0 0 24px #ff1738) drop-shadow(0 0 55px #5f000d)}
 .eqv-wrap[data-eqv-kind="shattered-moon"] .eqv-svg{filter:drop-shadow(0 0 12px #ff2948)}
 .eqv-wrap[data-eqv-kind="glitch-core"] .eqv-svg,.eqv-wrap[data-eqv-kind="pixel-core"] .eqv-svg{animation: eqvGlitch 1.9s steps(2,end) infinite}
 .eqv-wrap[data-eqv-kind="leviathan"] .eqv-svg{animation:eqvWave 4.5s ease-in-out infinite}
