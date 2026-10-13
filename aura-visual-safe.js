@@ -64,7 +64,9 @@ function installStyle(){
   .recent-row.eqsafe-host .eqsafe-aura-art{width:64px;height:64px;opacity:.28}
   .performance-mode .eqsafe-aura-art{filter:none}
   .reduced-motion .eqsafe-aura-art{animation:none!important}
-  @media(max-width:700px){.eqsafe-aura-art{width:62px;height:62px;opacity:.30}}
+  .eqsafe-cutscene-art{position:absolute!important;left:50%!important;right:auto!important;top:50%!important;width:min(34vw,390px)!important;height:min(34vw,390px)!important;transform:translate(-50%,-50%)!important;opacity:.92!important;z-index:13!important;filter:drop-shadow(0 0 14px var(--eqsafe-main)) drop-shadow(0 0 34px var(--eqsafe-a1))!important}
+  html.eqsafe-ready .eq-cutscene .eq-centerpiece > .eqv-wrap{visibility:hidden!important}
+  @media(max-width:700px){.eqsafe-aura-art{width:62px;height:62px;opacity:.30}.eqsafe-cutscene-art{width:230px!important;height:230px!important}}
   `;
   document.head.appendChild(st);
 }
@@ -120,15 +122,32 @@ function semanticCore(id){
   if(/rune|arcane/.test(k))return '<circle class="line" cx="50" cy="50" r="29"/><polygon class="line" points="'+pointList(50,50,25,6,-Math.PI/2)+'"/>';
   return '';
 }
-function artFor(name,id){
+function artFor(name,id,mode){
   var p=Array.isArray(id.palette)&&id.palette.length>=3?id.palette:['#8aa4ff','#d8e2ff','#28344f'];
   var svg='<svg viewBox="0 0 100 100" aria-hidden="true"><g>'+semanticCore(id)+identityAccent(id)+'</g></svg>';
-  var div=document.createElement('div');div.className='eqsafe-aura-art';
+  var div=document.createElement('div');div.className='eqsafe-aura-art'+(mode==='cutscene'?' eqsafe-cutscene-art':'');
   div.style.setProperty('--eqsafe-main',cssEsc(p[0]||'#8aa4ff'));
   div.style.setProperty('--eqsafe-a1',cssEsc(p[1]||'#d8e2ff'));
   div.style.setProperty('--eqsafe-a2',cssEsc(p[2]||'#28344f'));
   div.innerHTML=svg;div.dataset.aura=name;div.dataset.identity=id.id||'';
   return div;
+}
+function decorateCutscene(el){
+  if(disabled||!el||el.nodeType!==1)return;
+  try{
+    if(el.dataset.eqsafeCutscene==='1')return;
+    var legacy=el.querySelector('.eq-centerpiece svg[aria-label]');
+    var name=legacy&&legacy.getAttribute('aria-label')||'';
+    if(!name)return;
+    var id=window.getAuraVisualIdentity&&window.getAuraVisualIdentity(name);if(!id)return;
+    var center=el.querySelector('.eq-centerpiece');if(!center)return;
+    var p=id.palette||[];
+    el.style.setProperty('--aura-main',cssEsc(p[0]||'#8aa4ff'));
+    el.style.setProperty('--aura-a1',cssEsc(p[1]||'#d8e2ff'));
+    el.style.setProperty('--aura-a2',cssEsc(p[2]||'#28344f'));
+    center.appendChild(artFor(name,id,'cutscene'));
+    el.dataset.eqsafeCutscene='1';
+  }catch(e){console.warn('[AuraSafe] cutscene decoration skipped',e);}
 }
 function auraNameFor(el){
   try{
@@ -178,20 +197,23 @@ function install(){
         muts.forEach(function(m){
           Array.prototype.forEach.call(m.addedNodes||[],function(node){
             if(!node||node.nodeType!==1)return;
-            if(node.matches&&node.matches('.aura-card,.recent-row,.roll-result')){decorate(node);return;}
+            if(node.matches&&node.matches('.eq-cutscene'))decorateCutscene(node);
+            if(node.matches&&node.matches('.aura-card,.recent-row,.roll-result'))decorate(node);
             if(node.querySelectorAll){
+              node.querySelectorAll('.eq-cutscene').forEach(decorateCutscene);
               node.querySelectorAll('.aura-card,.recent-row,.roll-result').forEach(decorate);
             }
           });
         });
       }catch(e){console.warn('[AuraSafe] mutation decoration skipped',e);}
     });
-    observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
+    observer.observe(document.body,{childList:true,subtree:true});
     document.documentElement.classList.add('eqsafe-ready');
     candidates(document).forEach(decorate);
+    document.querySelectorAll('.eq-cutscene').forEach(decorateCutscene);
     window.EQUINOX_AURA_SAFE_VERSION=VERSION;
     window.equinoxAuraSafeRefresh=queueScan;
-    window.equinoxAuraSafeDisable=function(){disabled=true;document.documentElement.classList.remove('eqsafe-ready');try{observer&&observer.disconnect();io&&io.disconnect();}catch(_){}document.querySelectorAll('.eqsafe-aura-art').forEach(function(x){x.remove();});};
+    window.equinoxAuraSafeDisable=function(){disabled=true;document.documentElement.classList.remove('eqsafe-ready');try{observer&&observer.disconnect();io&&io.disconnect();}catch(_){}document.querySelectorAll('.eqsafe-aura-art').forEach(function(x){x.remove();});document.querySelectorAll('.eq-cutscene[data-eqsafe-cutscene]').forEach(function(x){delete x.dataset.eqsafeCutscene;});};
   }catch(e){fail('install',e);}
 }
 function boot(){
