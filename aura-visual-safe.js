@@ -43,6 +43,7 @@ function installStyle(){
   st.textContent=`
   .eqsafe-host{position:relative!important;overflow:hidden!important;isolation:isolate}
   .eqsafe-host>*:not(.eqsafe-aura-art){position:relative;z-index:2}
+  .eqsafe-host > .eqv-wrap,.eqsafe-host > .eq-aura-core{display:none!important}
   .eqsafe-aura-art{position:absolute;right:6px;top:50%;width:78px;height:78px;transform:translateY(-50%);z-index:1;pointer-events:none;opacity:.42;filter:drop-shadow(0 0 7px var(--eqsafe-main));contain:layout paint style}
   .eqsafe-aura-art svg{display:block;width:100%;height:100%;overflow:visible}
   .eqsafe-aura-art .main{fill:var(--eqsafe-main);stroke:var(--eqsafe-a1);stroke-width:1.4}
