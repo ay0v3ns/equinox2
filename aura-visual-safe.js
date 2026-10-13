@@ -4,7 +4,7 @@
  */
 (function(){
 'use strict';
-var VERSION='1.2.0', disabled=false, observer=null, io=null, queued=false;
+var VERSION='1.1.0', disabled=false, observer=null, io=null, queued=false;
 var seen=new WeakMap();
 var STYLE_ID='eqsafe-aura-style';
 var SCRIPT_ID='eqsafe-aura-identities-script';
@@ -31,7 +31,7 @@ function loadIdentities(){
         return;
       }
       var s=document.createElement('script');s.id=SCRIPT_ID;s.async=true;
-      s.src='aura-visual-identities.js?v=20261013-safe6';
+      s.src='aura-visual-identities.js?v=20261013-safe1';
       var timer=setTimeout(function(){s.onload=s.onerror=null;reject(new Error('identity registry timeout'));},12000);
       s.onload=function(){clearTimeout(timer);window.getAuraVisualIdentity?resolve(true):reject(new Error('identity registry missing API'));};
       s.onerror=function(){clearTimeout(timer);reject(new Error('identity registry failed to load'));};
@@ -58,40 +58,13 @@ function installStyle(){
   .eqsafe-aura-art .line{fill:none;stroke:var(--eqsafe-a1);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .eqsafe-aura-art .accent{fill:none;stroke:var(--eqsafe-a2);stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round;opacity:.78}
   .eqsafe-aura-art .node{fill:var(--eqsafe-a1);stroke:var(--eqsafe-main);stroke-width:.5}
-  .eqsafe-aura-art svg{transform-origin:50% 50%;animation:eqsafeEmblem var(--eqsafe-turn,14s) linear infinite}
-  .eqsafe-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
-  .eqsafe-particle{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);opacity:.42;background:var(--eqsafe-a1);border-radius:50%;box-shadow:0 0 6px var(--eqsafe-main);animation:eqsafeDrift var(--d) ease-in-out infinite alternate;animation-delay:var(--delay)}
-  .eqsafe-host[data-eqsafe-particle*="pixel"] .eqsafe-particle,.eqsafe-host[data-eqsafe-particle*="chip"] .eqsafe-particle{border-radius:1px;transform:rotate(45deg)}
-  .eqsafe-host[data-eqsafe-particle*="shard"] .eqsafe-particle,.eqsafe-host[data-eqsafe-particle*="glass"] .eqsafe-particle{border-radius:0;clip-path:polygon(50% 0,100% 100%,0 74%)}
-  .eqsafe-host[data-eqsafe-particle*="ember"] .eqsafe-particle,.eqsafe-host[data-eqsafe-particle*="streak"] .eqsafe-particle,.eqsafe-host[data-eqsafe-particle*="rain"] .eqsafe-particle{width:2px;height:10px;border-radius:999px}
-  .eqsafe-host[data-eqsafe-particle*="bubble"] .eqsafe-particle,.eqsafe-host[data-eqsafe-particle*="ring"] .eqsafe-particle{background:transparent;border:1px solid var(--eqsafe-a1);box-shadow:0 0 5px var(--eqsafe-main)}
-  .eqsafe-host[data-eqsafe-particle*="thread"] .eqsafe-particle,.eqsafe-host[data-eqsafe-particle*="air"] .eqsafe-particle{width:12px;height:1px;border-radius:999px}
-  .eqsafe-host[data-eqsafe-particle*="leaf"] .eqsafe-particle,.eqsafe-host[data-eqsafe-particle*="petal"] .eqsafe-particle{border-radius:80% 0 80% 0}
-  .eqsafe-host[data-eqsafe-backdrop*="grid"],.eqsafe-host[data-eqsafe-backdrop*="pixel"],.eqsafe-host[data-eqsafe-backdrop*="circuit"]{background-image:linear-gradient(color-mix(in srgb,var(--eqsafe-main) 9%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--eqsafe-main) 9%,transparent) 1px,transparent 1px)!important;background-size:14px 14px!important}
-  .eqsafe-host[data-eqsafe-backdrop*="wave"],.eqsafe-host[data-eqsafe-backdrop*="ocean"],.eqsafe-host[data-eqsafe-backdrop*="shore"]{background-image:radial-gradient(ellipse at 80% 115%,transparent 42%,color-mix(in srgb,var(--eqsafe-main) 17%,transparent) 44%,transparent 47%)!important}
-  .eqsafe-host[data-eqsafe-backdrop*="void"],.eqsafe-host[data-eqsafe-backdrop*="absence"]{background:radial-gradient(circle at 88% 50%,#020205 0 13%,color-mix(in srgb,var(--eqsafe-main) 18%,#05070c) 32%,#101520 72%)!important}
-  .eqsafe-host[data-eqsafe-backdrop*="gem"],.eqsafe-host[data-eqsafe-backdrop*="crystal"]{background-image:linear-gradient(120deg,transparent 0 44%,color-mix(in srgb,var(--eqsafe-a1) 10%,transparent) 45% 47%,transparent 48% 100%)!important}
-  .eqsafe-host[data-eqsafe-font="mono"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="mono"] .aura-name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.065em}
-  .eqsafe-host[data-eqsafe-font="mono-light"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="mono-light"] .aura-name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:500;letter-spacing:.09em}
-  .eqsafe-host[data-eqsafe-font="serif-light"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="serif-light"] .aura-name{font-family:Lora,Georgia,serif;font-weight:500}
-  .eqsafe-host[data-eqsafe-font="serif-heavy"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="serif-heavy"] .aura-name{font-family:"Noto Serif TC",Georgia,serif;font-weight:900}
-  .eqsafe-host[data-eqsafe-font="serif-sharp"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="serif-sharp"] .aura-name{font-family:Georgia,"Times New Roman",serif;font-style:italic;letter-spacing:.035em}
-  .eqsafe-host[data-eqsafe-font="serif-dream"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="serif-dream"] .aura-name{font-family:Lora,Georgia,serif;font-style:italic;letter-spacing:.045em}
-  .eqsafe-host[data-eqsafe-font="serif-royal"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="serif-royal"] .aura-name{font-family:Georgia,"Times New Roman",serif;font-weight:700;letter-spacing:.04em}
-  .eqsafe-host[data-eqsafe-font="sans-wide"] .eq-aura-title,.eqsafe-host[data-eqsafe-font="sans-wide"] .aura-name{font-family:Figtree,system-ui,sans-serif;font-weight:900;letter-spacing:.075em}
-  .eq-cutscene[data-eqsafe-font="mono"] .eq-narrative,.eq-cutscene[data-eqsafe-font="mono-light"] .eq-narrative{font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important}
-  .eq-cutscene[data-eqsafe-font="serif-light"] .eq-narrative,.eq-cutscene[data-eqsafe-font="serif-dream"] .eq-narrative{font-family:Lora,Georgia,serif!important}
-  .eq-cutscene[data-eqsafe-font="serif-heavy"] .eq-narrative,.eq-cutscene[data-eqsafe-font="serif-royal"] .eq-narrative,.eq-cutscene[data-eqsafe-font="serif-sharp"] .eq-narrative{font-family:Georgia,"Times New Roman",serif!important}
-  .eq-cutscene[data-eqsafe-font="sans-wide"] .eq-narrative{font-family:Figtree,system-ui,sans-serif!important}
-  @keyframes eqsafeEmblem{from{transform:rotate(var(--eqsafe-start,0deg))}to{transform:rotate(calc(var(--eqsafe-start,0deg) + var(--eqsafe-spin-angle,360deg)))}}
-  @keyframes eqsafeDrift{from{translate:0 0;opacity:.18}to{translate:var(--dx,5px) var(--dy,-7px);opacity:.62}}
   .eqsafe-host{border-color:color-mix(in srgb,var(--eqsafe-main) 42%,#252d3e)!important;background:
    radial-gradient(circle at 90% 50%,color-mix(in srgb,var(--eqsafe-main) 18%,transparent),transparent 34%),
    #101520!important}
   .roll-result.eqsafe-host .eqsafe-aura-art{width:118px;height:118px;right:18px;opacity:.34}
   .recent-row.eqsafe-host .eqsafe-aura-art{width:64px;height:64px;opacity:.28}
   .performance-mode .eqsafe-aura-art{filter:none}
-  .reduced-motion .eqsafe-aura-art,.reduced-motion .eqsafe-aura-art svg,.reduced-motion .eqsafe-particle{animation:none!important}
+  .reduced-motion .eqsafe-aura-art{animation:none!important}
   .eqsafe-cutscene-art{position:absolute!important;left:50%!important;right:auto!important;top:50%!important;width:min(34vw,390px)!important;height:min(34vw,390px)!important;transform:translate(-50%,-50%)!important;opacity:.92!important;z-index:13!important;filter:drop-shadow(0 0 14px var(--eqsafe-main)) drop-shadow(0 0 34px var(--eqsafe-a1))!important}
   html.eqsafe-ready .eq-cutscene .eq-centerpiece > .eqv-wrap{visibility:hidden!important}
   @media(max-width:700px){.eqsafe-aura-art{width:62px;height:62px;opacity:.30}.eqsafe-cutscene-art{width:230px!important;height:230px!important}}
@@ -139,27 +112,6 @@ function semanticCore(id){
   if(k==='wave-gem')return '<polygon class="main" points="50,14 74,38 64,73 50,87 36,73 26,38"/><path class="line" d="M29 58Q42 45 54 57T72 53"/>';
   if(k==='rain-cloud')return '<path class="main" d="M27 50Q26 34 42 34Q49 20 62 31Q76 31 76 46Q85 49 81 59H23Q17 53 27 50Z"/><path class="line" d="M31 68L26 80M49 68L44 83M67 68L62 80"/>';
   if(k==='shore-lace')return '<path class="line" d="M14 48Q27 34 40 48T66 48T90 48M14 61Q27 47 40 61T66 61T90 61"/><circle class="line" cx="50" cy="50" r="29"/>';
-  if(k==='aurora')return '<path class="line" d="M8 63Q25 28 46 48T92 30M9 74Q32 42 55 62T91 47"/><path class="accent" d="M13 24Q36 44 59 21T88 26"/>';
-  if(k==='dreamcatcher')return '<circle class="line" cx="50" cy="43" r="28"/><circle class="accent" cx="50" cy="43" r="17"/><path class="line" d="M29 29L71 57M71 29L29 57M50 15V71M22 43H78M37 70L34 91M50 71V94M63 70L67 91"/>';
-  if(k==='scarab')return '<ellipse class="main" cx="50" cy="53" rx="15" ry="25"/><path class="line" d="M50 28V78M35 40L19 31M65 40L81 31M35 55L16 55M65 55L84 55M36 69L21 82M64 69L79 82"/><circle class="accent" cx="50" cy="25" r="7"/>';
-  if(k==='singularity')return '<circle class="line" cx="50" cy="50" r="30"/><circle class="accent" cx="50" cy="50" r="20"/><circle class="main" cx="50" cy="50" r="6"/><path class="line" d="M50 7V25M50 75V93M7 50H25M75 50H93"/>';
-  if(k==='projection')return '<polygon class="line" points="50,14 80,32 80,68 50,86 20,68 20,32"/><polygon class="accent" points="50,26 69,38 69,62 50,74 31,62 31,38"/><path class="main" d="M50 14V86M20 32L80 68M80 32L20 68"/>';
-  if(k==='astral-crown')return '<path class="main" d="M20 66L17 36L38 49L50 20L62 49L83 36L80 66Z"/><polygon class="accent" points="'+pointList(50,50,40,8,-Math.PI/2)+'"/>';
-  if(k==='mirror-eye')return '<path class="line" d="M11 50Q50 17 89 50Q50 83 11 50Z"/><circle class="main" cx="50" cy="50" r="11"/><path class="accent" d="M30 22L21 36M70 22L79 36M30 78L21 64M70 78L79 64"/>';
-  if(k==='zero-ring')return '<circle class="line" cx="50" cy="50" r="30"/><circle class="accent" cx="50" cy="50" r="18"/><path class="line" d="M27 73L73 27"/>';
-  if(k==='equinox')return '<circle class="line" cx="50" cy="50" r="31"/><path class="line" d="M50 14V86M18 50H82"/><path class="main" d="M50 14L56 42L82 50L56 58L50 86L44 58L18 50L44 42Z"/><circle cx="50" cy="50" r="7" fill="#070910"/>';
-  if(k==='fear-eye')return '<path class="line" d="M12 50Q50 13 88 50Q50 87 12 50Z"/><circle class="main" cx="50" cy="50" r="15"/><circle cx="54" cy="46" r="5" fill="#070910"/>';
-  if(k==='clock')return '<circle class="line" cx="50" cy="50" r="31"/><path class="line" d="M50 50V27M50 50L67 60"/><path class="accent" d="M50 15V21M50 79V85M15 50H21M79 50H85"/>';
-  if(k==='supernova')return '<circle class="main" cx="50" cy="50" r="12"/><polygon class="accent" points="'+pointList(50,50,38,12,-Math.PI/2)+'"/><circle class="line" cx="50" cy="50" r="29"/>';
-  if(k==='sword')return '<path class="main" d="M47 13H53L56 58L64 64H36L44 58Z"/><rect class="main" x="29" y="61" width="42" height="7" rx="2"/><path class="main" d="M47 68H53L57 83L50 89L43 83Z"/>';
-  if(k==='broken-rune')return '<circle class="line" cx="50" cy="50" r="29"/><path class="line" d="M32 28L45 42L37 54L52 68L44 80M68 28L55 42L63 54L48 68L56 80"/>';
-  if(k==='hand')return '<path class="main" d="M31 78V47Q31 39 37 39Q42 39 42 46V28Q42 20 48 20Q53 20 53 28V45V23Q53 16 59 16Q65 16 65 24V47V30Q65 23 71 23Q77 23 77 31V57Q77 79 58 87Q43 91 31 78Z"/>';
-  if(k==='compass')return '<circle class="line" cx="50" cy="50" r="32"/><polygon class="main" points="50,14 58,45 50,50 42,45"/><polygon class="accent" points="50,86 42,55 50,50 58,55"/><circle cx="50" cy="50" r="5" fill="#070910"/>';
-  if(k==='memory')return '<path class="line" d="M25 32Q50 14 75 32V68Q50 86 25 68Z"/><path class="accent" d="M35 38Q50 26 65 38V62Q50 74 35 62Z"/>';
-  if(k==='meta-cube')return '<polygon class="line" points="50,12 79,29 79,63 50,80 21,63 21,29"/><path class="accent" d="M50 12V46M21 29L50 46L79 29M50 46V80"/>';
-  if(k==='dreammetric')return '<circle class="line" cx="50" cy="50" r="29"/><polygon class="accent" points="'+pointList(50,50,24,7,-Math.PI/2)+'"/><path class="line" d="M21 50Q50 24 79 50Q50 76 21 50Z"/>';
-  if(k==='sandworm')return '<path class="main" d="M13 66Q25 39 43 49Q56 57 51 68Q46 80 61 78Q74 77 84 58Q82 83 61 88Q38 93 31 77Q26 66 13 66Z"/><path class="line" d="M21 65L15 54M30 59L25 47M40 55L37 42"/>';
-  if(k==='black-crown')return '<path class="main" d="M20 67L17 34L38 49L50 23L62 49L83 34L80 67Z"/><path class="accent" d="M27 73H73M33 43L50 59L67 43"/>';
   if(/moon|eclipse/.test(k))return '<circle class="main" cx="47" cy="50" r="27"/><circle cx="61" cy="41" r="23" fill="#070910"/>';
   if(/wave|ocean|leviathan/.test(k))return '<path class="main" d="M10 61Q28 34 48 58T90 54Q73 82 51 66T10 61Z"/>';
   if(/pixel|glitch|zero|meta/.test(k))return '<rect class="main" x="24" y="24" width="20" height="20"/><rect class="main" x="54" y="18" width="22" height="22"/><rect class="main" x="42" y="52" width="30" height="30"/>';
@@ -171,29 +123,14 @@ function semanticCore(id){
   if(/rune|arcane/.test(k))return '<circle class="line" cx="50" cy="50" r="29"/><polygon class="line" points="'+pointList(50,50,25,6,-Math.PI/2)+'"/>';
   return '';
 }
-function particlesFor(id,mode){
-  try{
-    var m=id&&id.mark||{},seed=num(m.variant,1)*97+num(m.phase,0)*17,count=mode==='cutscene'?16:6+(seed%4),html='<span class="eqsafe-particles" aria-hidden="true">';
-    for(var i=0;i<count;i++){
-      var x=7+((seed+i*37)%87),y=8+((seed*3+i*53)%83),sz=2+((seed+i*11)%5),dur=(2.8+((seed+i*19)%40)/10).toFixed(1),delay=(-((seed+i*7)%30)/10).toFixed(1);
-      var dx=((seed+i*13)%17)-8,dy=((seed+i*29)%19)-12;
-      html+='<i class="eqsafe-particle" style="--x:'+x+'%;--y:'+y+'%;--s:'+sz+'px;--d:'+dur+'s;--delay:'+delay+'s;--dx:'+dx+'px;--dy:'+dy+'px"></i>';
-    }
-    return html+'</span>';
-  }catch(_){return'';}
-}
 function artFor(name,id,mode){
   var p=Array.isArray(id.palette)&&id.palette.length>=3?id.palette:['#8aa4ff','#d8e2ff','#28344f'];
   var svg='<svg viewBox="0 0 100 100" aria-hidden="true"><g>'+semanticCore(id)+identityAccent(id)+'</g></svg>';
   var div=document.createElement('div');div.className='eqsafe-aura-art'+(mode==='cutscene'?' eqsafe-cutscene-art':'');
-  var sp=num(id.spin,.04),turn=Math.max(7,22-Math.abs(sp)*70);
   div.style.setProperty('--eqsafe-main',cssEsc(p[0]||'#8aa4ff'));
-  div.style.setProperty('--eqsafe-turn',turn.toFixed(1)+'s');
-  div.style.setProperty('--eqsafe-spin-angle',(sp<0?-360:360)+'deg');
-  div.style.setProperty('--eqsafe-start',((num(id.mark&&id.mark.twist,0))%360)+'deg');
   div.style.setProperty('--eqsafe-a1',cssEsc(p[1]||'#d8e2ff'));
   div.style.setProperty('--eqsafe-a2',cssEsc(p[2]||'#28344f'));
-  div.innerHTML=svg+particlesFor(id,mode);div.dataset.aura=name;div.dataset.identity=id.id||'';
+  div.innerHTML=svg;div.dataset.aura=name;div.dataset.identity=id.id||'';
   return div;
 }
 function decorateCutscene(el){
@@ -205,13 +142,7 @@ function decorateCutscene(el){
     if(!name)return;
     var id=window.getAuraVisualIdentity&&window.getAuraVisualIdentity(name);if(!id)return;
     var center=el.querySelector('.eq-centerpiece');if(!center)return;
-    var p=id.palette||[],dir=window.getAuraCinematicDirection&&window.getAuraCinematicDirection(name)||{};
-    el.dataset.eqsafeFont=String(id.font||'');
-    el.dataset.eqsafeParticle=String(id.particle||'');
-    el.dataset.eqsafeBackdrop=String(id.backdrop||'');
-    el.dataset.eqsafeKind=String(id.kind||'');
-    el.style.setProperty('--eqsafe-angle',num(dir.angle,0)+'deg');
-    el.style.setProperty('--eqsafe-tempo',num(dir.tempo,1));
+    var p=id.palette||[];
     el.style.setProperty('--aura-main',cssEsc(p[0]||'#8aa4ff'));
     el.style.setProperty('--aura-a1',cssEsc(p[1]||'#d8e2ff'));
     el.style.setProperty('--aura-a2',cssEsc(p[2]||'#28344f'));
@@ -237,10 +168,6 @@ function decorate(el){
     var prior=el.querySelector(':scope > .eqsafe-aura-art');if(prior)prior.remove();
     var p=id.palette||[];
     el.classList.add('eqsafe-host');
-    el.dataset.eqsafeFont=String(id.font||'');
-    el.dataset.eqsafeParticle=String(id.particle||'');
-    el.dataset.eqsafeBackdrop=String(id.backdrop||'');
-    el.dataset.eqsafeKind=String(id.kind||'');
     el.style.setProperty('--eqsafe-main',cssEsc(p[0]||'#8aa4ff'));
     el.style.setProperty('--eqsafe-a1',cssEsc(p[1]||'#d8e2ff'));
     el.style.setProperty('--eqsafe-a2',cssEsc(p[2]||'#28344f'));
