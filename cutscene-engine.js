@@ -216,7 +216,7 @@ function startParticles(canvas,d){
    else if(mode==='collapse'){var k=smooth(phase(p,rank===6?0.82:0.72,rank===6?0.93:0.90));var rr=rad*(1-k)+base*.025*k;xx=cx+Math.cos(ang+p*18)*rr;yy=cy+Math.sin(ang+p*18)*rr;sz*=1.2+k*1.8;alpha*=1.2;}
    else if(mode==='compress'){var k=smooth(phase(p,.70,.96));var rr=rad*(1-k*.82);xx=cx+Math.cos(ang+p*8)*rr;yy=cy+Math.sin(ang+p*8)*rr;alpha*=.9;}
    else if(mode==='recede'){var k=phase(p,.91,1);var rr=rad*(.8+2.4*k);xx=cx+Math.cos(ang)*rr;yy=cy+Math.sin(ang)*rr;alpha*=1-k;sz*=1+2*k;}
-   else{var k=easeOut(phase(p,rank===3?.88:rank===4?.86:rank===6?0.93:0.90,1));var rr=base*(.04+k*(.55+x.r*.7));xx=cx+Math.cos(x.a)*rr;yy=cy+Math.sin(x.a)*rr;alpha*=1-k*.72;sz*=1+2.4*k;}
+   else{var burstStart=rank===3?0.88:(rank===4?0.86:(rank===6?0.93:0.90));var k=easeOut(phase(p,burstStart,1));var rr=base*(.04+k*(.55+x.r*.7));xx=cx+Math.cos(x.a)*rr;yy=cy+Math.sin(x.a)*rr;alpha*=1-k*.72;sz*=1+2.4*k;}
    particleShape(ctx,xx,yy,Math.max(.7,sz),pal[i%3],kind,Math.max(0,alpha),rot);
   });
   // Directed shock rings replace constant decorative starfield.
@@ -257,6 +257,14 @@ function animateScene(o,d,p){
  back.style.opacity=String((.05+rank*.025)*ambient);
  back.style.transform='scale('+(1.14-.10*smooth(p))+') rotate('+(rotSign*p*(3+Math.abs(angle)*.025))+'deg)';
  back.style.filter='blur('+(30-Math.min(10,Number(dir.depthLayers||3)*1.4))+'px)';
+ var opening=String(dir.opening||'');
+ if(opening.indexOf('horizontal horizon split')>=0){
+  var openK=easeOut(phase(p,.01,.24));
+  back.style.clipPath='inset('+(50-openK*50)+'% 0 '+(50-openK*50)+'% 0)';
+ }else if(opening.indexOf('vertical seam')>=0){
+  var openK=easeOut(phase(p,.01,.24));
+  back.style.clipPath='inset(0 '+(50-openK*50)+'% 0 '+(50-openK*50)+'%)';
+ }else back.style.clipPath='none';
 
  if(rank===1){
   var eIn=easeOut(phase(p,.02,.30)),eOut=1-smooth(phase(p,.62,1));
@@ -367,7 +375,10 @@ function animateScene(o,d,p){
 
 function finish(){
  if(!active)return;
- var a=active;active=null,dir=directionFor(a.d.name)||{};
+ var a=active;
+ if(a.watchdog){clearTimeout(a.watchdog);a.watchdog=null;}
+ active=null;
+ var dir=directionFor(a.d.name)||{};
  var o=a.overlay,flash=o.querySelector('.eq-flash'),styleName=a.d.revealStyle||'white';
  var fc=styleName==='void'?'#000':styleName==='water'?'linear-gradient(180deg,'+a.d.accentColors[1]+','+a.d.mainColor+')':
   styleName==='gold'?'#fff3b0':styleName==='crimson'||styleName==='red'?'#ff2648':
@@ -397,16 +408,33 @@ function runCutscene(record,replay){
  if(window.state)window.state.cutsceneActive=true;
  var o=makeOverlay(d,replay),start=performance.now(),totalDuration=Math.max(1,d.cutsceneDuration*1000),flashDuration=finalFlashTime(d.cutsceneType);
  var duration=Math.max(120,totalDuration-flashDuration*1000);
- active={overlay:o,d:d,start:start,duration:duration,totalDuration:totalDuration,flashDuration:flashDuration,progress:0,replay:!!replay,cues:{}};
+ active={overlay:o,d:d,start:start,duration:duration,totalDuration:totalDuration,flashDuration:flashDuration,progress:0,replay:!!replay,cues:{},watchdog:null};
+ // Absolute guarantee: no cinematic may trap the player if a renderer/frame fails.
+ active.watchdog=setTimeout(function(){
+  if(active&&active.overlay===o){
+   console.warn('Cinematic watchdog forced reveal for',d.name);
+   window.__equinoxLastCinematicError={name:d.name,reason:'watchdog',time:Date.now()};
+   finish();
+  }
+ },Math.max(250,totalDuration+120));
  if(replay){
   var stop=o.querySelector('.eq-stop');
   if(stop)stop.onclick=function(){if(active&&active.overlay===o)finish();};
  }
- startParticles(o.querySelector('.eq-canvas'),d);
+ try{startParticles(o.querySelector('.eq-canvas'),d);}
+ catch(e){
+  console.warn('Cinematic particle renderer failed',d.name,e);
+  window.__equinoxLastCinematicError={name:d.name,reason:'particles',message:String(e&&e.message||e),time:Date.now()};
+ }
  function tick(now){
   if(!active||active.overlay!==o)return;
   var p=clamp((now-start)/duration,0,1);active.progress=p;
-  animateScene(o,d,p);
+  try{animateScene(o,d,p);}
+  catch(e){
+   console.warn('Cinematic frame failed; forcing reveal',d.name,e);
+   window.__equinoxLastCinematicError={name:d.name,reason:'frame',message:String(e&&e.message||e),progress:p,time:Date.now()};
+   finish();return;
+  }
   if(p>=1){finish();return;}
   requestAnimationFrame(tick);
  }
