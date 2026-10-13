@@ -31,7 +31,7 @@ function loadIdentities(){
         return;
       }
       var s=document.createElement('script');s.id=SCRIPT_ID;s.async=true;
-      s.src='aura-visual-identities.js?v=20261013-safe1';
+      s.src='aura-visual-identities.js?v=20261013-safe6';
       var timer=setTimeout(function(){s.onload=s.onerror=null;reject(new Error('identity registry timeout'));},12000);
       s.onload=function(){clearTimeout(timer);window.getAuraVisualIdentity?resolve(true):reject(new Error('identity registry missing API'));};
       s.onerror=function(){clearTimeout(timer);reject(new Error('identity registry failed to load'));};
