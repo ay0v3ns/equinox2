@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Equinox</title>
-<link rel="stylesheet" href="styles.css?v=20261013-1348">
+<link rel="stylesheet" href="styles.css?v=20261013-1415">
 </head>
 <body>
 <div id="app"></div>
@@ -15,16 +15,34 @@ window.addEventListener('unhandledrejection',function(e){window.__equinoxBootErr
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://us.i.posthog.com/static/array.js"></script>
-<script src="app.js?v=20261013-1348"></script>
-<script src="aura-presentation.js?v=20261013-1208"></script>\n<script src="aura-visual-identities.js?v=20261013-1348"></script>\n<script src="aura-visual-renderer.js?v=20261013-1348"></script>
-<script src="aura-cinematic-directions.js?v=20261013-1305"></script>
+<script src="app.js?v=20261013-1415"></script>
+<script src="aura-presentation.js?v=20261013-1415"></script>
+<script src="aura-visual-identities.js?v=20261013-1415"></script>
+<script src="aura-visual-renderer.js?v=20261013-1415"></script>
+<script src="aura-cinematic-directions.js?v=20261013-1415"></script>
 <script src="analytics.js?v=20261007-0930"></script>
 <script src="phase4-final.js?v=20261007-0930"></script>
 <script src="phase5-final.js?v=20261007-1621"></script>
 <script src="phase6-final.js?v=20261007-0930"></script>
 <script src="aura-bespoke.js?v=20261007-1621"></script>
-<script src="cutscene-engine.js?v=20261013-1318"></script>
+<script src="cutscene-engine.js?v=20261013-1415"></script>
 <script src="cutscene-fixes.js?v=20261007-1621"></script>
 <script src="supabase.js?v=20261007-0930"></script>
+<script>
+(function equinoxStartupRecovery(){
+  setTimeout(function(){
+    try{
+      var app=document.getElementById('app');
+      if(typeof window.render==='function' && app && (!app.innerHTML.trim() || /The game could not render/i.test(app.textContent||''))){
+        if(typeof window.equinoxReloadLocalState==='function')window.equinoxReloadLocalState();
+        else window.render();
+      }
+    }catch(e){
+      window.__equinoxBootError={message:String(e&&e.message||e),stack:String(e&&e.stack||''),phase:'startup-recovery',time:Date.now()};
+      console.error('Equinox startup recovery failed',e);
+    }
+  },2500);
+})();
+</script>
 </body>
 </html>
