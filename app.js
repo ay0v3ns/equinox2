@@ -89,15 +89,8 @@ function normalizeState(s,recoverInterrupted=true){
    delete s.inventory.Quartz;
  }
  if(Array.isArray(s.spawns))s.spawns.forEach(function(x){if(x&&x.name==='Quartz'&&!x.kind?.toString().includes('aura'))x.name='Foggy Quartz';});
- s.auras=Array.isArray(s.auras)?s.auras.filter(function(a){return a&&typeof a==='object'&&String(a.name||'').trim();}).map(function(a){
-   a.name=String(a.name||'').trim();
-   if(!a.id)a.id='aura-recovered-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
-   a.rarity=Number(a.rarity||0);
-   return a;
- }):[];
- s.recent=Array.isArray(s.recent)?s.recent.filter(function(a){return a&&typeof a==='object'&&String(a.name||'').trim();}).slice(0,100):[];
- if(s.lastRollResult&&(!(typeof s.lastRollResult==='object')||!String(s.lastRollResult.name||'').trim()))s.lastRollResult=null;
- s.spawns=Array.isArray(s.spawns)?s.spawns.filter(function(x){return x&&typeof x==='object'&&String(x.name||'').trim();}):[];
+ s.auras=Array.isArray(s.auras)?s.auras:[];
+ s.recent=Array.isArray(s.recent)?s.recent.slice(0,100):[];
  s.rolledAuras=Array.isArray(s.rolledAuras)?s.rolledAuras.filter(function(x){return x&&String(x.name||'').trim()}).map(function(x){return{name:String(x.name),rarity:Number(x.rarity||0),tier:String(x.tier||'Unknown')}}):[];
  const rolledMap=new Map(s.rolledAuras.map(function(x){return[x.name,x]}));
  s.auras.forEach(function(a){if(a&&a.name&&!rolledMap.has(String(a.name))){const d=AURAS.find(function(z){return z.name===a.name});rolledMap.set(String(a.name),{name:String(a.name),rarity:Number(a.rarity||d?.rarity||0),tier:String(a.tier||d?.computedTier||d?.tier||'Unknown')});}});
@@ -1526,30 +1519,15 @@ setTimeout(installEquinoxPhase4,0);
  * authentication, Phase 4/5/6, and every game action share one renderer.
  */
 function auraVisualShell(name,classes){
-  const safeClass=String(classes||'').replace(/[^a-z0-9 _-]/gi,'');
-  try{
-    const d=window.getAuraPresentation&&window.getAuraPresentation(name);
-    if(!d)return '<div class="'+safeClass+'">';
-    const v=window.getAuraVisualSpec&&window.getAuraVisualSpec(name);
-    const seed=Number(d.seed||0)>>>0,fontVariant=(seed%12)+1,tilt=((seed%9)-4),speed=(3.8+(seed%50)/10).toFixed(2);
-    const theme=String((v&&v.backdrop)||d.theme||'prismatic').replace(/[^a-z0-9_-]/gi,'');
-    const safe=function(x){return eq4escape(String(x==null?'':x))};
-    const rawPal=v&&Array.isArray(v.palette)&&v.palette.length>=3?v.palette:[d.mainColor,(d.accentColors||[])[0],(d.accentColors||[])[1]];
-    const pal=[rawPal[0]||'#8aa4ff',rawPal[1]||'#d8e2ff',rawPal[2]||'#28344f'];
-    let particles='';const count=10+(seed%5);
-    for(let i=0;i<count;i++)particles+='<i style="--p:'+i+'"></i>';
-    let bespoke='<span class="eq-aura-core" aria-hidden="true"></span>';
-    try{if(window.renderAuraVisual)bespoke=window.renderAuraVisual(String(name||''),{size:76})||bespoke;}
-    catch(visualErr){
-      console.warn('Aura visual failed safely:',name,visualErr);
-      window.__equinoxLastAuraVisualError={name:String(name||''),message:String(visualErr&&visualErr.message||visualErr),time:Date.now()};
-    }
-    return '<div class="'+safeClass+' eq-aura-visual eq-font-'+fontVariant+'" data-aura-theme="'+safe(theme)+'" data-aura-identity="'+safe(v&&v.id||'')+'" data-aura-font="'+safe(v&&v.font||'')+'" style="--aura-main:'+safe(pal[0])+';--aura-a1:'+safe(pal[1])+';--aura-a2:'+safe(pal[2])+';--eq-tilt:'+tilt+'deg;--eq-speed:'+speed+'s"><span class="eq-aura-glow" aria-hidden="true"></span><span class="eq-aura-particles" aria-hidden="true">'+particles+'</span>'+bespoke;
-  }catch(err){
-    console.warn('Aura shell failed safely:',name,err);
-    window.__equinoxLastAuraVisualError={name:String(name||''),message:String(err&&err.message||err),time:Date.now()};
-    return '<div class="'+safeClass+' eq-aura-visual-fallback">';
-  }
+  const d=window.getAuraPresentation&&window.getAuraPresentation(name);
+  if(!d)return '<div class="'+classes+'">';
+  const seed=Number(d.seed||0)>>>0,fontVariant=(seed%12)+1,tilt=((seed%9)-4),speed=(3.8+(seed%50)/10).toFixed(2);
+  const theme=String(d.theme||'prismatic').replace(/[^a-z0-9_-]/gi,'');
+  const safe=function(v){return eq4escape(String(v==null?'':v))};
+  let particles='';const count=10+(seed%5);
+  for(let i=0;i<count;i++)particles+='<i style="--p:'+i+'"></i>';
+  const bespoke=window.renderAuraVisual?window.renderAuraVisual(name,{size:76}):'<span class="eq-aura-core" aria-hidden="true"></span>';
+  return '<div class="'+classes+' eq-aura-visual eq-font-'+fontVariant+'" data-aura-theme="'+safe(theme)+'" style="--aura-main:'+safe(d.mainColor)+';--aura-a1:'+safe(d.accentColors[0])+';--aura-a2:'+safe(d.accentColors[1])+';--eq-tilt:'+tilt+'deg;--eq-speed:'+speed+'s"><span class="eq-aura-glow" aria-hidden="true"></span><span class="eq-aura-particles" aria-hidden="true">'+particles+'</span>'+bespoke;
 }
 function auraVisualClose(){return '</div>';}
 
@@ -1561,9 +1539,9 @@ function render(){
   root.className=(state.settings?.performanceMode!==false?'performance-mode ':'')+(state.settings?.reducedMotion?'reduced-motion':'');
   try{
     const tabs=[['Roll','Roll'],['Inventory','Inventory'],['NPCs','NPCs'],['Global','Global'],['Achievements','Achievements'],['Settings','Settings']];
-    const recent=(state.recent||[]).filter(Boolean).slice(0,8);
+    const recent=(state.recent||[]).slice(0,8);
     const latest=state.lastRollResult||recent[0];
-    const equipped=(state.auras||[]).find(function(a){return a&&a.equipped});
+    const equipped=(state.auras||[]).find(function(a){return a.equipped});
     const worldLuck=typeof totalLuck==='function'?totalLuck():1;
     const worldSpeed=typeof totalSpeed==='function'?totalSpeed():1;
     const computedRollTime=typeof rollTimeSeconds==='function'?rollTimeSeconds():11;
@@ -1625,7 +1603,6 @@ function render(){
     wireInventory();
   }catch(e){
     console.error('Equinox render failed',e);
-    window.__equinoxBootError={message:String(e&&e.message||e),stack:String(e&&e.stack||''),phase:'render',time:Date.now()};
     const box=document.getElementById('app');
     if(box)box.innerHTML='<div class="panel\" style="margin:24px\"><div class="section-title">EQUINOX ERROR</div><h1>The game could not render.</h1><p class="muted">'+eq4escape(String(e?.message||e))+'</p><button onclick="location.reload()">Reload Equinox</button></div>';
   }
