@@ -1848,3 +1848,23 @@ button:not(.tab):not(.roll-button):not(.npc-card):not(.recipe-add):not(.recipe-a
 @keyframes eqvWave{0%,100%{transform:rotate(-2deg) scaleX(.96)}50%{transform:rotate(2deg) scaleX(1.04)}}
 .reduced-motion .eqv-svg,.reduced-motion .eqv-core,.reduced-motion .eqv-orbit{animation:none!important}
 .performance-mode .eqv-o3{display:none}
+
+/* Aura Visual Identity Registry v3 */
+.eqv-identity{fill:none;stroke:var(--eqv-a2);stroke-width:1.15;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:.72}
+.eqv-node{fill:var(--eqv-a1);stroke:var(--eqv-main);stroke-width:.45;vector-effect:non-scaling-stroke;opacity:.9}
+.eqv-cutline{fill:none;stroke:#050507;stroke-width:2.2;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.eq-aura-visual[data-aura-identity]{background:
+ radial-gradient(circle at 88% 50%,color-mix(in srgb,var(--aura-main) 20%,transparent),transparent 32%),
+ linear-gradient(90deg,color-mix(in srgb,var(--aura-a2) 9%,#101520),color-mix(in srgb,var(--aura-main) 8%,#101520) 72%,color-mix(in srgb,var(--aura-a1) 10%,#101520))}
+.eq-aura-visual[data-aura-identity]>.eqv-wrap{opacity:.36}
+.roll-result.eq-aura-visual[data-aura-identity]>.eqv-wrap{opacity:.42}
+.eq-aura-visual[data-aura-identity]{border-color:color-mix(in srgb,var(--aura-main) 42%,#252d3e)}
+.eq-aura-visual[data-aura-identity]:hover{border-color:color-mix(in srgb,var(--aura-a1) 72%,#56637d);box-shadow:0 0 20px color-mix(in srgb,var(--aura-main) 14%,transparent)}
+.eq-aura-visual[data-aura-font="mono"] .eq-aura-title{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em}
+.eq-aura-visual[data-aura-font="mono-light"] .eq-aura-title{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:500;letter-spacing:.09em}
+.eq-aura-visual[data-aura-font="serif-light"] .eq-aura-title{font-family:Lora,Georgia,serif;font-weight:500}
+.eq-aura-visual[data-aura-font="serif-heavy"] .eq-aura-title{font-family:"Noto Serif TC",Georgia,serif;font-weight:900}
+.eq-aura-visual[data-aura-font="serif-sharp"] .eq-aura-title{font-family:Georgia,"Times New Roman",serif;font-style:italic;letter-spacing:.035em}
+.eq-aura-visual[data-aura-font="serif-dream"] .eq-aura-title{font-family:Lora,Georgia,serif;font-style:italic;letter-spacing:.045em}
+.eq-aura-visual[data-aura-font="serif-royal"] .eq-aura-title{font-family:Georgia,"Times New Roman",serif;font-weight:700;letter-spacing:.04em}
+.eq-aura-visual[data-aura-font="sans-wide"] .eq-aura-title{font-family:Figtree,system-ui,sans-serif;font-weight:900;letter-spacing:.075em}
