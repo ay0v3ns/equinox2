@@ -1521,13 +1521,15 @@ setTimeout(installEquinoxPhase4,0);
 function auraVisualShell(name,classes){
   const d=window.getAuraPresentation&&window.getAuraPresentation(name);
   if(!d)return '<div class="'+classes+'">';
+  const v=window.getAuraVisualSpec&&window.getAuraVisualSpec(name);
   const seed=Number(d.seed||0)>>>0,fontVariant=(seed%12)+1,tilt=((seed%9)-4),speed=(3.8+(seed%50)/10).toFixed(2);
-  const theme=String(d.theme||'prismatic').replace(/[^a-z0-9_-]/gi,'');
-  const safe=function(v){return eq4escape(String(v==null?'':v))};
+  const theme=String((v&&v.backdrop)||d.theme||'prismatic').replace(/[^a-z0-9_-]/gi,'');
+  const safe=function(x){return eq4escape(String(x==null?'':x))};
+  const pal=v&&v.palette?v.palette:[d.mainColor,d.accentColors[0],d.accentColors[1]];
   let particles='';const count=10+(seed%5);
   for(let i=0;i<count;i++)particles+='<i style="--p:'+i+'"></i>';
   const bespoke=window.renderAuraVisual?window.renderAuraVisual(name,{size:76}):'<span class="eq-aura-core" aria-hidden="true"></span>';
-  return '<div class="'+classes+' eq-aura-visual eq-font-'+fontVariant+'" data-aura-theme="'+safe(theme)+'" style="--aura-main:'+safe(d.mainColor)+';--aura-a1:'+safe(d.accentColors[0])+';--aura-a2:'+safe(d.accentColors[1])+';--eq-tilt:'+tilt+'deg;--eq-speed:'+speed+'s"><span class="eq-aura-glow" aria-hidden="true"></span><span class="eq-aura-particles" aria-hidden="true">'+particles+'</span>'+bespoke;
+  return '<div class="'+classes+' eq-aura-visual eq-font-'+fontVariant+'" data-aura-theme="'+safe(theme)+'" data-aura-identity="'+safe(v&&v.id||'')+'" style="--aura-main:'+safe(pal[0])+';--aura-a1:'+safe(pal[1])+';--aura-a2:'+safe(pal[2])+';--eq-tilt:'+tilt+'deg;--eq-speed:'+speed+'s"><span class="eq-aura-glow" aria-hidden="true"></span><span class="eq-aura-particles" aria-hidden="true">'+particles+'</span>'+bespoke;
 }
 function auraVisualClose(){return '</div>';}
 
