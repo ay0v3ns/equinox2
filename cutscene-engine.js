@@ -356,8 +356,9 @@ function runCutscene(record,replay){
  if(active)return;
  var d=window.getAuraCutsceneProfile&&window.getAuraCutsceneProfile(record.name);if(!d)return;
  if(window.state)window.state.cutsceneActive=true;
- var o=makeOverlay(d,replay),start=performance.now(),duration=Math.max(1,d.cutsceneDuration*1000),flashDuration=finalFlashTime(d.cutsceneType);
- active={overlay:o,d:d,start:start,duration:duration,flashDuration:flashDuration,progress:0,replay:!!replay,cues:{}};
+ var o=makeOverlay(d,replay),start=performance.now(),totalDuration=Math.max(1,d.cutsceneDuration*1000),flashDuration=finalFlashTime(d.cutsceneType);
+ var duration=Math.max(120,totalDuration-flashDuration*1000);
+ active={overlay:o,d:d,start:start,duration:duration,totalDuration:totalDuration,flashDuration:flashDuration,progress:0,replay:!!replay,cues:{}};
  if(replay){
   var stop=o.querySelector('.eq-stop');
   if(stop)stop.onclick=function(){if(active&&active.overlay===o)finish();};
